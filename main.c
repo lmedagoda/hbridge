@@ -340,7 +340,7 @@ int main(void)
 
   GPIO_Configuration();
   
-  setupI2C();
+  //setupI2C();
 
   Set_USBClock();
 
@@ -367,140 +367,24 @@ int main(void)
  
   delay = 5000000;
   while(delay)
-    delay--;  
+    delay--;
 
-  //send stop command on startup
-  md03_global_state = MD03_ALL_DATA_RECEIVED;
-  
-  md03_data[MD03_01].acceleration = 50;
-  md03_data[MD03_02].acceleration = 50;
-  md03_data[MD03_03].acceleration = 50;
-  md03_data[MD03_04].acceleration = 50;
-  
-  md03_data[MD03_01].speed = 0;
-  md03_data[MD03_02].speed = 0;
-  md03_data[MD03_03].speed = 0;
-  md03_data[MD03_04].speed = 0;
-  
-  md03_data[MD03_01].direction = MD03_FORWARD;
-  md03_data[MD03_02].direction = MD03_FORWARD;    
-  md03_data[MD03_03].direction = MD03_FORWARD;
-  md03_data[MD03_04].direction = MD03_FORWARD;
-  
-  requestMD03DataWrite();
-  
-  while(!MD03DataWritten()) {
-    print("Waiting for first data write \n");
-    printf("MD03 Single State is %d, device num is %d, Global state is %d \n", single_md03_state, cur_md03_device, md03_global_state);
-    //sendDebugBuffer();
-    if(I2C1_Data.I2CError) {
-      md03_global_state = MD03_ALL_DATA_RECEIVED;
-      requestMD03DataWriteI2C1();
-      I2C1_Data.I2CError = 0;
-    }
-  }
-  
-  //init Quadratur counters
-  initLS7366();
-  
-  while(!initLS7366Finished()) {
-    ;
-  }
-  
-  //init 'userland' structures and let it install the controller
-  init();
-  
-  if(!controller) {
-    while(1) {    
-      print("No controller was installed in init() !! \n");
-      GPIOC->BRR |= 0x00001000;
-      delay = 500000;
-      while(delay) 
-	delay--;
-      GPIOC->BSRR |= 0x00001000;
-      delay = 500000;
-      while(delay)
-	delay--; 
-    }
-  }
-  
+  u16 encoder = 0;
 
-  u16 starttime = 0;
-  u16 stoptime = 0;
-  
-  s32 timediff;
-
-
-  /* Main data aqusition/controll/write loop */
   while (1)
-  {
-    starttime = TIM_GetCounter(TIM2);
-
-    print("Main Loop start \n");
-
-    requestMD03Data();
-
-    requestLS7366Data();
-
-    while(!MD03DataReady() || !LS7366DataReady()) {
-      //print("Waiting for data \n");
-      //printf("MD03 Single State is %d, device num is %d, Global state is %d \n", single_md03_state, cur_md03_device, md03_global_state);
-      /*printf("MD03 state is %d \n", md03_I2C1_state);
-      printf("I2C1_Tx_Ids is %d \n", I2C1_Data.I2C_Tx_Idx);
-      printf("I2C1_Tx_Size is %d \n", I2C1_Data.I2C_Tx_Size);
-      printf("I2C1_Rx_Idx is %d \n", I2C1_Data.I2C_Rx_Idx);
-      printf("I2C1_Rx_Size is %d \n", I2C1_Data.I2C_Rx_Size);
-      printf("I2C1Mode is %d \n", I2C1_Data.I2CMode);
-      sendDebugBuffer();*/
+    {
       
-      if(I2C1_Data.I2CError) {
-	printf("Error Reason was %d \n", I2C1_Data.I2CErrorReason);
-	md03_global_state = MD03_WROTE_ALL_DATA;
-	requestMD03DataI2C1();
-	I2C1_Data.I2CError = 0;
-	printf("Error on I2C%d \n", 1);
-      }
-      //sendDebugBuffer();
-    }
+      delay = 10000000;
+      while(delay)
+	delay--;
 
-    updateRCValues();
-    
-    //call current controler
-    if(controller) {
-      controller();
-    }
+      encoder = TIM_GetCounter(TIM3);
 
-    
-    requestMD03DataWrite();
-    
-    while(!MD03DataWritten()) {
-      //print("Waiting for data write\n");
-      //printf("MD03 Single State is %d, device num is %d, Global state is %d \n", single_md03_state, cur_md03_device, md03_global_state);
+      printf("Encoder is %d \n", encoder);
       
-      if(I2C1_Data.I2CError) {
-	print("ERROR WRITE\n");
-	printf("Error Reason was %d \n", I2C1_Data.I2CErrorReason);
-	md03_global_state = MD03_ALL_DATA_RECEIVED;
-	requestMD03DataWriteI2C1();
-	I2C1_Data.I2CError = 0;
-	printf("Error on I2C%d \n", 1);
-      }
-      //sendDebugBuffer();
-    }
-    
-    //reduce frequency to 100 herz
-    do { 
-      stoptime = TIM_GetCounter(TIM2);
-
-
-      if(starttime <= stoptime) { 
-	timediff = stoptime - starttime;
-      } else {
-	timediff = stoptime - starttime + (1<<16);
-      }
-      //printf("Timediff is %li \n\n", timediff);
-    } while (timediff < 10000);
-  }
+      
+      
+    }  
 }
 
 
@@ -513,18 +397,21 @@ int main(void)
 *******************************************************************************/
 void SPI_Configuration(void)
 {
+
+  //TODO is SOFT_NSS suficient
+
   /* SPI1 clock enable */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
   SPI_InitTypeDef SPI_InitStructure;
 
   /* Disable SPI1 for configuration */
-  SPI_Cmd(SPI1, DISABLE);
+  SPI_Cmd(SPI2, DISABLE);
 
   /* SPI1 Master */
-  /* SPI1 Config -----------------------------------------------------------*/
+  /* SPI2 Config -----------------------------------------------------------*/
   SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-  SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+  SPI_InitStructure.SPI_Mode = SPI_Mode_Slave;
   SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
   SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
   SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
@@ -532,16 +419,11 @@ void SPI_Configuration(void)
   SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_32;
   SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
   SPI_InitStructure.SPI_CRCPolynomial = 7;
-  SPI_Init(SPI1, &SPI_InitStructure);
+  SPI_Init(SPI2, &SPI_InitStructure);
 
-  //set all PINs high (slave not active)
-  GPIO_SetBits(GPIOC, GPIO_Pin_6);
-  GPIO_SetBits(GPIOC, GPIO_Pin_7);
-  GPIO_SetBits(GPIOC, GPIO_Pin_8);
-  GPIO_SetBits(GPIOC, GPIO_Pin_9);
 
   /* Enable SPI1 */
-  SPI_Cmd(SPI1, ENABLE);
+  SPI_Cmd(SPI2, ENABLE);
 }
 
 
@@ -556,74 +438,115 @@ void TIM_Configuration(void)
 {
 
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+  TIM_OCInitTypeDef TIM_OCInitStructure;
+
+  //turn on timer hardware
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+
+  // Time base configuration 
+  TIM_TimeBaseStructure.TIM_Period = 65000;
+  TIM_TimeBaseStructure.TIM_Prescaler = 2;
+  TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+
+  //configure TIM3 as encoder interface
+  TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12,
+			     TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
   
+  //configure value to reload after wrap around
+  TIM_SetAutoreload(TIM3, 1<<15);
+
+  TIM_ARRPreloadConfig(TIM3, ENABLE);
+
+  /* TIM enable counter */
+  TIM_Cmd(TIM3, ENABLE);
+
+
+  //timer used for PWM generation
   //turn on timer hardware
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
   
-  //TIM2CLK = 36 MHz, Prescaler = 36, TIM2 
-  //counter clock = 1 MHz 
+  //TIM2CLK = 72 MHz, Prescaler = 1800, TIM2 
+  //counter clock = 40 kHz 
   // Time base configuration 
-  TIM_TimeBaseStructure.TIM_Period = 65000;
-  TIM_TimeBaseStructure.TIM_Prescaler = 72;
+  TIM_TimeBaseStructure.TIM_Period = 1800;
+  TIM_TimeBaseStructure.TIM_Prescaler = 2;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
   /* Prescaler configuration */ 
-  TIM_PrescalerConfig(TIM2, 72, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM2, 2, TIM_PSCReloadMode_Immediate); 
+
+  /* PWM1 Mode configuration: Channel3 */
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+  TIM_OCInitStructure.TIM_Pulse = 999;
+
+  TIM_OC3Init(TIM2, &TIM_OCInitStructure);
+
+  TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Enable);
+
+  /* PWM1 Mode configuration: Channel4 */
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_Pulse = 999;
+
+  TIM_OC4Init(TIM2, &TIM_OCInitStructure);
+
+  TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Enable);
+
+  TIM_ARRPreloadConfig(TIM2, ENABLE);
 
   /* TIM2 enable counter */ 
-  TIM_Cmd(TIM2, ENABLE); 
+  TIM_Cmd(TIM2, ENABLE);
 
-  /*
-  TIM_OCInitTypeDef  TIM_OCInitStructure;
-  //init with default values
-  TIM_OCStructInit(&TIM_OCInitStructure);
-  
-  // Output Compare Toggle Mode configuration: Channel1 
-  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_Timing;
-  TIM_OCInitStructure.TIM_Pulse = 2000;
-  TIM_OC1Init(TIM2, &TIM_OCInitStructure);
-
-  TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Disable);
-  */
-  
-
+  //timer used for shutdown generation
   //turn on timer hardware
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-
-  TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
   
-  //TIM3CLK = 36 MHz, Prescaler = 36, TIM3 
-  //counter clock = 1 MHz 
+  //TIM4CLK = 72 MHz, Prescaler = 2, TIM4 
+  //counter clock = 36 MHz 
   // Time base configuration 
-  TIM_TimeBaseStructure.TIM_Period = 65000;
-  TIM_TimeBaseStructure.TIM_Prescaler = 36;
+  TIM_TimeBaseStructure.TIM_Period = 1800;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
-  /* TIM3 configuration: PWM Input mode ------------------------
-     The external signal is connected to TIM3 CH3 pin (PB.00), 
-     The Rising edge is used as active edge,
-     The TIM3 CCR3 contains raising edge time 
-     The TIM3 CCR4 contains falling edge time
-  ------------------------------------------------------------ */
-  TIM_ICInitTypeDef  TIM_ICInitStructure;
+  TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
-  TIM_ICInitStructure.TIM_Channel = TIM_Channel_3;
-  TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
-  TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
-  TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
-  TIM_ICInitStructure.TIM_ICFilter = 10;
+  /* Prescaler configuration */ 
+  TIM_PrescalerConfig(TIM4, 1, TIM_PSCReloadMode_Immediate); 
 
-  TIM_PWMIConfig(TIM3, &TIM_ICInitStructure);
 
-  /* TIM enable counter */
-  TIM_Cmd(TIM3, ENABLE);
+  /* PWM1 Mode configuration: Channel3 */
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+  TIM_OCInitStructure.TIM_Pulse = 180;
 
-  /* Enable the CC2 Interrupt Request */
-  TIM_ITConfig(TIM3, TIM_IT_CC3, ENABLE);
+  TIM_OC3Init(TIM4, &TIM_OCInitStructure);
+
+  TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+  /* PWM1 Mode configuration: Channel4 */
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_Pulse = 180;
+
+  TIM_OC4Init(TIM4, &TIM_OCInitStructure);
+
+  TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+
+  TIM_ARRPreloadConfig(TIM4, ENABLE);
+
+  /* TIM4 enable counter */ 
+  TIM_Cmd(TIM4, ENABLE);
+
+  //TODO SYNC TIMERS
+
 }
+
 
 
 /*******************************************************************************
@@ -645,19 +568,91 @@ void GPIO_Configuration(void)
 			 | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD
                          | RCC_APB2Periph_USART1, ENABLE);
 
-
-  /* Configure I2C1 pins: SCL and SDA ---------------------------------------*/
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_6 | GPIO_Pin_7;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+
+  //configure TIM2 channel 3 as Push Pull (for AIN)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //configure TIM2 channel 4 as Push Pull (for BIN)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //configure PA4 (ADC Channel4) as analog input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //configure PA5 (ADC Channel5) as analog input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //TIM3 channel 1 pin (PA6)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  
+  //TIM3 channel 2 pin (PA7)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  // Configure USART1 Tx (PA09) as alternate function push-pull
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  // Configure USART1 Rx (PA10) as input floating
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //Configure CAN pin: RX 
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //Configure CAN pin: TX 
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  
+  //configure PB0 (ADC Channel8) as analog input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  //TODO perhaps OD is wrong for SMBA !!
+  // Configure I2C1 pins: SCL, SDA and SMBA
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-  /* Configure I2C2 pins: SCL and SDA ---------------------------------------*/
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  //configure TIM4 channel 3 as Push Pull (for ASD)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
+  //configure TIM4 channel 4 as Push Pull (for BSD)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
+  // Configure I2C2 pins: SCL and SDA 
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+  
+  //Configure SPI2 pins: SCK, MISO and MOSI
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   // Configure PC.12 as output push-pull (LED)
   GPIO_WriteBit(GPIOC,GPIO_Pin_12,Bit_SET);
@@ -681,33 +676,6 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  //configure TIM3 channel 3 as input floating (for RC)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-  //Configure SPI1 pins: SCK, MISO and MOSI
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  //configure PC6-9 as Output Push Pull for SPI
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
 
@@ -756,15 +724,9 @@ void NVIC_Configuration(void)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-  /* Configure and enable Timer interrupt -----------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
 
   /* Configure and enable SPI1 interrupt ------------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = SPI1_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannel = SPI2_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
