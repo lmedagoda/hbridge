@@ -59,12 +59,11 @@ bin: main.out
 	$(OD) $(ODFLAGS) main.out > main.list
 
 main.out: $(LIB_OUT) main.o stm32f10x_vector.o stm32f10x_it.o stm_h103_rom.ld \
-	i2c.o md03.o cortexm3_macro.o controller_interface.o dummycontroller.o\
-	 spi.o pid.o rc.o usb.o libusb-core.a libusb.a init.o
+	i2c.o cortexm3_macro.o spi.o pid.o adc.o usb.o libusb-core.a libusb.a
 	@ echo "..linking"
 	$(LD) $(LFLAGS) -o main.out main.o stm32f10x_it.o stm32f10x_vector.o \
-	controller_interface.o dummycontroller.o init.o i2c.o md03.o pid.o \
-	spi.o cortexm3_macro.o rc.o usb.o -lusb -lusb-core -lstm32fw
+	i2c.o adc.o pid.o \
+	spi.o cortexm3_macro.o usb.o -lusb -lusb-core -lstm32fw
 
 stm32f10x_vector.o: stm32f10x_vector.c
 	$(CC) $(CFLAGS) stm32f10x_vector.c
@@ -72,28 +71,17 @@ stm32f10x_vector.o: stm32f10x_vector.c
 stm32f10x_it.o: stm32f10x_it.c
 	$(CC) $(CFLAGS) stm32f10x_it.c
 
-controller_interface.o: controller_interface.c controller_interface.h
-	$(CC) $(CFLAGS) controller_interface.c
-
-dummycontroller.o: dummycontroller.c dummycontroller.h
-	$(CC) $(CFLAGS) dummycontroller.c
-
-init.o: init.c
-	$(CC) $(CFLAGS) init.c
 i2c.o: i2c.c
 	$(CC) $(CFLAGS) i2c.c
+
+adc.o: adc.c
+	$(CC) $(CFLAGS) adc.c
 
 spi.o: spi.c spi.h
 	$(CC) $(CFLAGS) spi.c
 
-rc.o: rc.c rc.h
-	$(CC) $(CFLAGS) rc.c
-
 pid.o: pid.c pid.h
 	$(CC) $(CFLAGS) pid.c
-
-md03.o: md03.c
-	$(CC) $(CFLAGS) md03.c
 
 usb.o: usb.c
 	$(CC) $(CFLAGS) usb.c

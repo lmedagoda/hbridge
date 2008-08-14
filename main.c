@@ -19,7 +19,6 @@
 #include "stm32f10x_lib.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_tim.h"
-#include "md03.h"
 #include "stm32f10x_it.h"
 #include "usb.h"
 #include "usb_init.h"
@@ -28,17 +27,14 @@
 #include "hw_config.h"
 #include "usb_pwr.h"
 #include "stdio.h"
-#include "controller_interface.h"
 #include "spi.h"
 #include "i2c.h"
+#include "adc.h"
 
 #include "usb/platform_config.h"
 #include <stdarg.h>
 #include "init.h"
 #include "rc.h"
-
-volatile controller_func controller = 0;
-
 
 /* Private typedef --------------------------------------------------------*/
 /* Private define ---------------------------------------------------------*/
@@ -63,6 +59,8 @@ void GPIO_Configuration(void);
 void TIM_Configuration(void);
 
 void SPI_Configuration(void);
+
+void ADC_Configuration(void);
 
 #undef printf
 
@@ -346,12 +344,13 @@ int main(void)
 
   USB_Init();
 
-  controller_interface_init();
   
   TIM_Configuration();
 
   SPI_Configuration();
   
+  ADC_Configuration();
+
   delay = 5000000;
   while(delay)
     delay--;
@@ -546,7 +545,6 @@ void TIM_Configuration(void)
   //TODO SYNC TIMERS
 
 }
-
 
 
 /*******************************************************************************

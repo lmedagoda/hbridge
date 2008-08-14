@@ -496,15 +496,7 @@ void TIM2_IRQHandler(void)
 *******************************************************************************/
 void TIM3_IRQHandler(void)
 { 
-  if (TIM_GetITStatus(TIM3, TIM_IT_CC3) != RESET) {
-    /* Clear TIM4 Capture compare interrupt pending bit */
-    TIM_ClearITPendingBit(TIM3, TIM_IT_CC3);
-
-    edgeTimeBuffer[etbWrite] = TIM_GetCapture3(TIM3);
-    etbWrite = (etbWrite + 1) % EDGETIMEBUFFER_SIZE;
-    edgeTimeBuffer[etbWrite] = TIM_GetCapture4(TIM3);
-    etbWrite = (etbWrite + 1) % EDGETIMEBUFFER_SIZE;
-  }
+  assert_param(0);
 }
 
 /*******************************************************************************
