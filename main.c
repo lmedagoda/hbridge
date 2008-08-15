@@ -33,8 +33,6 @@
 
 #include "usb/platform_config.h"
 #include <stdarg.h>
-#include "init.h"
-#include "rc.h"
 
 /* Private typedef --------------------------------------------------------*/
 /* Private define ---------------------------------------------------------*/
@@ -61,6 +59,14 @@ void TIM_Configuration(void);
 void SPI_Configuration(void);
 
 void ADC_Configuration(void);
+
+vu8 pwmBiggerXPercent;
+
+
+vu16 wantedPWM = 0;
+vu16 currentPWM = 0;
+
+vu8 pidEnabled = 0;
 
 #undef printf
 
@@ -380,11 +386,122 @@ int main(void)
       encoder = TIM_GetCounter(TIM3);
 
       printf("Encoder is %d \n", encoder);
-      
-      
-      
+
+
+      //get encoder
+
+      //calculate PID value
+
+      //set pwm
     }  
 }
+
+volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC4InitStructure;
+volatile TIM_OCInitTypeDef TIM4_OC3InitStructure;
+volatile TIM_OCInitTypeDef TIM4_OC4InitStructure;
+vu8 newDirection = 0;
+vu8 direction = 0;
+
+
+void setNewPWM(const s16 value) {
+  //TODO add magic formular for conversation
+  //remove signess
+  u16 dutyTime = value & ((1<<16)-1);
+  
+  //disable transfer of values from config register
+  //to timer intern shadow register 
+  TIM_UpdateDisableConfig(TIM2, DISABLE);
+  
+  direction = value > 0;
+
+  /* Modified active field-collapse drive
+   *
+   *       Voltage Raise
+   *          |
+   *         \/
+   * AIN --|__|----
+   * BIN --|_______
+   * ASD ----------
+   * BSD --|_______
+   *
+   */
+  if(direction) {  
+    // AIN
+    TIM2_OC3InitStructure.TIM_Pulse = 1800;
+    
+    // BIN
+    TIM2_OC4InitStructure.TIM_Pulse = dutyTime;
+
+    
+    // ASD
+    TIM4_OC3InitStructure.TIM_Pulse = 1800;
+
+    // BSD
+    TIM4_OC4InitStructure.TIM_Pulse = dutyTime;
+  } else {
+    // AIN
+    TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
+    
+    // BIN
+    TIM2_OC4InitStructure.TIM_Pulse = 1800;
+    
+    // ASD
+    TIM4_OC3InitStructure.TIM_Pulse = dutyTime;
+
+    // BSD
+    TIM4_OC4InitStructure.TIM_Pulse = 1800;
+  }
+
+  //Capture Compare interrupt, that switches polarity
+  //of AIN ob BIN at end of duty cycle
+  TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
+
+  TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+  TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+  TIM_OC3Init(TIM4, (TIM_OCInitTypeDef *) (&TIM4_OC3InitStructure));
+  TIM_OC4Init(TIM4, (TIM_OCInitTypeDef *) (&TIM4_OC4InitStructure));
+ 
+  //Enable update, all previous configured values
+  //are now transfered atomic to the timer in the
+  //moment the timer wraps around the next time
+  TIM_UpdateDisableConfig(TIM2, ENABLE);
+}
+
+void TIM2_IT_Handler(void) {
+  if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
+    /* Clear TIM2 Capture compare interrupt pending bit */
+    TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+
+    //set correct Polarity, in case watchdog didn't do it
+    if(direction) {
+      TIM2_OC3InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+      TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+    } else {
+      TIM2_OC4InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+      TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+    }
+    
+    //set new direction at the start of PWM
+    direction = newDirection;
+  }
+  
+  if (TIM_GetITStatus(TIM2, TIM_IT_CC2) != RESET) {
+    /* Clear TIM2 Capture compare interrupt pending bit */
+    TIM_ClearITPendingBit(TIM3, TIM_IT_CC2);
+    
+    //inverse PWM signal. This is reversed by analog watchdog
+    if(direction) {
+      TIM2_OC3InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+      TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+    } else {
+      TIM2_OC4InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+      TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+    }
+  }
+}
+
 
 
 /*******************************************************************************
@@ -543,6 +660,10 @@ void TIM_Configuration(void)
   TIM_Cmd(TIM4, ENABLE);
 
   //TODO SYNC TIMERS
+
+  //TODO move to OC2_TimX structures
+  //TODO configure TIM2 OC2 as non output with interrupt
+  //TODO enable Update interrupt
 
 }
 

@@ -9,13 +9,19 @@
 
 u16 adc_values[USED_REGULAR_ADC_CHANNELS];
 
+static ADC_InitTypeDef ADC_InitWatchdog;
+static ADC_InitTypeDef ADC_InitSingleShot;
+static DMA_InitTypeDef DMA_InitStructure;
+
 void ADC_Configuration(void)
 {
+  // Enable ADC1 clock
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
-  ADC_InitTypeDef ADC_InitStructure;
-  DMA_InitTypeDef DMA_InitStructure;
+  // Enable DMA1 clock 
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-  /* DMA1 channel1 configuration ----------------------------------------------*/
+  //DMA1 channel1 configuration
   DMA_DeInit(DMA1_Channel1);
   DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
   DMA_InitStructure.DMA_MemoryBaseAddr = (u32)adc_values;
@@ -30,20 +36,24 @@ void ADC_Configuration(void)
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
   DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   
-  /* Enable DMA1 channel1 */
+  //Enable DMA1 channel1
   DMA_Cmd(DMA1_Channel1, ENABLE);
 
-  // Enable ADC1 clock
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  //ADC1 configuration
+  ADC_InitWatchdog.ADC_Mode = ADC_Mode_Independent;
+  ADC_InitWatchdog.ADC_ScanConvMode = ENABLE;
+  ADC_InitWatchdog.ADC_ContinuousConvMode = ENABLE;
+  ADC_InitWatchdog.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T2_CC2;
+  ADC_InitWatchdog.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitWatchdog.ADC_NbrOfChannel = USED_REGULAR_ADC_CHANNELS;
 
-  // ADC1 configuration
-  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
-  ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
-  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T2_CC2;
-  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
-  ADC_InitStructure.ADC_NbrOfChannel = USED_REGULAR_ADC_CHANNELS;
-  ADC_Init(ADC1, &ADC_InitStructure);
+  ADC_InitSingleShot.ADC_Mode = ADC_Mode_Independent;
+  ADC_InitSingleShot.ADC_ScanConvMode = ENABLE;
+  ADC_InitSingleShot.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T2_CC2;
+  ADC_InitSingleShot.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitSingleShot.ADC_NbrOfChannel = USED_REGULAR_ADC_CHANNELS;
+  ADC_Init(ADC1, &ADC_InitSingleShot);
 
   // ADC1 regular channel14 configuration 
   ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
@@ -61,26 +71,95 @@ void ADC_Configuration(void)
   // Disable automatic injected conversion start after regular one 
   ADC_AutoInjectedConvCmd(ADC1, DISABLE);
 
-  // Enable ADC1 external trigger  
-  ADC_ExternalTrigConvCmd(ADC1, ENABLE);
-
-  /* Enable EOC interupt */
-  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
-
-  /* Enable ADC1 DMA */
-  ADC_DMACmd(ADC1, ENABLE);
-
-  /* Enable ADC1 */
+  // Enable ADC1
   ADC_Cmd(ADC1, ENABLE);
 
-  /* Enable ADC1 reset calibaration register */   
+  // Enable ADC1 reset calibaration register  
   ADC_ResetCalibration(ADC1);
-  /* Check the end of ADC1 reset calibration register */
+  // Check the end of ADC1 reset calibration register
   while(ADC_GetResetCalibrationStatus(ADC1));
 
-  /* Start ADC1 calibaration */
+  // Start ADC1 calibaration
   ADC_StartCalibration(ADC1);
-  /* Check the end of ADC1 calibration */
+  // Check the end of ADC1 calibration
   while(ADC_GetCalibrationStatus(ADC1));
 
 }
+
+extern vu8 pwmBiggerXPercent;
+
+
+void ADC_StartWatchdog() {
+  // Disable for Configuration
+  ADC_Cmd(ADC1, DISABLE);
+
+  //Disable DMA1 channel1
+  DMA_Cmd(DMA1_Channel1, DISABLE);
+
+  ADC_Init(ADC1, &ADC_InitWatchdog);
+
+  // Disable ADC1 DMA 
+  ADC_DMACmd(ADC1, DISABLE);
+
+  // Enable ADC1 external trigger  
+  ADC_ExternalTrigConvCmd(ADC1, ENABLE);
+
+  // Disable EOC interupt
+  ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+
+  // Enable ADC1
+  ADC_Cmd(ADC1, ENABLE);
+}
+
+void ADC_ProgramSingleShot() {
+  // Disable for Configuration
+  ADC_Cmd(ADC1, DISABLE);
+
+  //Reinit DMA
+  DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+  
+  //Enable DMA1 channel1
+  DMA_Cmd(DMA1_Channel1, ENABLE);
+
+  ADC_Init(ADC1, &ADC_InitSingleShot);
+
+  // Enable ADC1 DMA 
+  ADC_DMACmd(ADC1, ENABLE);
+
+  // Enable ADC1
+  ADC_Cmd(ADC1, ENABLE);
+
+  // Enable ADC1 external trigger  
+  ADC_ExternalTrigConvCmd(ADC1, ENABLE);
+
+  // Enable EOC interupt
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
+  // Enable ADC1
+  ADC_Cmd(ADC1, ENABLE);
+}
+
+void ADC_Interrupt() {
+  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
+    if(pwmBiggerXPercent) {  
+      ADC_StartWatchdog();
+
+      //TODO reprogram timer
+
+    }
+  }
+  
+  if(ADC_GetITStatus(ADC1, ADC_IT_AWD)) {
+    //TODO switch dead pin on
+    if(!pwmBiggerXPercent) {
+      //get a current measurement
+      ADC_ProgramSingleShot();
+
+      //TODO reprogram timer
+    }
+
+
+  }
+  
+}
+
