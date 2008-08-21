@@ -22,7 +22,7 @@ struct I2C_Data {
   u8 curI2CAddr;
   u8 I2CMode;
   u8 I2CError;
-  u16 I2CErrorReason;
+  u32 I2CErrorReason;
 };
 
 extern volatile struct I2C_Data I2C1_Data;

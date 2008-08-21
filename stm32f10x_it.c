@@ -21,7 +21,6 @@
 #include "stm32f10x_it.h"
 #include "usb_istr.h"
 #include "i2c.h"
-#include "rc.h"
 
 volatile u16 dbgWrite = 0;
 volatile u16 dbgRead = 0;

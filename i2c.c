@@ -2,7 +2,6 @@
 #include "i2c.h"
 #include "stm32f10x_i2c.h"
 #include "stm32f10x_it.h"
-#include "md03.h"
 
 
 volatile struct I2C_Data I2C1_Data;

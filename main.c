@@ -399,11 +399,14 @@ int main(void)
 volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
 volatile TIM_OCInitTypeDef TIM2_OC4InitStructure;
-volatile TIM_OCInitTypeDef TIM4_OC3InitStructure;
-volatile TIM_OCInitTypeDef TIM4_OC4InitStructure;
+volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
+
 vu8 newDirection = 0;
 vu8 direction = 0;
-
+vu8 NewPWM = 0;
 
 void setNewPWM(const s16 value) {
   //TODO add magic formular for conversation
@@ -412,7 +415,9 @@ void setNewPWM(const s16 value) {
   
   //disable transfer of values from config register
   //to timer intern shadow register 
+  TIM_UpdateDisableConfig(TIM1, DISABLE);
   TIM_UpdateDisableConfig(TIM2, DISABLE);
+  TIM_UpdateDisableConfig(TIM3, DISABLE);
   
   direction = value > 0;
 
@@ -429,78 +434,105 @@ void setNewPWM(const s16 value) {
    */
   if(direction) {  
     // AIN
-    TIM2_OC3InitStructure.TIM_Pulse = 1800;
+    TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
     
     // BIN
     TIM2_OC4InitStructure.TIM_Pulse = dutyTime;
-
     
     // ASD
-    TIM4_OC3InitStructure.TIM_Pulse = 1800;
+    TIM3_OC1InitStructure.TIM_Pulse = 1800;
 
     // BSD
-    TIM4_OC4InitStructure.TIM_Pulse = dutyTime;
+    TIM3_OC2InitStructure.TIM_Pulse = dutyTime;
   } else {
     // AIN
     TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
     
     // BIN
-    TIM2_OC4InitStructure.TIM_Pulse = 1800;
+    TIM2_OC4InitStructure.TIM_Pulse = dutyTime;
     
     // ASD
-    TIM4_OC3InitStructure.TIM_Pulse = dutyTime;
+    TIM3_OC1InitStructure.TIM_Pulse = dutyTime;
 
     // BSD
-    TIM4_OC4InitStructure.TIM_Pulse = 1800;
+    TIM3_OC2InitStructure.TIM_Pulse = 1800;
   }
 
-  //Capture Compare interrupt, that switches polarity
-  //of AIN ob BIN at end of duty cycle
+  //Current Measurement timer
+  TIM1_OC2InitStructure.TIM_Pulse = dutyTime/2;
+
+  //Watchdog enable timer
+  TIM1_OC3InitStructure.TIM_Pulse = dutyTime;
+  
+  //TODO add x to sec timer
+
+  //security timer
   TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
 
+  TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
+  TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
   TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
   TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
-  TIM_OC3Init(TIM4, (TIM_OCInitTypeDef *) (&TIM4_OC3InitStructure));
-  TIM_OC4Init(TIM4, (TIM_OCInitTypeDef *) (&TIM4_OC4InitStructure));
+  TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
+  TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
  
-  //Enable update, all previous configured values
-  //are now transfered atomic to the timer in the
-  //moment the timer wraps around the next time
-  TIM_UpdateDisableConfig(TIM2, ENABLE);
+  NewPWM = 1;
+
 }
 
-void TIM2_IT_Handler(void) {
-  if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) {
-    /* Clear TIM2 Capture compare interrupt pending bit */
-    TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+/**
+ * This interrupt Handler handels the update Event
+ * In case of an Update Event Ch3 and Ch4 are 
+ * reinitalized to Timer mode. 
+ * If also a new PWM was set, the Update of the
+ * internal shadow register is enabled again, so
+ * that config is updated atomar by hardware on
+ * the next update event.
+ */
+void TIM1_IT_Handler(void) {
+  if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
+    //Clear TIM1 update interrupt pending bit
+    TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
 
-    //set correct Polarity, in case watchdog didn't do it
-    if(direction) {
-      TIM2_OC3InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-      TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
-    } else {
-      TIM2_OC4InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-      TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+    //ReInit Output as timer mode (remove Forced high) 
+    TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+    TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+
+    if(NewPWM) {
+      //Enable update, all previous configured values
+      //are now transfered atomic to the timer in the
+      //moment the timer wraps around the next time
+      TIM_UpdateDisableConfig(TIM1, ENABLE);
+      TIM_UpdateDisableConfig(TIM2, ENABLE);
+      TIM_UpdateDisableConfig(TIM3, ENABLE);
     }
-    
-    //set new direction at the start of PWM
-    direction = newDirection;
   }
-  
+}
+
+/**
+ * Interrupt function used for security interrupt
+ * This function forces the high side gate on, for
+ * the case that the adc watchdog didn't trigger
+ * also the Watchdog is disabled and set up for
+ * the next trigger.
+ */
+void TIM2_IT_Handler(void) {
   if (TIM_GetITStatus(TIM2, TIM_IT_CC2) != RESET) {
     /* Clear TIM2 Capture compare interrupt pending bit */
-    TIM_ClearITPendingBit(TIM3, TIM_IT_CC2);
+    TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
     
-    //inverse PWM signal. This is reversed by analog watchdog
+    //Force high side gate on
     if(direction) {
-      TIM2_OC3InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-      TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+      TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
     } else {
-      TIM2_OC4InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-      TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+      TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
     }
+
+    //disable adc watchdog and set it up again for next trigger
+    //TODO implement me
   }
 }
+
 
 
 
