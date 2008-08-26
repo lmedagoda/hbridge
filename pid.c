@@ -5,30 +5,27 @@
 /**
  * This function set the kp value. Note, 
  * that kp is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * behind the seperator
  */
 void setKp(struct pid_data *data, s32 kp) {
-  assert_param(kp == 0 || kp >= 1000 || kp <= -1000);
   data->kp = kp;
 }
 
 /**
  * This function set the ki value. Note, 
  * that ki is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * behind the seperator
  */
 void setKi(struct pid_data *data, s32 ki) {
-  assert_param(ki == 0 || ki >= 1000 || ki <= -1000);
   data->ki = ki;
 }
 
 /**
  * This function set the kd value. Note, 
  * that kd is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * behind the seperator.
  */
 void setKd(struct pid_data *data, s32 kd) {
-  assert_param(kd == 0 || kd >= 1000 || kd <= -1000);
   data->kd = kd;
 }
 
@@ -43,15 +40,24 @@ void setTargetValue(struct pid_data *data, s32 target_val) {
 
 
 s32 pid(struct pid_data *data, s32 cur_val) {
+
   s32 result = 0;
   data->error = data->target_val - cur_val;
-  result += (data->error * data->kp) / 1000;
 
+  if ( data->kp ) {
+    result += (data->error * data->kp) / 1000;
+  }
   data->integrated_error += data->error;
   
-  result += (data->integrated_error + data->ki) / 1000;
+  if ( data->ki ) {
+    result += (data->integrated_error + data->ki) / 1000;
+  }
 
-  //TODO add diferential part
+  if ( data->kd ) {
+    // (error-last_error) / 10ms * kd
+    result += ((data->error - data->last_error) * data->kd)/10;
+  }
+  data->last_error = data->error; 
   
   return result;
 }

@@ -30,6 +30,7 @@
 #include "spi.h"
 #include "i2c.h"
 #include "adc.h"
+#include "pid.h"
 
 #include "usb/platform_config.h"
 #include <stdarg.h>
@@ -285,6 +286,7 @@ void sendDebugBuffer() {
   }
 }
 
+void setNewPWM(const s16 value);
 
 /*******************************************************************************
 * Function Name  : main
@@ -296,7 +298,10 @@ void sendDebugBuffer() {
 int main(void)
 {
   int delay;
+  s32 wantedSpeed = 0;
+  struct pid_data pid_data;
   
+
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
@@ -345,25 +350,42 @@ int main(void)
   while(delay)
     delay--;
 
-  u16 encoder = 0;
+  setKp(&pid_data, 100);
+  setKi(&pid_data, 0);
+  setKd(&pid_data, 0);
+
+  u16 encoderValue = 0;
+  u16 lastEncoderValue = 0;
+  
+  s32 curSpeed = 0;
+  s32 pwmValue = 0;
 
   while (1) {
     delay = 10000000;
     while(delay)
       delay--;
     
-    encoder = TIM_GetCounter(TIM3);
-    
-    printf("Encoder is %d \n", encoder);
-    
-    
     //get encoder
+    encoderValue = TIM_GetCounter(TIM4);
+        
+    printf("Encoder is %d \n", encoderValue);
+    
+    curSpeed = encoderValue - lastEncoderValue;
     
     //calculate PID value
-    
+    setTargetValue(&pid_data, wantedSpeed);
+    pwmValue = pid(&pid_data, curSpeed);
+
+    //todo truncate pwmValue s32 -> s16
+
     //set pwm
+    setNewPWM( pwmValue);
+
+    lastEncoderValue = encoderValue;
   }  
 }
+
+
 volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
 

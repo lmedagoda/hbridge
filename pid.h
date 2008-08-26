@@ -11,6 +11,7 @@ struct pid_data {
   s32 kd;
   s32 target_val;
   s32 last_target_val;
+  s32 last_error;
 };
 
 /**
