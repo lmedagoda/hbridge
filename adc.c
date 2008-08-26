@@ -14,8 +14,6 @@ static ADC_InitTypeDef ADC_InitWatchdog;
 static ADC_InitTypeDef ADC_InitSingleShot;
 static DMA_InitTypeDef DMA_InitStructure;
 
-extern vu8 direction;
-
 /**
  * This function configures the ADCs
  * ADC1 is configured to be Triggered by Timer1 Ch2
@@ -116,6 +114,9 @@ void ADC_Configuration(void)
   // Disable automatic injected conversion start after regular one 
   ADC_AutoInjectedConvCmd(ADC2, DISABLE);
 
+  // Disable EOC interupt
+  ADC_ITConfig(ADC2, ADC_IT_EOC, DISABLE);
+
   // Enable ADC2
   ADC_Cmd(ADC2, ENABLE);
 
@@ -157,11 +158,12 @@ void configureWatchdog(vu8 dir) {
   // Enable ADC1 external trigger  
   ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
-  // Disable EOC interupt
-  ADC_ITConfig(ADC2, ADC_IT_EOC, DISABLE);
-
   // Enable ADC1
   ADC_Cmd(ADC2, ENABLE);
+
+  //Enable Watchdog interupt
+  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
+
 }
 
 /**
@@ -179,40 +181,10 @@ void configureCurrentMeasurement(vu8 dir) {
     //so we need to use VIB for measurement
     ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 1, ADC_SampleTime_1Cycles5);
   }
+
+  //Enable End of Conversion interupt
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
 }
 
-/**
- * This is the ADC interrupt function
- * In case the source of the interrupt was an 
- * End of Conversation this means we just took
- * the Current values. 
- * In case the source was the analog watchdog
- * the motor voltage just reverted, because of 
- * reinduction and we need to turn on the 
- * high side gate of the H-Bridge
- */
-void ADC_Interrupt() {
-  //End of Conversion
-  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
-    
-    //TODO do something with the value
-    
-    //Disable EOC interupt
-    ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
-  }
-  
-  //Analog Watchdog
-  if(ADC_GetITStatus(ADC1, ADC_IT_AWD)) {
-    //Force high side gate on
-    if(direction) {
-      TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
-    } else {
-      TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
-    }
-
-    //Disable EOC interupt
-    ADC_ITConfig(ADC1, ADC_IT_AWD, DISABLE);
-  }
-  
-}
 

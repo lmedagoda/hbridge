@@ -295,36 +295,7 @@ void sendDebugBuffer() {
 *******************************************************************************/
 int main(void)
 {
-  //assert_param(0);
-  assert_param(1);
-
   int delay;
-
-  /* GPIO_InitTypeDef GPIO_InitStructure;
-
-   Configure all unused GPIO port pins in Analog Input mode (floating input
-     trigger OFF), this will reduce the power consumption and increase the 
-     device immunity against EMI/EMC *//*
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB |
-                         RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
-                         RCC_APB2Periph_GPIOE, ENABLE);
-
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  GPIO_Init(GPIOD, &GPIO_InitStructure);
-  GPIO_Init(GPIOE, &GPIO_InitStructure);
-
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB |
-                         RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
-                         RCC_APB2Periph_GPIOE, DISABLE);  
-
-				       */
-
-
-
   
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -376,36 +347,35 @@ int main(void)
 
   u16 encoder = 0;
 
-  while (1)
-    {
-      
-      delay = 10000000;
-      while(delay)
-	delay--;
-
-      encoder = TIM_GetCounter(TIM3);
-
-      printf("Encoder is %d \n", encoder);
-
-
-      //get encoder
-
-      //calculate PID value
-
-      //set pwm
-    }  
+  while (1) {
+    delay = 10000000;
+    while(delay)
+      delay--;
+    
+    encoder = TIM_GetCounter(TIM3);
+    
+    printf("Encoder is %d \n", encoder);
+    
+    
+    //get encoder
+    
+    //calculate PID value
+    
+    //set pwm
+  }  
 }
-
-volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC4InitStructure;
-volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
-volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
 
-vu8 newDirection = 0;
-vu8 direction = 0;
+volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
+
+volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
+
+vu8 desieredDirection = 0;
+vu8 actualDirection = 0;
 vu8 NewPWM = 0;
 
 void setNewPWM(const s16 value) {
@@ -415,11 +385,11 @@ void setNewPWM(const s16 value) {
   
   //disable transfer of values from config register
   //to timer intern shadow register 
-  TIM_UpdateDisableConfig(TIM1, DISABLE);
-  TIM_UpdateDisableConfig(TIM2, DISABLE);
-  TIM_UpdateDisableConfig(TIM3, DISABLE);
+  TIM_UpdateDisableConfig(TIM1, ENABLE);
+  TIM_UpdateDisableConfig(TIM2, ENABLE);
+  TIM_UpdateDisableConfig(TIM3, ENABLE);
   
-  direction = value > 0;
+  desieredDirection = value > 0;
 
   /* Modified active field-collapse drive
    *
@@ -432,12 +402,12 @@ void setNewPWM(const s16 value) {
    * BSD --|_______
    *
    */
-  if(direction) {  
+  if(desieredDirection) {  
     // AIN
-    TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
+    TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
     
     // BIN
-    TIM2_OC4InitStructure.TIM_Pulse = dutyTime;
+    TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
     
     // ASD
     TIM3_OC1InitStructure.TIM_Pulse = 1800;
@@ -446,10 +416,10 @@ void setNewPWM(const s16 value) {
     TIM3_OC2InitStructure.TIM_Pulse = dutyTime;
   } else {
     // AIN
-    TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
+    TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
     
     // BIN
-    TIM2_OC4InitStructure.TIM_Pulse = dutyTime;
+    TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
     
     // ASD
     TIM3_OC1InitStructure.TIM_Pulse = dutyTime;
@@ -467,12 +437,13 @@ void setNewPWM(const s16 value) {
   //TODO add x to sec timer
 
   //security timer
-  TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
+  TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
 
   TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
   TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
+  TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
+  TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
   TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
-  TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
   TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
   TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
  
@@ -490,21 +461,34 @@ void setNewPWM(const s16 value) {
  * the next update event.
  */
 void TIM1_IT_Handler(void) {
+  static vu8 NewPWMLastTime = 0;
+  
   if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
     //Clear TIM1 update interrupt pending bit
     TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
 
     //ReInit Output as timer mode (remove Forced high) 
-    TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
-    TIM_OC4Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC4InitStructure));
+    TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
+    TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
 
     if(NewPWM) {
       //Enable update, all previous configured values
       //are now transfered atomic to the timer in the
       //moment the timer wraps around the next time
-      TIM_UpdateDisableConfig(TIM1, ENABLE);
-      TIM_UpdateDisableConfig(TIM2, ENABLE);
-      TIM_UpdateDisableConfig(TIM3, ENABLE);
+      TIM_UpdateDisableConfig(TIM1, DISABLE);
+      TIM_UpdateDisableConfig(TIM2, DISABLE);
+      TIM_UpdateDisableConfig(TIM3, DISABLE);
+      NewPWMLastTime = 1;
+    }
+
+    //timers where updated atomar, so now we reconfigure 
+    //the watchdog and current measurement and also update
+    //the direction value
+    if(NewPWMLastTime) {
+      NewPWMLastTime = 0;
+      actualDirection = desieredDirection;
+      configureCurrentMeasurement(actualDirection);
+      configureWatchdog(actualDirection);      
     }
   }
 }
@@ -517,22 +501,58 @@ void TIM1_IT_Handler(void) {
  * the next trigger.
  */
 void TIM2_IT_Handler(void) {
-  if (TIM_GetITStatus(TIM2, TIM_IT_CC2) != RESET) {
+  if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET) {
     /* Clear TIM2 Capture compare interrupt pending bit */
-    TIM_ClearITPendingBit(TIM2, TIM_IT_CC2);
+    TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
     
     //Force high side gate on
-    if(direction) {
+    if(actualDirection) {
       TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
     } else {
       TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
     }
 
     //disable adc watchdog and set it up again for next trigger
-    //TODO implement me
+    configureWatchdog(actualDirection);      
   }
 }
 
+/**
+ * This is the ADC interrupt function
+ * In case the source of the interrupt was an 
+ * End of Conversation this means we just took
+ * the Current values. 
+ */
+void ADC1_Interrupt() {
+  //End of Conversion
+  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
+    ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
+    //TODO do something with the value
+  }
+}
+
+/**
+ * This is the ADC interrupt function
+ * In case the source was the analog watchdog
+ * the motor voltage just reverted, because of 
+ * reinduction and we need to turn on the 
+ * high side gate of the H-Bridge
+ */
+void ADC2_Interrupt() {
+  //Analog Watchdog
+  if(ADC_GetITStatus(ADC2, ADC_IT_AWD)) {
+    ADC_ClearFlag(ADC2, ADC_FLAG_AWD);
+    //Force high side gate on
+    if(actualDirection) {
+      TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
+    } else {
+      TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
+    }
+
+    //Disable Watchdog interupt
+    ADC_ITConfig(ADC2, ADC_IT_AWD, DISABLE);
+  }
+}
 
 
 
@@ -574,6 +594,42 @@ void SPI_Configuration(void)
   SPI_Cmd(SPI2, ENABLE);
 }
 
+void InitTimerStructAsPWM(volatile TIM_OCInitTypeDef *ocstruct, u16 pwmvalue) {
+  TIM_OCStructInit((TIM_OCInitTypeDef *) ocstruct);
+  ocstruct->TIM_OCMode = TIM_OCMode_PWM1;
+  ocstruct->TIM_OutputState = TIM_OutputState_Enable;
+  ocstruct->TIM_OCPolarity = TIM_OCPolarity_High;
+  ocstruct->TIM_Pulse = pwmvalue;
+}
+
+void InitTimerStructAsInternalTimer(volatile TIM_OCInitTypeDef *ocstruct, u16 value) {
+  TIM_OCStructInit((TIM_OCInitTypeDef *) ocstruct);
+  ocstruct->TIM_OCMode = TIM_OCMode_Timing;
+  ocstruct->TIM_Pulse = value;
+}
+
+
+void InitTimerStructs() {
+
+  //Current Measurement
+  InitTimerStructAsPWM(&TIM1_OC2InitStructure, 750);
+
+  //start adc watchdog
+  InitTimerStructAsPWM(&TIM1_OC3InitStructure, 1500);
+  
+
+  //ADIR and BDIR
+  InitTimerStructAsPWM(&TIM2_OC1InitStructure, 1500);
+  InitTimerStructAsPWM(&TIM2_OC2InitStructure, 1500);
+
+  //Security Timer
+  InitTimerStructAsInternalTimer(&TIM1_OC3InitStructure, 1550);
+  
+  //ASD and BSD (OFF !)
+  InitTimerStructAsPWM(&TIM3_OC1InitStructure, 00);
+  InitTimerStructAsPWM(&TIM3_OC2InitStructure, 00);
+}
+
 
 /*******************************************************************************
 * Function Name  : TIM_Configuration
@@ -586,31 +642,31 @@ void TIM_Configuration(void)
 {
 
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-  TIM_OCInitTypeDef TIM_OCInitStructure;
+
+  //init OC struct for timers
+  InitTimerStructs();
 
   //turn on timer hardware
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 65000;
   TIM_TimeBaseStructure.TIM_Prescaler = 2;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+  TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
-
-  //configure TIM3 as encoder interface
-  TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12,
+  //configure TIM4 as encoder interface
+  TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12,
 			     TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
   
   //configure value to reload after wrap around
-  TIM_SetAutoreload(TIM3, 1<<15);
+  TIM_SetAutoreload(TIM4, 1<<15);
 
-  TIM_ARRPreloadConfig(TIM3, ENABLE);
+  TIM_ARRPreloadConfig(TIM4, ENABLE);
 
-  /* TIM enable counter */
-  TIM_Cmd(TIM3, ENABLE);
-
+  // TIM enable counter
+  TIM_Cmd(TIM4, ENABLE);
 
   //timer used for PWM generation
   //turn on timer hardware
@@ -628,22 +684,10 @@ void TIM_Configuration(void)
   /* Prescaler configuration */ 
   TIM_PrescalerConfig(TIM2, 2, TIM_PSCReloadMode_Immediate); 
 
-  /* PWM1 Mode configuration: Channel3 */
-  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-  TIM_OCInitStructure.TIM_Pulse = 999;
-
-  TIM_OC3Init(TIM2, &TIM_OCInitStructure);
-
+  //All channels use buffered registers
+  TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
+  TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Enable);
   TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Enable);
-
-  /* PWM1 Mode configuration: Channel4 */
-  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_Pulse = 999;
-
-  TIM_OC4Init(TIM2, &TIM_OCInitStructure);
-
   TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Enable);
 
   TIM_ARRPreloadConfig(TIM2, ENABLE);
@@ -653,50 +697,69 @@ void TIM_Configuration(void)
 
   //timer used for shutdown generation
   //turn on timer hardware
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   
-  //TIM4CLK = 72 MHz, Prescaler = 2, TIM4 
+  //TIM3CLK = 72 MHz, Prescaler = 2, TIM3 
   //counter clock = 36 MHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
   TIM_TimeBaseStructure.TIM_Prescaler = 1;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
   /* Prescaler configuration */ 
-  TIM_PrescalerConfig(TIM4, 1, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM3, 1, TIM_PSCReloadMode_Immediate); 
 
+  //All channels use buffered registers
+  TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
+  TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
+  TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+  TIM_OC4PreloadConfig(TIM3, TIM_OCPreload_Enable);
 
-  /* PWM1 Mode configuration: Channel3 */
-  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-  TIM_OCInitStructure.TIM_Pulse = 180;
+  TIM_ARRPreloadConfig(TIM3, ENABLE);
 
-  TIM_OC3Init(TIM4, &TIM_OCInitStructure);
+  /* TIM3 enable counter */ 
+  TIM_Cmd(TIM3, ENABLE);
 
-  TIM_OC3PreloadConfig(TIM4, TIM_OCPreload_Enable);
+  //timer used for shutdown generation
+  //turn on timer hardware
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+  
+  //TIM1CLK = 72 MHz, Prescaler = 1, TIM1 
+  //counter clock = 36 MHz 
+  // Time base configuration 
+  TIM_TimeBaseStructure.TIM_Period = 1800;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
 
-  /* PWM1 Mode configuration: Channel4 */
-  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-  TIM_OCInitStructure.TIM_Pulse = 180;
+  /* Prescaler configuration */ 
+  TIM_PrescalerConfig(TIM1, 1, TIM_PSCReloadMode_Immediate); 
 
-  TIM_OC4Init(TIM4, &TIM_OCInitStructure);
+  //All channels use buffered registers
+  TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
+  TIM_OC2PreloadConfig(TIM1, TIM_OCPreload_Enable);
+  TIM_OC3PreloadConfig(TIM1, TIM_OCPreload_Enable);
+  TIM_OC4PreloadConfig(TIM1, TIM_OCPreload_Enable);
 
-  TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+  TIM_ARRPreloadConfig(TIM1, ENABLE);
 
-  TIM_ARRPreloadConfig(TIM4, ENABLE);
+  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Reset);
 
-  /* TIM4 enable counter */ 
-  TIM_Cmd(TIM4, ENABLE);
+  /* TIM3 enable counter */ 
+  TIM_Cmd(TIM1, ENABLE);
 
-  //TODO SYNC TIMERS
-
-  //TODO move to OC2_TimX structures
-  //TODO configure TIM2 OC2 as non output with interrupt
-  //TODO enable Update interrupt
-
+  //Sync Timers
+  TIM_SelectSlaveMode(TIM2, TIM_SlaveMode_Reset);
+  TIM_SelectInputTrigger(TIM2, TIM_TS_ITR0);
+  TIM_SelectSlaveMode(TIM3, TIM_SlaveMode_Reset);
+  TIM_SelectInputTrigger(TIM3, TIM_TS_ITR0);
+  
+  //enable interrupts
+  TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+  TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
 }
 
 
@@ -721,15 +784,24 @@ void GPIO_Configuration(void)
 
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-
-  //configure TIM2 channel 3 as Push Pull (for AIN)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+  //configure TIM2 channel 1 as Push Pull (for AIN)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  //configure TIM2 channel 4 as Push Pull (for BIN)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+  //configure TIM2 channel 2 as Push Pull (for BIN)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //configure PA2 (ADC Channel2) as analog input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //configure PA3 (ADC Channel3) as analog input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   //configure PA4 (ADC Channel4) as analog input
@@ -743,13 +815,15 @@ void GPIO_Configuration(void)
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   //TIM3 channel 1 pin (PA6)
+  //configure TIM3 channel 1 as Push Pull (for ASD)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
   
   //TIM3 channel 2 pin (PA7)
+  //configure TIM3 channel 2 as Push Pull (for BSD)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   // Configure USART1 Tx (PA09) as alternate function push-pull
@@ -779,19 +853,24 @@ void GPIO_Configuration(void)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   //TODO perhaps OD is wrong for SMBA !!
-  // Configure I2C1 pins: SCL, SDA and SMBA
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_6 | GPIO_Pin_7 | GPIO_Pin_5;
+  // Configure SMBA
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-  //configure TIM4 channel 3 as Push Pull (for ASD)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  //configure Timer4 ch1 (PB6) as encoder input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-  
-  //configure TIM4 channel 4 as Push Pull (for BSD)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+
+  //configure Timer4 ch2 (PB7) as encoder input
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  //Configure I2C1 Pins, SDA and SCL
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   // Configure I2C2 pins: SCL and SDA 
@@ -827,6 +906,7 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
+
 }
 
 

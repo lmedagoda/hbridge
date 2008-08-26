@@ -16,6 +16,7 @@ SECTIONS
     *(.vectors)      /* Vector table */
     *(.text)        /* Program code */
     *(.rodata)      /* Read only data */
+    *(.rodata*)      /* Read only data */
     _etext = .;
     } >flash
         .  = 0x20000000;   /* From 0x20000000 */      
