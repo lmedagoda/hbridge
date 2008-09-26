@@ -146,6 +146,7 @@ void cpu_init()
   //RCC system reset(for debug purpose)
   RCC_DeInit();
 
+  
 
   //Turn on crystal oscillator
   RCC_HSEConfig(RCC_HSE_ON);
@@ -161,7 +162,7 @@ void cpu_init()
   RCC_PCLK2Config(RCC_HCLK_Div1);	// PCLK2 = HCLK
 
   //Configure PLL for 72 MHz
-  RCC_PLLConfig(RCC_PLLSource_HSE_Div1, RCC_PLLMul_9); // 8 MHz * 9 = 72 MHz
+  RCC_PLLConfig(RCC_PLLSource_HSE_Div2, RCC_PLLMul_9); // 16 MHz / 2 * 9 = 72 MHz
   RCC_PLLCmd(ENABLE);
   while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET);
 
