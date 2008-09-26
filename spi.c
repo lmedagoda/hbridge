@@ -4,6 +4,18 @@
 #include "stm32f10x_gpio.h"
 #include "spi.h"
 
+volatile u8 SPI1_Buffer_Tx[8];
+volatile u8 SPI1_Buffer_Rx[8];
+
+volatile u8 SPI1_Tx_Size = 0;
+volatile u8 SPI1_Rx_Size = 0;
+volatile u8 SPI1_Tx_Idx = 0;
+volatile u8 SPI1_Rx_Idx = 0;
+
+volatile u8 SPI1Mode;
+
+void (* volatile SPI1TransactionComplete) (void) = 0;
+
 enum LS7366Commands {
   LS7366_CLR = 0,
   LS7366_RD = 64,
@@ -247,4 +259,69 @@ void SPISendReadBytes(u8 *txdata, u8 txsize, u8 rxsize, enum LS7366Devices devic
 
   /* Enable SPI1 TXE interrupt */
   SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_TXE, ENABLE);
+}
+
+/*******************************************************************************
+* Function Name  : SPI1_IRQHandler
+* Description    : This function handles SPI1 global interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void SPI1_IRQHandler(void)
+{ 
+  if (SPI_I2S_GetITStatus(SPI1, SPI_I2S_IT_TXE)) {
+ 
+    if(SPI1_Tx_Idx < SPI1_Tx_Size) {
+      /* Send SPI1 data */
+      SPI_I2S_SendData(SPI1, SPI1_Buffer_Tx[SPI1_Tx_Idx]);
+      SPI1_Tx_Idx++; 
+    } else {
+      if(SPI1Mode == SPI_WRITE) {
+	SPI1Mode = SPI_FINISHED;
+	
+	/* Disable SPI1 TXE interrupt */
+	SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_TXE, DISABLE);
+      
+	if(SPI1TransactionComplete)
+	  SPI1TransactionComplete();
+      }
+      //start "reading" instantly after last byte written
+      if(SPI1Mode == SPI_WRITE_READ) {
+	/* Disable SPI1 TXE interrupt */
+	SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_TXE, DISABLE);
+	SPI1Mode = SPI_READ;
+
+	//read current data from data register
+	SPI_I2S_ReceiveData(SPI1);
+
+	//Enable SPI1 RXNE interrupt 
+	SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_RXNE, ENABLE);
+
+	//send garbage, so that the clock pulses and we can receive data
+	SPI_I2S_SendData(SPI1, 0);
+      }
+
+    }
+  }
+  
+  if (SPI_I2S_GetITStatus(SPI1, SPI_I2S_IT_RXNE)) {
+
+    SPI1_Buffer_Rx[SPI1_Rx_Idx] = SPI_I2S_ReceiveData(SPI1);
+    SPI1_Rx_Idx++;
+    if(SPI1_Rx_Idx >= SPI1_Rx_Size) {
+      /* Disable SPI1 RXNE interrupt */
+      SPI_I2S_ITConfig(SPI1, SPI_I2S_IT_RXNE, DISABLE);
+      
+      if(SPI1Mode == SPI_READ) {
+	SPI1Mode = SPI_FINISHED;
+	
+	if(SPI1TransactionComplete)
+	  SPI1TransactionComplete();
+      }
+    } else {
+      //send garbage, so that the clock pulses and we can receive data
+      SPI_I2S_SendData(SPI1, 0);
+    }
+  }
 }

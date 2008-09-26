@@ -16,6 +16,14 @@ struct LS7366Data {
   u32 lastTicks;
 };
 
+enum SPIModes {
+  SPI_READ,
+  SPI_WRITE,
+  SPI_WRITE_READ,
+  SPI_FINISHED,
+};
+
+
 extern struct LS7366Data LS7366Data[4];
 
 void initLS7366();

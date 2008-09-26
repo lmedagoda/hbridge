@@ -3,6 +3,10 @@
 #include "stm32f10x_i2c.h"
 #include "stm32f10x_it.h"
 
+volatile u16 dbgWrite = 0;
+volatile u16 dbgRead = 0;
+volatile u32 dbgBuffer[dbgBufferSize];
+volatile u32 number=0;
 
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
@@ -17,6 +21,55 @@ volatile struct I2C_Data I2C2_Data;
 *******************************************************************************/
 
 extern volatile enum md03_i2c_state md03_I2C1_state;
+
+/*******************************************************************************
+* Function Name  : I2C1_EV_IRQHandler
+* Description    : This function handles I2C1 Event interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+
+void I2C1_EV_IRQHandler(void)
+{
+  I2C_EV_IRQHandler(I2C1, &I2C1_Data);
+}
+
+/*******************************************************************************
+* Function Name  : I2C1_ER_IRQHandler
+* Description    : This function handles I2C1 Error interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void I2C1_ER_IRQHandler(void)
+{
+  I2C_ER_IRQHandler(I2C1, &I2C1_Data);
+}
+
+/*******************************************************************************
+* Function Name  : I2C2_EV_IRQHandler
+* Description    : This function handles I2C2 Event interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void I2C2_EV_IRQHandler(void)
+{ 
+  I2C_EV_IRQHandler(I2C2, &I2C2_Data);
+}
+
+/*******************************************************************************
+* Function Name  : I2C2_ER_IRQHandler
+* Description    : This function handles I2C2 Error interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+void I2C2_ER_IRQHandler(void)
+{
+  I2C_ER_IRQHandler(I2C2, &I2C2_Data);
+}
 
 void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 {
@@ -224,9 +277,93 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
   
 }
 
+void sendDebugBuffer() {
+  while(dbgWrite != dbgRead) {
+    printf("Number is %lu ", dbgBuffer[dbgRead]);
+    dbgRead = (dbgRead +1) % dbgBufferSize;
+
+    if(dbgBuffer[dbgRead] == I2C_WRITE) { 
+      print("Mode is I2C_WRITE ");
+    } else {
+      if(dbgBuffer[dbgRead] == I2C_READ) {
+	print("Mode is I2C_READ "); 
+      } else {
+	print("Mode is I2C_WRITE_READ ");
+      }
+    }
+    dbgRead = (dbgRead +1) % dbgBufferSize;
+
+    if(((void *) dbgBuffer[dbgRead]) == I2C1) {  
+      print("Channel is I2C1 ");
+    } else {
+      print("Channel is I2C2 ");      
+    }
+    
+    dbgRead = (dbgRead +1) % dbgBufferSize;
+    
+    switch(dbgBuffer[dbgRead]) {
+    case 2:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got event 2 Rx Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Rx Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 3:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got event 3 Tx Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 4:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got event 4 Rx Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Rx Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 5:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got event 5 Tx Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 6:
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Got unknown event %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 7:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got event 7 Tx Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 200:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("Got Fail Idx is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;
+      printf("Size is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    case 300:
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("\nGlobal Md03 mode is is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("single Md03 mode is is %lu ", dbgBuffer[dbgRead]);
+      dbgRead = (dbgRead +1) % dbgBufferSize;  
+      printf("device is is %lu \n", dbgBuffer[dbgRead]);
+      break;
+    default:
+      printf("Got event %lu \n", dbgBuffer[dbgRead]);
+      break;
+    }
+    
+    dbgRead = (dbgRead +1) % dbgBufferSize;  
+  }
+}
+
+
 u8 I2C1OperationFinished() {
   return I2C1_Data.I2CMode == I2C_FINISHED;
 };
+
 
 
 void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {

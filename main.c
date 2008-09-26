@@ -20,20 +20,14 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_tim.h"
 #include "stm32f10x_it.h"
-#include "usb.h"
-#include "usb_init.h"
-#include "usb_desc.h"
-#include "usb_lib.h"
-#include "hw_config.h"
-#include "usb_pwr.h"
 #include "stdio.h"
 #include "spi.h"
 #include "i2c.h"
 #include "adc.h"
 #include "pid.h"
+#include "usart.h"
+#include "printf.h"
 
-#include "usb/platform_config.h"
-#include <stdarg.h>
 
 /* Private typedef --------------------------------------------------------*/
 /* Private define ---------------------------------------------------------*/
@@ -51,8 +45,6 @@
 /* Private functions ------------------------------------------------------*/
 void NVIC_Configuration(void);
 
-void USART_Configuration(void);
-
 void GPIO_Configuration(void);
 
 void TIM_Configuration(void);
@@ -60,6 +52,20 @@ void TIM_Configuration(void);
 void SPI_Configuration(void);
 
 void ADC_Configuration(void);
+
+volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
+
+volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
+
+volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
+
+vu8 desieredDirection = 0;
+vu8 actualDirection = 0;
+vu8 NewPWM = 0;
 
 vu8 pwmBiggerXPercent;
 
@@ -69,224 +75,9 @@ vu16 currentPWM = 0;
 
 vu8 pidEnabled = 0;
 
-#undef printf
-
-int print(const char *format) {
-  const char *fmt = format;
-  int len = 0;
-  
-  while(*fmt) {
-    fmt++;
-    len++;
-  }
-  
-  USB_Send_Data(format, len);
-
-  return len;
-}
-
-int printf(const char *format, ...) {
-  unsigned char msg[128];
-  const char *fmt = format;
-  int pos = 0;
-  va_list ap;
-  int d;
-  int i, j;
-  char c, *s;
-
-  va_start(ap, format);
-  while (*fmt) {
-  
-    if(*fmt != '%') {
-      msg[pos] = *fmt;
-      pos++;
-      fmt++;
-      continue;
-    } else {
-      fmt++;
-      assert_param(*fmt);
-    }
-
-    switch (*fmt) {
-    case 's':              /* string */
-      s = va_arg(ap, char *);
-      while(*s) {
-	msg[pos] = *s;
-	pos++;
-	s++;
-      }
-      break;
-    case 'l':               /* unsigned long int */
-      fmt++;
-      if(*fmt == 'u') {
-	d = va_arg(ap, unsigned long int);
-      } else {
-	d = va_arg(ap, long int);
-      }
-      
-      
-      if(d == 0) {
-	msg[pos] = '0';
-	pos++;
-	break;
-      }
-
-      if(d < 0) {
-	msg[pos] = '-';
-	pos++;
-	d *= -1;
-      }
-
-      i = 0;
-      j = d;
-      while(j) {
-	j /= 10;
-	i++;
-      }
-
-      j = i;
-      while(i) {
-	msg[pos + i - 1] = (char) (d % 10) + '0';
-	d /= 10;
-	i--;
-      }
-      pos += j;
-      break;
-
-    case 'd':              /* int */
-      d = va_arg(ap, int);
-
-      if(d == 0) {
-	msg[pos] = '0';
-	pos++;
-	break;
-      }
-
-      if(d < 0) {
-	msg[pos] = '-';
-	pos++;
-	d *= -1;
-      }
-
-      i = 0;
-      j = d;
-      while(j) {
-	j /= 10;
-	i++;
-      }
-
-      j = i;
-      while(i) {
-	msg[pos + i - 1] = (char) (d % 10) + '0';
-	d /= 10;
-	i--;
-      }
-      pos += j;
-      break;
-
-    case 'c':              /* char */
-      /* need a cast here since va_arg only
-	 takes fully promoted types */
-      c = (char) va_arg(ap, int);
-      msg[pos] = c;
-      pos++;
-      break;
-    }
-    fmt++;
-  }
-  
-  va_end(ap);
-
-  assert_param(pos < 128);
-
-  USB_Send_Data(msg, pos);  
-
-  return pos;
-}
-
-void sendDebugBuffer() {
-  while(dbgWrite != dbgRead) {
-    printf("Number is %lu ", dbgBuffer[dbgRead]);
-    dbgRead = (dbgRead +1) % dbgBufferSize;
-
-    if(dbgBuffer[dbgRead] == I2C_WRITE) { 
-      print("Mode is I2C_WRITE ");
-    } else {
-      if(dbgBuffer[dbgRead] == I2C_READ) {
-	print("Mode is I2C_READ "); 
-      } else {
-	print("Mode is I2C_WRITE_READ ");
-      }
-    }
-    dbgRead = (dbgRead +1) % dbgBufferSize;
-
-    if(((void *) dbgBuffer[dbgRead]) == I2C1) {  
-      print("Channel is I2C1 ");
-    } else {
-      print("Channel is I2C2 ");      
-    }
-    
-    dbgRead = (dbgRead +1) % dbgBufferSize;
-    
-    switch(dbgBuffer[dbgRead]) {
-    case 2:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got event 2 Rx Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Rx Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 3:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got event 3 Tx Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 4:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got event 4 Rx Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Rx Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 5:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got event 5 Tx Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 6:
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Got unknown event %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 7:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got event 7 Tx Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Tx Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 200:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("Got Fail Idx is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;
-      printf("Size is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    case 300:
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("\nGlobal Md03 mode is is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("single Md03 mode is is %lu ", dbgBuffer[dbgRead]);
-      dbgRead = (dbgRead +1) % dbgBufferSize;  
-      printf("device is is %lu \n", dbgBuffer[dbgRead]);
-      break;
-    default:
-      printf("Got event %lu \n", dbgBuffer[dbgRead]);
-      break;
-    }
-    
-    dbgRead = (dbgRead +1) % dbgBufferSize;  
-  }
-}
-
 void setNewPWM(const s16 value);
+
+vu8 wasinit = 0;
 
 /*******************************************************************************
 * Function Name  : main
@@ -308,7 +99,7 @@ int main(void)
 
   /* Enable peripheral clocks ---------------------------------------*/
   /* Enable I2C1 and I2C2 clock */
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1 | RCC_APB1Periph_I2C2, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
 
   /* Enable USART1 clock */
   //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
@@ -316,34 +107,81 @@ int main(void)
 
   NVIC_Configuration();
 
-  //USART_Configuration();
-
   GPIO_Configuration();
-  
+
+  USART_Configuration();
+
   //setupI2C();
 
-  Set_USBClock();
-
-  USB_Init();
-
-  
   TIM_Configuration();
 
-  SPI_Configuration();
+  //SPI_Configuration();
   
-  ADC_Configuration();
+  //ADC_Configuration();
 
   delay = 5000000;
   while(delay)
     delay--;
   
+  /** DEBUG **/
+  
+  setNewPWM(100);
+  //TIM_UpdateDisableConfig(TIM1, DISABLE);
 
-  print("Loop start \n");
+  //TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
 
-  delay = 5000000;
-  while(delay)
-    delay--;
+  while(1) {
+    printf("NewPWM is %d \n", NewPWM);
+    printf("Was in Update IT %d \n", wasinit);
+  
+    print("Loop start \n");
 
+    u16 tim1Value = TIM_GetCounter(TIM1);
+    u16 tim1Value2 = TIM_GetCounter(TIM1);
+    u16 tim2Value = TIM_GetCounter(TIM2);
+    u16 tim2Value2 = TIM_GetCounter(TIM2);
+    u16 tim3Value = TIM_GetCounter(TIM3);
+    u16 tim3Value2 = TIM_GetCounter(TIM3);
+        
+    printf("TIM1 is %d \n", tim1Value);
+    printf("TIM2 is %d \n", tim2Value);
+    printf("TIM3 is %d \n", tim3Value);
+
+    printf("TIM1 is %d \n", tim1Value2);
+    printf("TIM2 is %d \n", tim2Value2);
+    printf("TIM3 is %d \n", tim3Value2);
+
+    printf("Update flag set %d \n", TIM_GetFlagStatus(TIM1, TIM_FLAG_Update));
+    printf("Update Interrupt enabled %d \n", TIM_GetITStatus(TIM1, TIM_IT_Update));
+    
+
+    RCC_ClocksTypeDef RCC_ClocksStatus;
+    RCC_GetClocksFreq(&RCC_ClocksStatus);
+    
+    printf("PCLK2 %lu, PCLK1 %lu\n" ,RCC_ClocksStatus.PCLK2_Frequency ,RCC_ClocksStatus.PCLK1_Frequency);
+
+    /*if(encoderValue < 500)
+      GPIO_SetBits(GPIOB, GPIO_Pin_6);
+    else 
+      GPIO_ResetBits(GPIOB, GPIO_Pin_6);
+    */
+
+    u16 lastTime = 0;
+    u16 time;
+    u16 counter = 0;
+    while(counter < 10000) {
+      time = TIM_GetCounter(TIM1);
+      if(lastTime > time) {
+	counter++;
+      }
+      lastTime = time;
+    }
+    
+    
+  }
+
+  /* END DEBUG */
+  
   print("Loop start \n");
  
   delay = 5000000;
@@ -385,23 +223,9 @@ int main(void)
   }  
 }
 
-
-volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
-volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
-
-volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
-
-volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
-volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
-
-vu8 desieredDirection = 0;
-vu8 actualDirection = 0;
-vu8 NewPWM = 0;
-
 void setNewPWM(const s16 value) {
   //TODO add magic formular for conversation
+  
   //remove signess
   u16 dutyTime = value & ((1<<16)-1);
   
@@ -482,18 +306,21 @@ void setNewPWM(const s16 value) {
  * that config is updated atomar by hardware on
  * the next update event.
  */
-void TIM1_IT_Handler(void) {
+void TIM1_UP_IRQHandler(void) {
   static vu8 NewPWMLastTime = 0;
-  
+
+  wasinit = 1;
+
   if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
     //Clear TIM1 update interrupt pending bit
     TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
-
+  
     //ReInit Output as timer mode (remove Forced high) 
     TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
     TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
-
+    
     if(NewPWM) {
+      NewPWM = 0;
       //Enable update, all previous configured values
       //are now transfered atomic to the timer in the
       //moment the timer wraps around the next time
@@ -502,16 +329,26 @@ void TIM1_IT_Handler(void) {
       TIM_UpdateDisableConfig(TIM3, DISABLE);
       NewPWMLastTime = 1;
     }
-
+    
     //timers where updated atomar, so now we reconfigure 
     //the watchdog and current measurement and also update
     //the direction value
     if(NewPWMLastTime) {
       NewPWMLastTime = 0;
       actualDirection = desieredDirection;
-      configureCurrentMeasurement(actualDirection);
-      configureWatchdog(actualDirection);      
+      /**DISABLED FOR DEBUG*/
+      //configureCurrentMeasurement(actualDirection);
+      //configureWatchdog(actualDirection);      
     }
+  }
+
+  static int test = 0;
+  
+  test++;
+  
+  if(test > 10000) {
+    TIM_ITConfig(TIM1, TIM_IT_Update, DISABLE);
+    //TIM_ITConfig(TIM2, TIM_IT_CC2, DISABLE);
   }
 }
 
@@ -522,7 +359,7 @@ void TIM1_IT_Handler(void) {
  * also the Watchdog is disabled and set up for
  * the next trigger.
  */
-void TIM2_IT_Handler(void) {
+void TIM2_IRQHandler(void) {
   if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET) {
     /* Clear TIM2 Capture compare interrupt pending bit */
     TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
@@ -534,8 +371,9 @@ void TIM2_IT_Handler(void) {
       TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
     }
 
+    /**DISABLED FOR DEBUG*/
     //disable adc watchdog and set it up again for next trigger
-    configureWatchdog(actualDirection);      
+    //configureWatchdog(actualDirection);      
   }
 }
 
@@ -616,7 +454,12 @@ void SPI_Configuration(void)
   SPI_Cmd(SPI2, ENABLE);
 }
 
+/**
+ * pwmvalue in ranges from 0 to 1800
+ *
+ */
 void InitTimerStructAsPWM(volatile TIM_OCInitTypeDef *ocstruct, u16 pwmvalue) {
+  assert_param(pwmvalue <= 1800);
   TIM_OCStructInit((TIM_OCInitTypeDef *) ocstruct);
   ocstruct->TIM_OCMode = TIM_OCMode_PWM1;
   ocstruct->TIM_OutputState = TIM_OutputState_Enable;
@@ -698,12 +541,12 @@ void TIM_Configuration(void)
   //counter clock = 40 kHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 2;
+  TIM_TimeBaseStructure.TIM_Prescaler = 100;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
-  /* Prescaler configuration */ 
+  // Prescaler configuration 
   TIM_PrescalerConfig(TIM2, 2, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
@@ -714,9 +557,6 @@ void TIM_Configuration(void)
 
   TIM_ARRPreloadConfig(TIM2, ENABLE);
 
-  /* TIM2 enable counter */ 
-  TIM_Cmd(TIM2, ENABLE);
-
   //timer used for shutdown generation
   //turn on timer hardware
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
@@ -725,12 +565,12 @@ void TIM_Configuration(void)
   //counter clock = 36 MHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 100;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
-  /* Prescaler configuration */ 
+  // Prescaler configuration  
   TIM_PrescalerConfig(TIM3, 1, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
@@ -741,8 +581,6 @@ void TIM_Configuration(void)
 
   TIM_ARRPreloadConfig(TIM3, ENABLE);
 
-  /* TIM3 enable counter */ 
-  TIM_Cmd(TIM3, ENABLE);
 
   //timer used for shutdown generation
   //turn on timer hardware
@@ -752,12 +590,12 @@ void TIM_Configuration(void)
   //counter clock = 36 MHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 100;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
 
-  /* Prescaler configuration */ 
+  // Prescaler configuration  
   TIM_PrescalerConfig(TIM1, 1, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
@@ -768,10 +606,13 @@ void TIM_Configuration(void)
 
   TIM_ARRPreloadConfig(TIM1, ENABLE);
 
-  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Reset);
+  TIM_SelectMasterSlaveMode(TIM1, TIM_MasterSlaveMode_Enable);
+  TIM_SelectMasterSlaveMode(TIM2, TIM_MasterSlaveMode_Enable);
+  TIM_SelectMasterSlaveMode(TIM3, TIM_MasterSlaveMode_Enable);
 
-  /* TIM3 enable counter */ 
-  TIM_Cmd(TIM1, ENABLE);
+  //  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Reset);
+  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);
+
 
   //Sync Timers
   TIM_SelectSlaveMode(TIM2, TIM_SlaveMode_Reset);
@@ -781,7 +622,19 @@ void TIM_Configuration(void)
   
   //enable interrupts
   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
-  TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
+  //TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
+
+  // TIM3 enable counter 
+  TIM_Cmd(TIM1, ENABLE);
+
+  // TIM3 enable counter 
+  TIM_Cmd(TIM3, ENABLE);
+
+  // TIM2 enable counter 
+  TIM_Cmd(TIM2, ENABLE);
+
+
+
 }
 
 
@@ -884,7 +737,7 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+  
   //configure Timer4 ch2 (PB7) as encoder input
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -911,24 +764,6 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-  /* Configure USB pull-up pin */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-  // Configure USART1 Rx (PA.10) as input floating
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  // Configure USART1 Tx (PA.09) as alternate function push-pull
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
 }
 
 
@@ -952,27 +787,42 @@ void NVIC_Configuration(void)
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
    
   /* Configure and enable I2C1 interrupt ------------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQChannel;
+  /*NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQChannel;
-  NVIC_Init(&NVIC_InitStructure);
+  NVIC_Init(&NVIC_InitStructure);*/
 
   /* Configure and enable I2C2 interrupt ------------------------------------*/
   /*NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQChannel;
   NVIC_Init(&NVIC_InitStructure);*/
 
+  //Configure and enable TIM1 Update interrupt
+  NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  //Configure and enable TIM2 interrupt
+  NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
   /* Configure and enable USB interrupt -------------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN_RX0_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);

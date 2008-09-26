@@ -25,6 +25,12 @@ struct I2C_Data {
   u32 I2CErrorReason;
 };
 
+#define dbgBufferSize 256
+
+extern volatile u16 dbgWrite;
+extern volatile u16 dbgRead;
+extern volatile u32 dbgBuffer[dbgBufferSize];
+
 extern volatile struct I2C_Data I2C1_Data;
 extern volatile struct I2C_Data I2C2_Data;
 

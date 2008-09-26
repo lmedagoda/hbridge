@@ -23,34 +23,6 @@
 #include "stm32f10x_lib.h"
 
 /* Exported types ------------------------------------------------------------*/
-
-enum SPIModes {
-  SPI_READ,
-  SPI_WRITE,
-  SPI_WRITE_READ,
-  SPI_FINISHED,
-};
-
-
-
-#define dbgBufferSize 256
-
-extern volatile u16 dbgWrite;
-extern volatile u16 dbgRead;
-extern volatile u32 dbgBuffer[dbgBufferSize];
-
-extern  volatile u8 SPI1_Buffer_Tx[8];
-extern  volatile u8 SPI1_Buffer_Rx[8];
-
-extern volatile u8 SPI1_Tx_Size;
-extern volatile u8 SPI1_Rx_Size;
-extern volatile u8 SPI1_Tx_Idx;
-extern volatile u8 SPI1_Rx_Idx;
-
-extern volatile u8 SPI1Mode;
-
-extern void (* volatile SPI1TransactionComplete) (void);
-
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
@@ -124,7 +96,7 @@ void DMA2_Channel1_IRQHandler(void);
 void DMA2_Channel2_IRQHandler(void);
 void DMA2_Channel3_IRQHandler(void);
 void DMA2_Channel4_5_IRQHandler(void);
-					 
+				 
 #endif /* __STM32F10x_IT_H */
 
 /******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
