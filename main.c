@@ -65,7 +65,7 @@ volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
 
 vu8 desieredDirection = 0;
 vu8 actualDirection = 0;
-vu8 NewPWM = 0;
+volatile u8 newPWM = 0;
 
 vu8 pwmBiggerXPercent;
 
@@ -78,6 +78,7 @@ vu8 pidEnabled = 0;
 void setNewPWM(const s16 value);
 
 vu8 wasinit = 0;
+vu8 wasinif = 0;
 
 /*******************************************************************************
 * Function Name  : main
@@ -126,30 +127,66 @@ int main(void)
   /** DEBUG **/
   
   setNewPWM(100);
-  //TIM_UpdateDisableConfig(TIM1, DISABLE);
+  TIM_UpdateDisableConfig(TIM1, DISABLE);
 
   //TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
 
+  u16 lastTime = 0;
+  u16 time;
+  u16 counter = 0;
+    
   while(1) {
-    printf("NewPWM is %d \n", NewPWM);
+    printf("NewPWM is %d \n", newPWM);
+    printf("wasinif is %d \n", wasinif);
     printf("Was in Update IT %d \n", wasinit);
   
     print("Loop start \n");
 
+    
     u16 tim1Value = TIM_GetCounter(TIM1);
     u16 tim1Value2 = TIM_GetCounter(TIM1);
     u16 tim2Value = TIM_GetCounter(TIM2);
     u16 tim2Value2 = TIM_GetCounter(TIM2);
     u16 tim3Value = TIM_GetCounter(TIM3);
     u16 tim3Value2 = TIM_GetCounter(TIM3);
+
+    u8 wrapnotfound = 1;
+
+    while(wrapnotfound) { 
+      tim1Value = TIM_GetCounter(TIM1);
+      tim2Value = TIM_GetCounter(TIM2);
+      tim3Value = TIM_GetCounter(TIM3);
+      if(tim1Value2 > tim1Value) {
+	wrapnotfound = 0;
+      } else {
+	tim1Value2 = tim1Value;
+	tim2Value2 = tim2Value;
+	tim3Value2 = tim3Value;
+      }
+    }
+    
+    u16 debugvalues[128*3];
+    
+    int i;
+
+    for(i = 0; i < 128*3; i+=3) {
+      debugvalues[i + 0] = TIM_GetCounter(TIM1);
+      debugvalues[i + 1] = TIM_GetCounter(TIM2);
+      debugvalues[i + 2] = TIM_GetCounter(TIM3);
+    }
+    
+    for(i = 0; i < 128*3; i+=3) {
+      printf("i is %d TIM1 is %d TIM2 is %d, TIM3 is %d\n", i, debugvalues[i + 0], debugvalues[i + 1], debugvalues[i + 2]);
+    }
+    
         
     printf("TIM1 is %d \n", tim1Value);
     printf("TIM2 is %d \n", tim2Value);
     printf("TIM3 is %d \n", tim3Value);
 
-    printf("TIM1 is %d \n", tim1Value2);
-    printf("TIM2 is %d \n", tim2Value2);
-    printf("TIM3 is %d \n", tim3Value2);
+    printf("last TIM1 is %d \n", tim1Value2);
+    printf("last TIM2 is %d \n", tim2Value2);
+    printf("last TIM3 is %d \n", tim3Value2);
 
     printf("Update flag set %d \n", TIM_GetFlagStatus(TIM1, TIM_FLAG_Update));
     printf("Update Interrupt enabled %d \n", TIM_GetITStatus(TIM1, TIM_IT_Update));
@@ -166,18 +203,17 @@ int main(void)
       GPIO_ResetBits(GPIOB, GPIO_Pin_6);
     */
 
-    u16 lastTime = 0;
-    u16 time;
-    u16 counter = 0;
+    lastTime = 0;
+    time;
+    counter = 0;
     while(counter < 10000) {
+
       time = TIM_GetCounter(TIM1);
       if(lastTime > time) {
 	counter++;
       }
       lastTime = time;
     }
-    
-    
   }
 
   /* END DEBUG */
@@ -220,7 +256,7 @@ int main(void)
     setNewPWM( pwmValue);
 
     lastEncoderValue = encoderValue;
-  }  
+  }
 }
 
 void setNewPWM(const s16 value) {
@@ -293,7 +329,7 @@ void setNewPWM(const s16 value) {
   TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
   TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
  
-  NewPWM = 1;
+  newPWM = 1;
 
 }
 
@@ -309,18 +345,22 @@ void setNewPWM(const s16 value) {
 void TIM1_UP_IRQHandler(void) {
   static vu8 NewPWMLastTime = 0;
 
-  wasinit = 1;
 
   if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
+    
+
     //Clear TIM1 update interrupt pending bit
     TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
   
+    wasinit = 1;
+ 
     //ReInit Output as timer mode (remove Forced high) 
     TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
     TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
     
-    if(NewPWM) {
-      NewPWM = 0;
+    if(newPWM != 0) {
+      wasinif = 1;
+      newPWM = 0;
       //Enable update, all previous configured values
       //are now transfered atomic to the timer in the
       //moment the timer wraps around the next time
@@ -340,15 +380,6 @@ void TIM1_UP_IRQHandler(void) {
       //configureCurrentMeasurement(actualDirection);
       //configureWatchdog(actualDirection);      
     }
-  }
-
-  static int test = 0;
-  
-  test++;
-  
-  if(test > 10000) {
-    TIM_ITConfig(TIM1, TIM_IT_Update, DISABLE);
-    //TIM_ITConfig(TIM2, TIM_IT_CC2, DISABLE);
   }
 }
 
@@ -507,6 +538,7 @@ void TIM_Configuration(void)
 {
 
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+  TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
   //init OC struct for timers
   InitTimerStructs();
@@ -541,13 +573,13 @@ void TIM_Configuration(void)
   //counter clock = 40 kHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 100;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
   // Prescaler configuration 
-  TIM_PrescalerConfig(TIM2, 2, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM2, 1, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
   TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
@@ -565,7 +597,7 @@ void TIM_Configuration(void)
   //counter clock = 36 MHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 100;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
@@ -590,7 +622,7 @@ void TIM_Configuration(void)
   //counter clock = 36 MHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 100;
+  TIM_TimeBaseStructure.TIM_Prescaler = 1;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
@@ -610,7 +642,8 @@ void TIM_Configuration(void)
   TIM_SelectMasterSlaveMode(TIM2, TIM_MasterSlaveMode_Enable);
   TIM_SelectMasterSlaveMode(TIM3, TIM_MasterSlaveMode_Enable);
 
-  //  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Reset);
+  //TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Reset);
+  //use Update, as reset dosen't work for synchronising (reason unknown)
   TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);
 
 
@@ -619,7 +652,7 @@ void TIM_Configuration(void)
   TIM_SelectInputTrigger(TIM2, TIM_TS_ITR0);
   TIM_SelectSlaveMode(TIM3, TIM_SlaveMode_Reset);
   TIM_SelectInputTrigger(TIM3, TIM_TS_ITR0);
-  
+
   //enable interrupts
   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
   //TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
