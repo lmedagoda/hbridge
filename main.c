@@ -55,6 +55,7 @@ void ADC_Configuration(void);
 
 volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC4InitStructure;
 
 volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
 volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
@@ -126,8 +127,8 @@ int main(void)
   
   /** DEBUG **/
   
-  setNewPWM(100);
-  TIM_UpdateDisableConfig(TIM1, DISABLE);
+  setNewPWM(500);
+  //TIM_UpdateDisableConfig(TIM1, DISABLE);
 
   //TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
 
@@ -136,13 +137,6 @@ int main(void)
   u16 counter = 0;
     
   while(1) {
-    printf("NewPWM is %d \n", newPWM);
-    printf("wasinif is %d \n", wasinif);
-    printf("Was in Update IT %d \n", wasinit);
-  
-    print("Loop start \n");
-
-    
     u16 tim1Value = TIM_GetCounter(TIM1);
     u16 tim1Value2 = TIM_GetCounter(TIM1);
     u16 tim2Value = TIM_GetCounter(TIM2);
@@ -166,13 +160,18 @@ int main(void)
     }
     
     u16 debugvalues[128*3];
-    
+
+    u16 *debugprt = debugvalues;
+
     int i;
 
-    for(i = 0; i < 128*3; i+=3) {
-      debugvalues[i + 0] = TIM_GetCounter(TIM1);
-      debugvalues[i + 1] = TIM_GetCounter(TIM2);
-      debugvalues[i + 2] = TIM_GetCounter(TIM3);
+    for(i = 0; i < 128; i++) {
+      *debugprt = TIM_GetCounter(TIM1);
+      debugprt++;
+      *debugprt = TIM_GetCounter(TIM2);
+      debugprt++;
+      *debugprt = TIM_GetCounter(TIM3);
+      debugprt++;      
     }
     
     for(i = 0; i < 128*3; i+=3) {
@@ -191,6 +190,11 @@ int main(void)
     printf("Update flag set %d \n", TIM_GetFlagStatus(TIM1, TIM_FLAG_Update));
     printf("Update Interrupt enabled %d \n", TIM_GetITStatus(TIM1, TIM_IT_Update));
     
+    printf("NewPWM is %d \n", newPWM);
+    printf("wasinif is %d \n", wasinif);
+    printf("Was in Update IT %d \n", wasinit);
+  
+    print("Loop start \n");
 
     RCC_ClocksTypeDef RCC_ClocksStatus;
     RCC_GetClocksFreq(&RCC_ClocksStatus);
@@ -285,6 +289,9 @@ void setNewPWM(const s16 value) {
    *
    */
   if(desieredDirection) {  
+    TIM2_OC1InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+    TIM2_OC2InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+    
     // AIN
     TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
     
@@ -297,6 +304,9 @@ void setNewPWM(const s16 value) {
     // BSD
     TIM3_OC2InitStructure.TIM_Pulse = dutyTime;
   } else {
+    TIM2_OC1InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+    TIM2_OC2InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+
     // AIN
     TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
     
@@ -319,8 +329,10 @@ void setNewPWM(const s16 value) {
   //TODO add x to sec timer
 
   //security timer
-  TIM2_OC3InitStructure.TIM_Pulse = dutyTime;
+  TIM2_OC3InitStructure.TIM_Pulse = dutyTime + 100;
 
+
+  //TODO FIXME, do not use OC init, as it resets the timers during reconfigure
   TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
   TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
   TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
@@ -330,8 +342,62 @@ void setNewPWM(const s16 value) {
   TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
  
   newPWM = 1;
-
 }
+
+void TIM1_CC_IRQHandler(void) {
+  static vu8 NewPWMLastTime = 0;
+  
+  if(TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET) {
+    //Clear TIM1 update interrupt pending bit
+    TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
+  
+    //ReInit Output as timer mode (remove Forced high) 
+    u16 tmpccmr1 = 0;
+    u16 tmpccmr2 = 0;
+
+    //get CCMR1 and CCMR2 content
+    tmpccmr1 = TIM2->CCMR1;
+    tmpccmr2 = TIM2->CCMR2;
+    
+    //Reset the OC1M Bits 
+    tmpccmr1 &= 0xFF8F;
+    tmpccmr2 &= 0xFF8F;
+    
+    //configure output mode
+    tmpccmr1 |= TIM2_OC1InitStructure.TIM_OCMode;
+    tmpccmr2 |= TIM2_OC2InitStructure.TIM_OCMode;
+    
+    //Write to TIM2 CCMR1 & CCMR2 register
+    TIM2->CCMR1 = tmpccmr1;
+    TIM2->CCMR2 = tmpccmr2;
+    
+
+    if(newPWM != 0) {
+      wasinif = 1;
+      newPWM = 0;
+      //Enable update, all previous configured values
+      //are now transfered atomic to the timer in the
+      //moment the timer wraps around the next time
+      TIM_UpdateDisableConfig(TIM1, DISABLE);
+      TIM_UpdateDisableConfig(TIM2, DISABLE);
+      TIM_UpdateDisableConfig(TIM3, DISABLE);
+      NewPWMLastTime = 1;
+    }
+    
+    //timers where updated atomar, so now we reconfigure 
+    //the watchdog and current measurement and also update
+    //the direction value
+    if(NewPWMLastTime) {
+      NewPWMLastTime = 0;
+      actualDirection = desieredDirection;
+      /**DISABLED FOR DEBUG*/
+      //configureCurrentMeasurement(actualDirection);
+      //configureWatchdog(actualDirection);      
+    }
+  }
+  
+}
+
 
 /**
  * This interrupt Handler handels the update Event
@@ -344,7 +410,6 @@ void setNewPWM(const s16 value) {
  */
 void TIM1_UP_IRQHandler(void) {
   static vu8 NewPWMLastTime = 0;
-
 
   if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
     
@@ -381,6 +446,7 @@ void TIM1_UP_IRQHandler(void) {
       //configureWatchdog(actualDirection);      
     }
   }
+
 }
 
 /**
@@ -397,9 +463,9 @@ void TIM2_IRQHandler(void) {
     
     //Force high side gate on
     if(actualDirection) {
-      TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
+      TIM_ForcedOC1Config(TIM2, TIM_ForcedAction_Active);
     } else {
-      TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
+      TIM_ForcedOC2Config(TIM2, TIM_ForcedAction_Active);
     }
 
     /**DISABLED FOR DEBUG*/
@@ -508,10 +574,13 @@ void InitTimerStructAsInternalTimer(volatile TIM_OCInitTypeDef *ocstruct, u16 va
 void InitTimerStructs() {
 
   //Current Measurement
-  InitTimerStructAsPWM(&TIM1_OC2InitStructure, 750);
+  InitTimerStructAsInternalTimer(&TIM1_OC2InitStructure, 750);
 
   //start adc watchdog
-  InitTimerStructAsPWM(&TIM1_OC3InitStructure, 1500);
+  InitTimerStructAsInternalTimer(&TIM1_OC3InitStructure, 1500);
+
+  //atomar config timer / Resetup AIN/BIN
+  InitTimerStructAsInternalTimer(&TIM1_OC4InitStructure, 0);
   
 
   //ADIR and BDIR
@@ -519,7 +588,7 @@ void InitTimerStructs() {
   InitTimerStructAsPWM(&TIM2_OC2InitStructure, 1500);
 
   //Security Timer
-  InitTimerStructAsInternalTimer(&TIM1_OC3InitStructure, 1550);
+  InitTimerStructAsInternalTimer(&TIM2_OC3InitStructure, 1550);
   
   //ASD and BSD (OFF !)
   InitTimerStructAsPWM(&TIM3_OC1InitStructure, 00);
@@ -569,17 +638,17 @@ void TIM_Configuration(void)
   //turn on timer hardware
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
   
-  //TIM2CLK = 72 MHz, Prescaler = 1800, TIM2 
+  //TIM2CLK = 72 MHz, Period = 1800, TIM2 
   //counter clock = 40 kHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 0;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
   // Prescaler configuration 
-  TIM_PrescalerConfig(TIM2, 1, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM2, 0, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
   TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
@@ -593,17 +662,17 @@ void TIM_Configuration(void)
   //turn on timer hardware
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
   
-  //TIM3CLK = 72 MHz, Prescaler = 2, TIM3 
-  //counter clock = 36 MHz 
+  //TIM3CLK = 72 MHz, Period = 1800, TIM3 
+  //counter clock = 40 kHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 0;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
   // Prescaler configuration  
-  TIM_PrescalerConfig(TIM3, 1, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM3, 0, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
   TIM_OC1PreloadConfig(TIM3, TIM_OCPreload_Enable);
@@ -618,17 +687,17 @@ void TIM_Configuration(void)
   //turn on timer hardware
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
   
-  //TIM1CLK = 72 MHz, Prescaler = 1, TIM1 
-  //counter clock = 36 MHz 
+  //TIM1CLK = 72 MHz, Period = 1800, TIM1 
+  //counter clock = 40 kHz 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 1800;
-  TIM_TimeBaseStructure.TIM_Prescaler = 1;
+  TIM_TimeBaseStructure.TIM_Prescaler = 0;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
 
   // Prescaler configuration  
-  TIM_PrescalerConfig(TIM1, 1, TIM_PSCReloadMode_Immediate); 
+  TIM_PrescalerConfig(TIM1, 0, TIM_PSCReloadMode_Immediate); 
 
   //All channels use buffered registers
   TIM_OC1PreloadConfig(TIM1, TIM_OCPreload_Enable);
@@ -654,8 +723,13 @@ void TIM_Configuration(void)
   TIM_SelectInputTrigger(TIM3, TIM_TS_ITR0);
 
   //enable interrupts
-  TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
-  //TIM_ITConfig(TIM2, TIM_IT_CC2, ENABLE);
+  //TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+  TIM_ITConfig(TIM2, TIM_IT_CC3, ENABLE);
+
+  //interrupt for atomar config change
+  TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
+  TIM_OC4Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC4InitStructure));
+
 
   // TIM3 enable counter 
   TIM_Cmd(TIM1, ENABLE);
@@ -841,6 +915,13 @@ void NVIC_Configuration(void)
 
   //Configure and enable TIM1 Update interrupt
   NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  //Configure and enable TIM1 Update interrupt
+  NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
