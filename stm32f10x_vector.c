@@ -155,7 +155,7 @@ void cpu_init()
   //Configure flash timing
   FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);
   FLASH_SetLatency(FLASH_Latency_2);	// 2 wait states
-
+  
   //Configure clocks
   RCC_HCLKConfig(RCC_SYSCLK_Div1);	// HCLK = SYSCLK
   RCC_PCLK1Config(RCC_HCLK_Div2);	// PCLK1 = HCLK/2

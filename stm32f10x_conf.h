@@ -160,6 +160,7 @@
 * Return         : None
 *******************************************************************************/ 
 #define assert_param(expr) ((expr) ? (void)0 : assert_failed((u8 *)__FILE__, __LINE__))
+//#define assert_param(expr) 
 /* Exported functions ------------------------------------------------------- */
 void assert_failed(u8* file, u32 line);
 

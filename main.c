@@ -27,7 +27,7 @@
 #include "pid.h"
 #include "usart.h"
 #include "printf.h"
-
+#include "packet.h"
 
 /* Private typedef --------------------------------------------------------*/
 /* Private define ---------------------------------------------------------*/
@@ -53,6 +53,9 @@ void SPI_Configuration(void);
 
 void ADC_Configuration(void);
 
+void SysTick_Configuration(void);
+
+
 volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC4InitStructure;
@@ -71,15 +74,29 @@ volatile u8 newPWM = 0;
 vu8 pwmBiggerXPercent;
 
 
-vu16 wantedPWM = 0;
-vu16 currentPWM = 0;
-
 vu8 pidEnabled = 0;
 
 void setNewPWM(const s16 value);
 
 vu8 wasinit = 0;
 vu8 wasinif = 0;
+vu8 wasinawdit = 0;
+vu8 wasineocit = 0;
+vu8 wasinadcit = 0;
+
+u8 ownReceiverID = 0;
+
+enum controllerModes controllMode = CONTROLLER_MODE_PWM;
+
+struct ControllerState {
+  enum controllerModes controllMode;
+  struct pid_data pid_data;
+  s32 targetValue;
+};
+
+volatile struct ControllerState *activeCState;
+volatile struct ControllerState *lastActiveCState;
+
 
 /*******************************************************************************
 * Function Name  : main
@@ -91,8 +108,6 @@ vu8 wasinif = 0;
 int main(void)
 {
   int delay;
-  s32 wantedSpeed = 0;
-  struct pid_data pid_data;
   
 
   //Enable peripheral clock for GPIO
@@ -100,8 +115,8 @@ int main(void)
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
 
   /* Enable peripheral clocks ---------------------------------------*/
-  /* Enable I2C1 and I2C2 clock */
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+  /* enable I2C2 clock */
+  //RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
 
   /* Enable USART1 clock */
   //RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
@@ -119,18 +134,41 @@ int main(void)
 
   //SPI_Configuration();
   
-  //ADC_Configuration();
+  ADC_Configuration();
 
   delay = 5000000;
   while(delay)
     delay--;
   
+  print("Loop start \n");
+
+
+
   /** DEBUG **/
-  
-  setNewPWM(500);
+
   //TIM_UpdateDisableConfig(TIM1, DISABLE);
 
   //TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
+
+  //configureCurrentMeasurement(actualDirection);
+  //configureWatchdog(actualDirection);
+
+  /* Enable AWD interupt */
+  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
+
+  /* Start ADC1 Software Conversion */ 
+  ADC_SoftwareStartConvCmd(ADC2, ENABLE);
+
+  //configureWatchdog(1);
+
+
+
+  /* Start ADC1 Software Conversion */ 
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
+  setNewPWM(500);
+  
+  print("Loop start 1\n");
 
   u16 lastTime = 0;
   u16 time;
@@ -165,6 +203,7 @@ int main(void)
 
     int i;
 
+    /*
     for(i = 0; i < 128; i++) {
       *debugprt = TIM_GetCounter(TIM1);
       debugprt++;
@@ -177,7 +216,7 @@ int main(void)
     for(i = 0; i < 128*3; i+=3) {
       printf("i is %d TIM1 is %d TIM2 is %d, TIM3 is %d\n", i, debugvalues[i + 0], debugvalues[i + 1], debugvalues[i + 2]);
     }
-    
+    */
         
     printf("TIM1 is %d \n", tim1Value);
     printf("TIM2 is %d \n", tim2Value);
@@ -193,7 +232,9 @@ int main(void)
     printf("NewPWM is %d \n", newPWM);
     printf("wasinif is %d \n", wasinif);
     printf("Was in Update IT %d \n", wasinit);
-  
+    printf("Was in AWD it %d \n", wasinawdit);
+    printf("Was in EOC it %d \n", wasineocit);
+    printf("Was in ADC it %d \n", wasinadcit);
     print("Loop start \n");
 
     RCC_ClocksTypeDef RCC_ClocksStatus;
@@ -208,10 +249,8 @@ int main(void)
     */
 
     lastTime = 0;
-    time;
     counter = 0;
     while(counter < 10000) {
-
       time = TIM_GetCounter(TIM1);
       if(lastTime > time) {
 	counter++;
@@ -221,47 +260,111 @@ int main(void)
   }
 
   /* END DEBUG */
-  
-  print("Loop start \n");
  
   delay = 5000000;
   while(delay)
     delay--;
 
-  setKp(&pid_data, 100);
-  setKi(&pid_data, 0);
-  setKd(&pid_data, 0);
+  setKp(&(activeCState->pid_data), 100);
+  setKi(&(activeCState->pid_data), 0);
+  setKd(&(activeCState->pid_data), 0);
 
-  u16 encoderValue = 0;
-  u16 lastEncoderValue = 0;
+  volatile struct ControllerState cs1;
+  volatile struct ControllerState cs2;
   
-  s32 curSpeed = 0;
-  s32 pwmValue = 0;
+  activeCState = &(cs1);
+  lastActiveCState = &(cs2);
 
-  while (1) {
-    delay = 10000000;
-    while(delay)
-      delay--;
+  u8 rxBuffer[100];
+  u32 rxCount = 0;
+
+  //activate systick interrupt, at this point
+  //activeCState1 hast to be initalized completely sane !
+  SysTick_Configuration();
+
+  while(1) {
+    //receive and process data
+    u32 len = USART1_GetData(rxBuffer + rxCount, 100 - rxCount);
+    rxCount += len;
     
-    //get encoder
-    encoderValue = TIM_GetCounter(TIM4);
-        
-    printf("Encoder is %d \n", encoderValue);
-    
-    curSpeed = encoderValue - lastEncoderValue;
-    
-    //calculate PID value
-    setTargetValue(&pid_data, wantedSpeed);
-    pwmValue = pid(&pid_data, curSpeed);
+    //process data
+    while(rxCount > sizeof(struct packetHeader)) {
 
-    //todo truncate pwmValue s32 -> s16
+      struct packetHeader *ph = (struct packetHeader *) rxBuffer;
 
-    //set pwm
-    setNewPWM( pwmValue);
+      u16 packetSize = sizeof(struct packetHeader) + ph->length;
 
-    lastEncoderValue = encoderValue;
+      //check if whole packet was received
+      if(rxCount < packetSize) {
+	break;
+      }
+
+      if(ph->receiverID == ownReceiverID || ph->receiverID == RECEIVER_ID_H_BRIDGE_ALL) {
+	switch(ph->id) {
+	case PACKET_ID_EMERGENCY_STOP:
+	  break;
+	default:
+	  break;
+	}
+      }
+
+      //TODO, this is slow
+      //copy bytes down
+      int i;
+      for(i = 0; i < rxCount - packetSize; i++) {
+	rxBuffer[i] = rxBuffer[packetSize + i];
+      }
+      //decrease rxCount by size of processed packet
+      rxCount -= packetSize;
+    }
+
+    //this is concurrency proff, as this code can not run, while
+    //systick Handler is active !
+    volatile struct ControllerState *tempstate = activeCState;
+
+    //this is atomar as only the write is relevant!
+    activeCState = lastActiveCState;
+
+    lastActiveCState = tempstate;
   }
 }
+
+void SysTickHandler(void) {
+  u16 encoderValue = 0;
+  static u16 lastEncoderValue = 0;
+
+  s32 curSpeed = 0;
+  s32 pwmValue = 0;
+  
+  //get encoder
+  encoderValue = TIM_GetCounter(TIM4);
+  
+  switch(activeCState->controllMode) {
+    case CONTROLLER_MODE_PWM:
+      pwmValue = activeCState->targetValue;
+      break;
+    
+    case CONTROLLER_MODE_SPEED:
+      //TODO FIXME convert to a real value like m/s
+      //FIXME Wrap around
+      curSpeed = encoderValue - lastEncoderValue;
+      
+      //calculate PID value
+      setTargetValue(&(activeCState->pid_data), activeCState->targetValue);
+      pwmValue = pid(&(activeCState->pid_data), curSpeed);
+      break;
+    
+    case CONTROLLER_MODE_POSITION:
+      break;
+  }
+  //todo truncate pwmValue s32 -> s16
+  
+  //set pwm
+  setNewPWM( pwmValue);
+  
+  lastEncoderValue = encoderValue;
+}
+
 
 void setNewPWM(const s16 value) {
   //TODO add magic formular for conversation
@@ -282,7 +385,7 @@ void setNewPWM(const s16 value) {
    *       Voltage Raise
    *          |
    *         \/
-   * AIN --|__|----
+   * AIN __|--|____
    * BIN --|_______
    * ASD ----------
    * BSD --|_______
@@ -344,6 +447,16 @@ void setNewPWM(const s16 value) {
   newPWM = 1;
 }
 
+/**
+ * This interrupt Handler handels the Capture 
+ * Compare interrupts
+ * In case of an CC4 Event Ch3 and Ch4 are 
+ * reinitalized to Timer mode. 
+ * If also a new PWM was set, the Update of the
+ * internal shadow register is enabled again, so
+ * that config is updated atomar by hardware on
+ * the next update event.
+ */
 void TIM1_CC_IRQHandler(void) {
   static vu8 NewPWMLastTime = 0;
   
@@ -390,9 +503,9 @@ void TIM1_CC_IRQHandler(void) {
     if(NewPWMLastTime) {
       NewPWMLastTime = 0;
       actualDirection = desieredDirection;
-      /**DISABLED FOR DEBUG*/
-      //configureCurrentMeasurement(actualDirection);
-      //configureWatchdog(actualDirection);      
+      
+      configureCurrentMeasurement(actualDirection);
+      configureWatchdog(actualDirection);      
     }
   }
   
@@ -400,91 +513,41 @@ void TIM1_CC_IRQHandler(void) {
 
 
 /**
- * This interrupt Handler handels the update Event
- * In case of an Update Event Ch3 and Ch4 are 
- * reinitalized to Timer mode. 
- * If also a new PWM was set, the Update of the
- * internal shadow register is enabled again, so
- * that config is updated atomar by hardware on
- * the next update event.
+ * This function deactivates either q1 or q3 in respect
+ * to the turning direction of the motor.
+ * It also disables the ADC_IT_AWD interrupt, and
+ * stops the conversation, so that it can be enabled
+ * by the TIM1CC3 again.
  */
-void TIM1_UP_IRQHandler(void) {
-  static vu8 NewPWMLastTime = 0;
-
-  if (TIM_GetITStatus(TIM1, TIM_IT_Update) != RESET) {
-    
-
-    //Clear TIM1 update interrupt pending bit
-    TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
-  
-    wasinit = 1;
- 
-    //ReInit Output as timer mode (remove Forced high) 
-    TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
-    TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
-    
-    if(newPWM != 0) {
-      wasinif = 1;
-      newPWM = 0;
-      //Enable update, all previous configured values
-      //are now transfered atomic to the timer in the
-      //moment the timer wraps around the next time
-      TIM_UpdateDisableConfig(TIM1, DISABLE);
-      TIM_UpdateDisableConfig(TIM2, DISABLE);
-      TIM_UpdateDisableConfig(TIM3, DISABLE);
-      NewPWMLastTime = 1;
-    }
-    
-    //timers where updated atomar, so now we reconfigure 
-    //the watchdog and current measurement and also update
-    //the direction value
-    if(NewPWMLastTime) {
-      NewPWMLastTime = 0;
-      actualDirection = desieredDirection;
-      /**DISABLED FOR DEBUG*/
-      //configureCurrentMeasurement(actualDirection);
-      //configureWatchdog(actualDirection);      
-    }
+inline void ForceHighSideOffAndDisableWatchdog(void) {
+  //Force high side gate off
+  if(actualDirection) {
+    TIM_ForcedOC1Config(TIM2, TIM_ForcedAction_Active);
+  } else {
+    TIM_ForcedOC2Config(TIM2, TIM_ForcedAction_Active);
   }
 
+  //Disable Watchdog
+  ADC_DiscModeCmd(ADC2, DISABLE);
+  ADC_DiscModeCmd(ADC2, ENABLE);  
 }
+
 
 /**
  * Interrupt function used for security interrupt
- * This function forces the high side gate on, for
+ * This function forces the high side gate off, for
  * the case that the adc watchdog didn't trigger
- * also the Watchdog is disabled and set up for
- * the next trigger.
+ * also the Watchdog is disabled. 
  */
 void TIM2_IRQHandler(void) {
   if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET) {
-    /* Clear TIM2 Capture compare interrupt pending bit */
+    //Clear TIM2 Capture compare interrupt pending bit 
     TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
     
-    //Force high side gate on
-    if(actualDirection) {
-      TIM_ForcedOC1Config(TIM2, TIM_ForcedAction_Active);
-    } else {
-      TIM_ForcedOC2Config(TIM2, TIM_ForcedAction_Active);
+    //only call function if AWD didn't trigger
+    if(!ADC_GetFlagStatus(ADC2, ADC_FLAG_AWD)) {
+      ForceHighSideOffAndDisableWatchdog();
     }
-
-    /**DISABLED FOR DEBUG*/
-    //disable adc watchdog and set it up again for next trigger
-    //configureWatchdog(actualDirection);      
-  }
-}
-
-/**
- * This is the ADC interrupt function
- * In case the source of the interrupt was an 
- * End of Conversation this means we just took
- * the Current values. 
- */
-void ADC1_Interrupt() {
-  //End of Conversion
-  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
-    ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
-    //TODO do something with the value
   }
 }
 
@@ -494,23 +557,45 @@ void ADC1_Interrupt() {
  * the motor voltage just reverted, because of 
  * reinduction and we need to turn on the 
  * high side gate of the H-Bridge
+ *
+ * In case the source of the interrupt was an 
+ * End of Conversation this means we just took
+ * the Current values. 
  */
-void ADC2_Interrupt() {
+void ADC1_2_IRQHandler(void) {
+  wasinadcit = 1;
   //Analog Watchdog
   if(ADC_GetITStatus(ADC2, ADC_IT_AWD)) {
     ADC_ClearFlag(ADC2, ADC_FLAG_AWD);
-    //Force high side gate on
-    if(actualDirection) {
-      TIM_ForcedOC3Config(TIM2, TIM_ForcedAction_Active);
-    } else {
-      TIM_ForcedOC4Config(TIM2, TIM_ForcedAction_Active);
-    }
 
-    //Disable Watchdog interupt
-    ADC_ITConfig(ADC2, ADC_IT_AWD, DISABLE);
+    wasinawdit = 1;
+    
+    ForceHighSideOffAndDisableWatchdog();
   }
+
+  //End of Conversion
+  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
+    ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
+    //TODO do something with the value
+    wasineocit = 1;
+    //ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+  }
+
 }
 
+void SysTick_Configuration(void) {
+  SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+  
+  // SysTick end of count event each 1ms with input clock equal to 9MHz (HCLK/8)
+  SysTick_SetReload(9000);
+
+  // Enable SysTick interrupt
+  SysTick_ITConfig(ENABLE);
+
+  // Enable the SysTick Counter
+  SysTick_CounterCmd(SysTick_Counter_Enable);
+
+}
 
 
 /*******************************************************************************
@@ -575,7 +660,7 @@ void InitTimerStructs() {
 
   //Current Measurement
   InitTimerStructAsInternalTimer(&TIM1_OC2InitStructure, 750);
-
+  
   //start adc watchdog
   InitTimerStructAsInternalTimer(&TIM1_OC3InitStructure, 1500);
 
@@ -739,9 +824,6 @@ void TIM_Configuration(void)
 
   // TIM2 enable counter 
   TIM_Cmd(TIM2, ENABLE);
-
-
-
 }
 
 
@@ -934,6 +1016,13 @@ void NVIC_Configuration(void)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
+  /* Configure and enable ADC interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
   /* Configure and enable USB interrupt -------------------------------------*/
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -941,13 +1030,8 @@ void NVIC_Configuration(void)
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-
-  /* Configure and enable SPI1 interrupt ------------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = SPI2_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
+  /* Systick with Preemption Priority 2 and Sub Priority as 0 */ 
+  NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 2, 0);
 }
 
 /*******************************************************************************

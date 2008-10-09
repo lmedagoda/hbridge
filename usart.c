@@ -91,6 +91,25 @@ u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data
     return 0;      
 }
 
+u32 USART1_GetData (u8 *buffer, const u32 buffer_length) {
+  return USARTx_GetData(USART1, &USART1_Data, buffer, buffer_length);
+}
+
+
+/**
+ * Fetches Data from the receive queue.
+ * returns bytes fetched from rx queue
+ */
+u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const u32 buffer_length) {
+  u32 counter = 0;
+  while(counter < buffer_length && usart_data->RxWritePointer != usart_data->RxReadPointer) {
+    buffer[counter] = usart_data->RxBuffer[usart_data->RxReadPointer];
+    counter ++;
+    usart_data->RxReadPointer = (usart_data->RxReadPointer + 1) % USART_BUFFER_SIZE;
+  }
+  return counter;
+}
+
 
 /*******************************************************************************
 * Function Name  : USART1_IRQHandler

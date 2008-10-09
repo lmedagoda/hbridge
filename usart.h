@@ -27,8 +27,9 @@ void USART_Configuration(void);
 u8 USART1_SendData(const u8 *data, const u32 size);
 u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const u8 *data, const u32 size);
 
+u32 USART1_GetData (u8 *buffer, const u32 buffer_length);
+u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const u32 buffer_length);
+
 void USART_IRQHandler(USART_TypeDef* USARTx, volatile struct USART_Data *data);
-
-
 
 #endif

@@ -28,6 +28,7 @@ void ADC_Configuration(void)
   // Enable ADC1 clock
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
+  /* Not used ATM
   // Enable DMA1 clock 
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
@@ -48,11 +49,12 @@ void ADC_Configuration(void)
   
   //Enable DMA1 channel1
   DMA_Cmd(DMA1_Channel1, ENABLE);
-
+  */
   ADC_InitSingleShot.ADC_Mode = ADC_Mode_Independent;
-  ADC_InitSingleShot.ADC_ScanConvMode = ENABLE;
+  ADC_InitSingleShot.ADC_ScanConvMode = DISABLE;
   ADC_InitSingleShot.ADC_ContinuousConvMode = DISABLE;
   ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC2;
+  //ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
   ADC_InitSingleShot.ADC_DataAlign = ADC_DataAlign_Right;
   ADC_InitSingleShot.ADC_NbrOfChannel = USED_REGULAR_ADC_CHANNELS;
   ADC_Init(ADC1, &ADC_InitSingleShot);
@@ -73,6 +75,12 @@ void ADC_Configuration(void)
   // Disable automatic injected conversion start after regular one 
   ADC_AutoInjectedConvCmd(ADC1, DISABLE);
 
+  /* Enable ADC1 external trigger */ 
+  ADC_ExternalTrigConvCmd(ADC1, ENABLE);
+
+  /* Enable EOC interupt */
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
   // Enable ADC1
   ADC_Cmd(ADC1, ENABLE);
 
@@ -92,16 +100,33 @@ void ADC_Configuration(void)
 
   //ADC2 configuration
   ADC_InitWatchdog.ADC_Mode = ADC_Mode_Independent;
-  ADC_InitWatchdog.ADC_ScanConvMode = ENABLE;
+  ADC_InitWatchdog.ADC_ScanConvMode = DISABLE;
   ADC_InitWatchdog.ADC_ContinuousConvMode = ENABLE;
   ADC_InitWatchdog.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC3;
+  //ADC_InitWatchdog.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
   ADC_InitWatchdog.ADC_DataAlign = ADC_DataAlign_Right;
   ADC_InitWatchdog.ADC_NbrOfChannel = 1;
+  ADC_Init(ADC2, &ADC_InitWatchdog);
 
   // ADC2 regular channel14 configuration 
   ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
   //ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 2, ADC_SampleTime_1Cycles5);
 
+  //TODO switch q3 and q1 on, wait some time to have battery voltage
+  //and use V_Bat/2.0 als upper threshold
+
+  // Configure high and low analog watchdog thresholds
+  //FIXME upper treshold is hardcoded
+  //ADC_AnalogWatchdogThresholdsConfig(ADC2, 0, 470);
+  ADC_AnalogWatchdogThresholdsConfig(ADC2, 500, 505);
+
+  // Configure channel4 as the single analog watchdog guarded channel 
+  ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);
+
+  // Enable analog watchdog on one regular channel 
+  ADC_AnalogWatchdogCmd(ADC2, ADC_AnalogWatchdog_SingleRegEnable);
+
+  /*
   // Set injected sequencer length
   ADC_InjectedSequencerLengthConfig(ADC2, 1);
 
@@ -110,12 +135,15 @@ void ADC_Configuration(void)
 
   // ADC2 injected external trigger configuration 
   ADC_ExternalTrigInjectedConvConfig(ADC2, ADC_ExternalTrigInjecConv_None);
-
+  */
   // Disable automatic injected conversion start after regular one 
   ADC_AutoInjectedConvCmd(ADC2, DISABLE);
 
   // Disable EOC interupt
   ADC_ITConfig(ADC2, ADC_IT_EOC, DISABLE);
+
+  // Enable ADC1 external trigger
+  //ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
   // Enable ADC2
   ADC_Cmd(ADC2, ENABLE);
@@ -133,37 +161,35 @@ void ADC_Configuration(void)
 }
 
 /**
- * This function programms the watchdog to be
- * triggered by TI CH3. It also selects the 
- * channel to be guarded in respect to the
- * direction the motor turns.
+ * This function programms the watchdog.
+ * It selects the  channel to be guarded in respect 
+ * to the direction the motor turns.
  */
 void configureWatchdog(vu8 dir) {
   // Disable for Configuration
   ADC_Cmd(ADC2, DISABLE);
 
-  //configure watchdog for triggering
-  ADC_Init(ADC2, &ADC_InitWatchdog);
-
   if(dir) {
     //in forward case we want to detect voltage raise on the B-Side
     //so we use VUB
     ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
+    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_5);
   } else {
     //in reverse case we want to detect voltage raise on the A-Side
     //so we use VUA
+    // Configure channel4 as the single analog watchdog guarded channel 
     ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
+    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);
   }
 
-  // Enable ADC1 external trigger  
-  ADC_ExternalTrigConvCmd(ADC2, ENABLE);
+  // Enable analog watchdog on one regular channel 
+  ADC_AnalogWatchdogCmd(ADC1, ADC_AnalogWatchdog_SingleRegEnable);
 
-  // Enable ADC1
+  // Enable ADC2
   ADC_Cmd(ADC2, ENABLE);
 
   //Enable Watchdog interupt
   ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
-
 }
 
 /**
@@ -184,7 +210,6 @@ void configureCurrentMeasurement(vu8 dir) {
 
   //Enable End of Conversion interupt
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
-
 }
 
 
