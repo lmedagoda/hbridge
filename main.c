@@ -167,6 +167,9 @@ int main(void)
   ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
   setNewPWM(500);
+
+  TIM_CtrlPWMOutputs(TIM1, ENABLE);  
+
   
   print("Loop start 1\n");
 
@@ -236,6 +239,10 @@ int main(void)
     printf("Was in EOC it %d \n", wasineocit);
     printf("Was in ADC it %d \n", wasinadcit);
     print("Loop start \n");
+
+    printf("SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
+
+    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
 
     RCC_ClocksTypeDef RCC_ClocksStatus;
     RCC_GetClocksFreq(&RCC_ClocksStatus);

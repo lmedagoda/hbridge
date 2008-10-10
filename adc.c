@@ -143,7 +143,7 @@ void ADC_Configuration(void)
   ADC_ITConfig(ADC2, ADC_IT_EOC, DISABLE);
 
   // Enable ADC1 external trigger
-  //ADC_ExternalTrigConvCmd(ADC2, ENABLE);
+  ADC_ExternalTrigConvCmd(ADC2, ENABLE);
 
   // Enable ADC2
   ADC_Cmd(ADC2, ENABLE);
