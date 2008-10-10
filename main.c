@@ -240,9 +240,20 @@ int main(void)
     printf("Was in ADC it %d \n", wasinadcit);
     print("Loop start \n");
 
-    printf("SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
+    printf("ARCD 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
 
     printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
+
+    printf("ADC2 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC2->SR,  ADC2->CR1,  ADC2->CR2,  ADC2->SMPR1,  ADC2->SMPR2,  ADC2->JOFR1,  ADC2->JOFR2,  ADC2->JOFR3,  ADC2->JOFR4);
+
+    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC2->HTR,  ADC2->LTR,  ADC2->SQR1,  ADC2->SQR2,  ADC2->SQR3,  ADC2->JSQR,  ADC2->JDR1,  ADC2->JDR2,  ADC2->JDR3, ADC2->JDR4, ADC2->DR);
+
+
+    printf("TIM1 : CR1 is %h ,CR2 is %h ,SMCR is %h ,DIER is %h ,SR is %h ,EGR is %h ,CCMR1 is %h ,CCMR2 is %h ,CCER is %h ,CNT is %h ,PSC is %h ,ARR is %h ,RCR is %h ", TIM1->CR1, TIM1->CR2, TIM1->SMCR, TIM1->DIER, TIM1->SR, TIM1->EGR, TIM1->CCMR1, TIM1->CCMR2, TIM1->CCER, TIM1->CNT, TIM1->PSC, TIM1->ARR, TIM1->RCR)
+
+
+      printf("CCR1 is %h CCR2 is %h CCR3 is %h CCR4 is %h BDTR is %h DCR is %h DMAR  is %h ", TIM1->CCR1, TIM1->CCR2, TIM1->CCR3, TIM1->CCR4, TIM1->BDTR, TIM1->DCR, TIM1->DMAR);
+    
 
     RCC_ClocksTypeDef RCC_ClocksStatus;
     RCC_GetClocksFreq(&RCC_ClocksStatus);

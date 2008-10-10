@@ -25,6 +25,7 @@ int printf(const char *format, ...) {
   int pos = 0;
   va_list ap;
   int d;
+  unsigned short h;
   int i, j;
   char c, *s;
 
@@ -85,6 +86,37 @@ int printf(const char *format, ...) {
 	i--;
       }
       pos += j;
+      break;
+
+    case 'h':              /* int */
+      h = va_arg(ap, unsigned short);
+
+      if(h == 0) {
+	msg[pos] = '0';
+	pos++;
+	break;
+      }
+
+      if(h < 0) {
+	msg[pos] = '-';
+	pos++;
+	h *= -1;
+      }
+
+      i = 0;
+      j = h;
+      while(j) {
+	j /= 10;
+	i++;
+      }
+
+      j = i;
+      while(i) {
+	msg[pos + i - 1] = (char) (h % 10) + '0';
+	h /= 10;
+	i--;
+      }
+      pos += h;
       break;
 
     case 'd':              /* int */
