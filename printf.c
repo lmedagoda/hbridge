@@ -3,9 +3,9 @@
 
 #undef printf
 
-int print(const char *format) {
-  const char *fmt = format;
-  int len = 0;
+int print(const unsigned char *format) {
+  const unsigned char *fmt = format;
+  unsigned int len = 0;
   
   while(*fmt) {
     fmt++;
@@ -19,14 +19,40 @@ int print(const char *format) {
   return len;
 }
 
+void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
+  int i, j;
+  if(d == 0) {
+    msg[*pos] = '0';
+    (*pos)++;
+    return;
+  }
+  
+  i = 0;
+  j = d;
+  while(j) {
+    j /= 10;
+    i++;
+  }
+  
+  j = i;
+  while(i) {
+    msg[*pos + i - 1] = (char) (d % 10) + '0';
+    d /= 10;
+    i--;
+  }
+  *pos += j;
+}
+
+
 int printf(const char *format, ...) {
   unsigned char msg[128];
   const char *fmt = format;
   int pos = 0;
   va_list ap;
-  int d;
-  unsigned short h;
-  int i, j;
+  long int ds;
+  unsigned long int d;
+  unsigned short int h;
+  short int hs;  
   char c, *s;
 
   va_start(ap, format);
@@ -51,105 +77,50 @@ int printf(const char *format, ...) {
 	s++;
       }
       break;
+
+      
+    case 'd':              /* int */
     case 'l':               /* unsigned long int */
       fmt++;
       if(*fmt == 'u') {
 	d = va_arg(ap, unsigned long int);
       } else {
-	d = va_arg(ap, long int);
-      }
-      
-      
-      if(d == 0) {
-	msg[pos] = '0';
-	pos++;
-	break;
+	ds = va_arg(ap, long int);
+
+	if(ds < 0) {
+	  msg[pos] = '-';
+	  pos++;
+	  //set first bit to zero, so there is no 
+	  //difference singend / unsigend now
+	  //and we can use generic function for unsigend int
+	  ds *=-1;
+	}
+	d = ds;
       }
 
-      if(d < 0) {
-	msg[pos] = '-';
-	pos++;
-	d *= -1;
-      }
+      fillInUnsignedLongInt(d, msg, &pos);
 
-      i = 0;
-      j = d;
-      while(j) {
-	j /= 10;
-	i++;
-      }
-
-      j = i;
-      while(i) {
-	msg[pos + i - 1] = (char) (d % 10) + '0';
-	d /= 10;
-	i--;
-      }
-      pos += j;
       break;
 
-    case 'h':              /* int */
-      h = va_arg(ap, unsigned short);
-
-      if(h == 0) {
-	msg[pos] = '0';
-	pos++;
-	break;
+    case 'h':              /* short int */
+      fmt++;
+      if(*fmt == 'u') {
+	h = (unsigned short int) va_arg(ap, int);
+	d = h;
+      } else {
+	hs = (short int) va_arg(ap, int);
+	if(hs < 0) {
+	  msg[pos] = '-';
+	  pos++;
+	  //set first bit to zero, so there is no 
+	  //difference singend / unsigend now
+	  //and we can use generic function for unsigend int
+	  hs *=-1;
+	}
+	d = hs;
       }
-
-      if(h < 0) {
-	msg[pos] = '-';
-	pos++;
-	h *= -1;
-      }
-
-      i = 0;
-      j = h;
-      while(j) {
-	j /= 10;
-	i++;
-      }
-
-      j = i;
-      while(i) {
-	msg[pos + i - 1] = (char) (h % 10) + '0';
-	h /= 10;
-	i--;
-      }
-      pos += h;
+      fillInUnsignedLongInt(d, msg, &pos);
       break;
-
-    case 'd':              /* int */
-      d = va_arg(ap, int);
-
-      if(d == 0) {
-	msg[pos] = '0';
-	pos++;
-	break;
-      }
-
-      if(d < 0) {
-	msg[pos] = '-';
-	pos++;
-	d *= -1;
-      }
-
-      i = 0;
-      j = d;
-      while(j) {
-	j /= 10;
-	i++;
-      }
-
-      j = i;
-      while(i) {
-	msg[pos + i - 1] = (char) (d % 10) + '0';
-	d /= 10;
-	i--;
-      }
-      pos += j;
-      break;
-
     case 'c':              /* char */
       /* need a cast here since va_arg only
 	 takes fully promoted types */

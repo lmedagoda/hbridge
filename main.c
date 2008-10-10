@@ -249,10 +249,9 @@ int main(void)
     printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC2->HTR,  ADC2->LTR,  ADC2->SQR1,  ADC2->SQR2,  ADC2->SQR3,  ADC2->JSQR,  ADC2->JDR1,  ADC2->JDR2,  ADC2->JDR3, ADC2->JDR4, ADC2->DR);
 
 
-    printf("TIM1 : CR1 is %h ,CR2 is %h ,SMCR is %h ,DIER is %h ,SR is %h ,EGR is %h ,CCMR1 is %h ,CCMR2 is %h ,CCER is %h ,CNT is %h ,PSC is %h ,ARR is %h ,RCR is %h ", TIM1->CR1, TIM1->CR2, TIM1->SMCR, TIM1->DIER, TIM1->SR, TIM1->EGR, TIM1->CCMR1, TIM1->CCMR2, TIM1->CCER, TIM1->CNT, TIM1->PSC, TIM1->ARR, TIM1->RCR)
-
-
-      printf("CCR1 is %h CCR2 is %h CCR3 is %h CCR4 is %h BDTR is %h DCR is %h DMAR  is %h ", TIM1->CCR1, TIM1->CCR2, TIM1->CCR3, TIM1->CCR4, TIM1->BDTR, TIM1->DCR, TIM1->DMAR);
+    printf("TIM1 : CR1 is %hu ,CR2 is %hu ,SMCR is %hu ,DIER is %hu ,SR is %hu ,EGR is %hu ,CCMR1 is %hu \n", TIM1->CR1, TIM1->CR2, TIM1->SMCR, TIM1->DIER, TIM1->SR, TIM1->EGR, TIM1->CCMR1);
+    printf(" ,CCMR2 is %hu ,CCER is %hu ,CNT is %hu ,PSC is %hu ,ARR is %hu ,RCR is %hu \n", TIM1->CCMR2, TIM1->CCER, TIM1->CNT, TIM1->PSC, TIM1->ARR, TIM1->RCR);
+    printf("CCR1 is %hu CCR2 is %hu CCR3 is %hu CCR4 is %hu BDTR is %hu DCR is %hu DMAR  is %hu \n", TIM1->CCR1, TIM1->CCR2, TIM1->CCR3, TIM1->CCR4, TIM1->BDTR, TIM1->DCR, TIM1->DMAR);
     
 
     RCC_ClocksTypeDef RCC_ClocksStatus;
@@ -283,9 +282,9 @@ int main(void)
   while(delay)
     delay--;
 
-  setKp(&(activeCState->pid_data), 100);
-  setKi(&(activeCState->pid_data), 0);
-  setKd(&(activeCState->pid_data), 0);
+  setKp((struct pid_data *) &(activeCState->pid_data), 100);
+  setKi((struct pid_data *) &(activeCState->pid_data), 0);
+  setKd((struct pid_data *) &(activeCState->pid_data), 0);
 
   volatile struct ControllerState cs1;
   volatile struct ControllerState cs2;
@@ -368,8 +367,8 @@ void SysTickHandler(void) {
       curSpeed = encoderValue - lastEncoderValue;
       
       //calculate PID value
-      setTargetValue(&(activeCState->pid_data), activeCState->targetValue);
-      pwmValue = pid(&(activeCState->pid_data), curSpeed);
+      setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
+      pwmValue = pid((struct pid_data *) &(activeCState->pid_data), curSpeed);
       break;
     
     case CONTROLLER_MODE_POSITION:
