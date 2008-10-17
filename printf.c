@@ -20,7 +20,8 @@ int print(const unsigned char *format) {
 }
 
 void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
-  int i, j;
+  unsigned long int i, j;
+  
   if(d == 0) {
     msg[*pos] = '0';
     (*pos)++;
@@ -83,7 +84,7 @@ int printf(const char *format, ...) {
     case 'l':               /* unsigned long int */
       fmt++;
       if(*fmt == 'u') {
-	d = va_arg(ap, unsigned long int);
+	d = (unsigned long int) va_arg(ap, long int);
       } else {
 	ds = va_arg(ap, long int);
 
@@ -109,15 +110,17 @@ int printf(const char *format, ...) {
 	d = h;
       } else {
 	hs = (short int) va_arg(ap, int);
+	d = hs;
 	if(hs < 0) {
 	  msg[pos] = '-';
 	  pos++;
 	  //set first bit to zero, so there is no 
 	  //difference singend / unsigend now
 	  //and we can use generic function for unsigend int
-	  hs *=-1;
+	  ds = hs;
+	  ds *=-1;
+	  d = ds;
 	}
-	d = hs;
       }
       fillInUnsignedLongInt(d, msg, &pos);
       break;
@@ -144,4 +147,53 @@ int printf(const char *format, ...) {
   //USB_Send_Data(msg, pos);  
 
   return pos;
+}
+
+void testprintf() {
+  u16 unsignedShort;
+  s16 signedShort;
+  u32 unsignedLong;
+  s32 signedLong;
+
+  //u16
+  unsignedShort = 0;
+  printf("u16 0 is %hu \n", unsignedShort);
+
+  unsignedShort = 12345;
+  printf("u16 12345 is %hu \n", unsignedShort);
+  
+  unsignedShort = 65535;
+  printf("u16 65535 is %hu\n", unsignedShort);
+  
+  //s16
+  signedShort = 0;
+  printf("s16 0 is %h \n", signedShort);
+
+  signedShort = 32767;
+  printf("s16 32767 is %h \n", signedShort);
+
+  signedShort = -32768;
+  printf("s16 -32768 is %h \n", signedShort);
+
+  //u32
+  unsignedLong = 0;
+  printf("u32 0 is %lu \n", unsignedLong);
+
+  unsignedLong = 1234567;
+  printf("u32 1234567 is %lu \n", unsignedLong);
+
+  unsignedLong = 4294967295;
+  printf("u32 4294967295 is %lu \n", unsignedLong);
+
+  //s32
+  signedLong = 0;
+  printf("s32 0 is %l \n", signedLong);
+
+  signedLong = 2147483647;
+  printf("s32 2147483647 is %l \n", signedLong);
+
+  signedLong = -2147483648;
+  printf("s32 -2147483648 is %l \n", signedLong);
+
+
 }

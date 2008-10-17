@@ -8,4 +8,6 @@
 int print(const char *format);
 int printf(const char *format, ...);
 
+void testprintf();
+
 #endif
