@@ -63,9 +63,10 @@ struct emergencyStopData {
 };
 
 enum controllerModes {
-  CONTROLLER_MODE_PWM = 0,
-  CONTROLLER_MODE_SPEED = 1,
-  CONTROLLER_MODE_POSITION = 2,
+  CONTROLLER_MODE_HALT = 0,
+  CONTROLLER_MODE_PWM = 1,
+  CONTROLLER_MODE_SPEED = 2,
+  CONTROLLER_MODE_POSITION = 3,
 };
 
 struct setControllerModeData {

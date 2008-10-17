@@ -56,18 +56,7 @@ void ADC_Configuration(void);
 void SysTick_Configuration(void);
 
 
-volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
-volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
-volatile TIM_OCInitTypeDef TIM1_OC4InitStructure;
-
-volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
-volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
-
-volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
-volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
-
-vu8 desieredDirection = 0;
+vu8 desieredDirection = 2;
 vu8 actualDirection = 0;
 volatile u8 newPWM = 0;
 
@@ -80,11 +69,21 @@ void setNewPWM(const s16 value);
 
 vu8 wasinit = 0;
 vu8 wasinif = 0;
-vu8 wasinawdit = 0;
-vu8 wasineocit = 0;
+vu32 wasinawdit = 0;
+vu32 wasineocit = 0;
 vu8 wasinadcit = 0;
 
+vu32 forcedHighSideOn = 0;
+
 u8 ownReceiverID = 0;
+
+vu8 testcount = 0;
+vu16 adctimes[230];
+
+vu32 currentValue = 0;
+vu32 currentValueSum = 0;
+vu16 adcValue[50];
+vu16 adcValueCount = 0;
 
 enum controllerModes controllMode = CONTROLLER_MODE_PWM;
 
@@ -125,9 +124,9 @@ int main(void)
   NVIC_Configuration();
 
   GPIO_Configuration();
+  GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
 
   USART_Configuration();
-
   //setupI2C();
 
   TIM_Configuration();
@@ -139,12 +138,38 @@ int main(void)
   delay = 5000000;
   while(delay)
     delay--;
+
+  volatile struct ControllerState cs1;
+  volatile struct ControllerState cs2;
+  
+  activeCState = &(cs1);
+  lastActiveCState = &(cs2);
+
+  setKp((struct pid_data *) &(activeCState->pid_data), 100);
+  setKi((struct pid_data *) &(activeCState->pid_data), 0);
+  setKd((struct pid_data *) &(activeCState->pid_data), 0);
+
+  activeCState->controllMode = CONTROLLER_MODE_HALT;
+  lastActiveCState->controllMode = CONTROLLER_MODE_HALT;
+
+  u8 rxBuffer[100];
+  u32 rxCount = 0;
+
+  //activate systick interrupt, at this point
+  //activeCState1 hast to be initalized completely sane !
+  SysTick_Configuration();
+
+
   
   print("Loop start \n");
 
 
 
-  /** DEBUG **/
+  /** START DEBUG **/
+
+  activeCState->targetValue = 1600;
+  activeCState->controllMode = CONTROLLER_MODE_PWM;
+  
 
   //TIM_UpdateDisableConfig(TIM1, DISABLE);
 
@@ -157,27 +182,39 @@ int main(void)
   ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
 
   /* Start ADC1 Software Conversion */ 
-  ADC_SoftwareStartConvCmd(ADC2, ENABLE);
+  //ADC_SoftwareStartConvCmd(ADC2, ENABLE);
 
   //configureWatchdog(1);
 
 
 
   /* Start ADC1 Software Conversion */ 
-  ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+  //ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 
-  setNewPWM(500);
+  //setNewPWM(1600);
+
+    printf("ADC 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
+
+    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
+
+    printf("ADC2 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC2->SR,  ADC2->CR1,  ADC2->CR2,  ADC2->SMPR1,  ADC2->SMPR2,  ADC2->JOFR1,  ADC2->JOFR2,  ADC2->JOFR3,  ADC2->JOFR4);
+
+    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC2->HTR,  ADC2->LTR,  ADC2->SQR1,  ADC2->SQR2,  ADC2->SQR3,  ADC2->JSQR,  ADC2->JDR1,  ADC2->JDR2,  ADC2->JDR3, ADC2->JDR4, ADC2->DR);
+
 
   TIM_CtrlPWMOutputs(TIM1, ENABLE);  
 
-  
   print("Loop start 1\n");
 
   u16 lastTime = 0;
   u16 time;
   u16 counter = 0;
     
+  
   while(1) {
+
+    //setNewPWM(1600);
+
     u16 tim1Value = TIM_GetCounter(TIM1);
     u16 tim1Value2 = TIM_GetCounter(TIM1);
     u16 tim2Value = TIM_GetCounter(TIM2);
@@ -206,6 +243,14 @@ int main(void)
 
     int i;
 
+    for(i = 0; i < adcValueCount; i++) {
+      printf("ADC value %d  was %d \n",i, adcValue[i]);
+    }
+
+    printf("Mean current Value is %lu \n", currentValue);
+
+    testcount = 0;
+    
     /*
     for(i = 0; i < 128; i++) {
       *debugprt = TIM_GetCounter(TIM1);
@@ -220,7 +265,12 @@ int main(void)
       printf("i is %d TIM1 is %d TIM2 is %d, TIM3 is %d\n", i, debugvalues[i + 0], debugvalues[i + 1], debugvalues[i + 2]);
     }
     */
-        
+
+    testprintf();
+    
+    printf("Forced high Side on %d \n", forcedHighSideOn);
+    forcedHighSideOn = 0;
+
     printf("TIM1 is %d \n", tim1Value);
     printf("TIM2 is %d \n", tim2Value);
     printf("TIM3 is %d \n", tim3Value);
@@ -236,11 +286,14 @@ int main(void)
     printf("wasinif is %d \n", wasinif);
     printf("Was in Update IT %d \n", wasinit);
     printf("Was in AWD it %d \n", wasinawdit);
+    wasinawdit = 0;
     printf("Was in EOC it %d \n", wasineocit);
+    wasineocit = 0;
+    
     printf("Was in ADC it %d \n", wasinadcit);
     print("Loop start \n");
 
-    printf("ARCD 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
+    printf("ADC 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
 
     printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
 
@@ -277,28 +330,8 @@ int main(void)
   }
 
   /* END DEBUG */
+
  
-  delay = 5000000;
-  while(delay)
-    delay--;
-
-  setKp((struct pid_data *) &(activeCState->pid_data), 100);
-  setKi((struct pid_data *) &(activeCState->pid_data), 0);
-  setKd((struct pid_data *) &(activeCState->pid_data), 0);
-
-  volatile struct ControllerState cs1;
-  volatile struct ControllerState cs2;
-  
-  activeCState = &(cs1);
-  lastActiveCState = &(cs2);
-
-  u8 rxBuffer[100];
-  u32 rxCount = 0;
-
-  //activate systick interrupt, at this point
-  //activeCState1 hast to be initalized completely sane !
-  SysTick_Configuration();
-
   while(1) {
     //receive and process data
     u32 len = USART1_GetData(rxBuffer + rxCount, 100 - rxCount);
@@ -347,16 +380,27 @@ int main(void)
 }
 
 void SysTickHandler(void) {
+
+  GPIOA->BSRR |= GPIO_Pin_8;
+
   u16 encoderValue = 0;
   static u16 lastEncoderValue = 0;
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
+
+  currentValue = currentValueSum / adcValueCount;
+  currentValueSum = 0;
+  adcValueCount = 0;
   
   //get encoder
   encoderValue = TIM_GetCounter(TIM4);
   
   switch(activeCState->controllMode) {
+    case CONTROLLER_MODE_HALT:
+      pwmValue = 0;
+      break;
+      
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
       break;
@@ -380,10 +424,18 @@ void SysTickHandler(void) {
   setNewPWM( pwmValue);
   
   lastEncoderValue = encoderValue;
+
+  GPIOA->BRR |= GPIO_Pin_8;
+
 }
 
 
 void setNewPWM(const s16 value) {
+  //init with unnormal value, so that
+  //the check between desired and lastDesired
+  //will allways match on first execution
+  static lastDesieredDirection = 2;
+
   //TODO add magic formular for conversation
   
   //remove signess
@@ -395,7 +447,7 @@ void setNewPWM(const s16 value) {
   TIM_UpdateDisableConfig(TIM2, ENABLE);
   TIM_UpdateDisableConfig(TIM3, ENABLE);
   
-  desieredDirection = value > 0;
+  desieredDirection = value >= 0;
 
   /* Modified active field-collapse drive
    *
@@ -409,58 +461,111 @@ void setNewPWM(const s16 value) {
    *
    */
   if(desieredDirection) {  
-    TIM2_OC1InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-    TIM2_OC2InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-    
     // AIN
-    TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
+    TIM2->CCR1 = dutyTime;
     
     // BIN
-    TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
+    TIM2->CCR2 = dutyTime;
     
     // ASD
-    TIM3_OC1InitStructure.TIM_Pulse = 1800;
+    //Set asd to max_pulse+1, so it is on all the time
+    TIM3->CCR1 = 1801;
 
     // BSD
-    TIM3_OC2InitStructure.TIM_Pulse = dutyTime;
+    //the plus 100 is, so that B Lo is switched against
+    //ground and Vb can load up
+    TIM3->CCR2 = dutyTime+100;
   } else {
-    TIM2_OC1InitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-    TIM2_OC2InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
-
     // AIN
-    TIM2_OC1InitStructure.TIM_Pulse = dutyTime;
+    TIM2->CCR1 = dutyTime;
     
     // BIN
-    TIM2_OC2InitStructure.TIM_Pulse = dutyTime;
+    TIM2->CCR2 = dutyTime;
     
     // ASD
-    TIM3_OC1InitStructure.TIM_Pulse = dutyTime;
+    //the plus 100 is, so that A Lo is switched against
+    //ground and Vb can load up
+    TIM3->CCR1 = dutyTime+100;
 
     // BSD
-    TIM3_OC2InitStructure.TIM_Pulse = 1800;
+    //Set bsd to max_pulse+1, so it is on all the time
+    TIM3->CCR2 = 1801;
   }
 
   //Current Measurement timer
-  TIM1_OC2InitStructure.TIM_Pulse = dutyTime/2;
+  //take current at 80% of PWM high phase
+  TIM1->CCR2 = (((u32) dutyTime) * 4 )/5;
 
-  //Watchdog enable timer
-  TIM1_OC3InitStructure.TIM_Pulse = dutyTime;
+  if(dutyTime < 1600) {
+    //Watchdog enable timer
+    TIM1->CCR3 = dutyTime + 50;
+    
+    //TODO add x to sec timer
+    
+    //security timer
+    TIM2->CCR3 = dutyTime + 150;
+  } else {
+    //disable the whole watchdog thing, as it won't 
+    //trigger anyway on high pwms and only create 
+    //race conditions
+    
+  }
   
-  //TODO add x to sec timer
+  //we had an direction change, disable H-Bridge
+  //and reconfigure polarity
+  if(lastDesieredDirection != desieredDirection) {
 
-  //security timer
-  TIM2_OC3InitStructure.TIM_Pulse = dutyTime + 100;
+    //Disable PWM by pulling ADSD and BDSD low 
+    u16 tmpccer = TIM3->CCER;
+
+    tmpccer &= (~TIM_OutputState_Enable) | (u16)(~(TIM_OutputState_Enable << 4));
+ 
+    TIM3->CCER = tmpccer;
+
+
+
+    //programm correct polarity
+
+    //disable OC1 and OC2 before changing polarity
+    TIM2->CCER &= (u16) (~TIM_OutputState_Enable) | (u16) ~(TIM_OutputState_Enable << 4);
+
+      //((u16)0xFFFE) & ((u16)0xFFEF);
+
+    // Get the TIM2 CCER register value 
+    tmpccer = TIM2->CCER;
+    
+    // Reset the Output Polarity level 
+    tmpccer &= ((u16) (~TIM_OCPolarity_Low)) & ((u16) (~(TIM_OutputState_Enable << 4)));
+  
+    if(desieredDirection) {  
+      //OC1 low OC2 high
+      tmpccer |= TIM_OCPolarity_Low;
+    } else {
+      //OC1 high OC2 low
+      tmpccer |= (u16)(TIM_OCPolarity_Low << 4);
+    }
+
+    //reenable OC1 and OC2
+    tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);
+
+    // Write to TIMx CCER 
+    TIM2->CCER = tmpccer;
+  }
+  
+  
 
 
   //TODO FIXME, do not use OC init, as it resets the timers during reconfigure
-  TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
-  TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
-  TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
-  TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
-  TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
-  TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
-  TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
- 
+  //TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
+  //TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
+  //TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
+  //TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
+  //TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+  //TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
+  //TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
+
+
+  lastDesieredDirection = desieredDirection;
   newPWM = 1;
 }
 
@@ -475,16 +580,19 @@ void setNewPWM(const s16 value) {
  * the next update event.
  */
 void TIM1_CC_IRQHandler(void) {
-  static vu8 NewPWMLastTime = 0;
-  
+  //GPIOA->BSRR |= GPIO_Pin_8;
+
+  static vu8 directionChangeLastTime = 0;
+
   if(TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET) {
+
     //Clear TIM1 update interrupt pending bit
     TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
-  
+    
     //ReInit Output as timer mode (remove Forced high) 
     u16 tmpccmr1 = 0;
     u16 tmpccmr2 = 0;
-
+    
     //get CCMR1 and CCMR2 content
     tmpccmr1 = TIM2->CCMR1;
     tmpccmr2 = TIM2->CCMR2;
@@ -494,14 +602,33 @@ void TIM1_CC_IRQHandler(void) {
     tmpccmr2 &= 0xFF8F;
     
     //configure output mode
-    tmpccmr1 |= TIM2_OC1InitStructure.TIM_OCMode;
-    tmpccmr2 |= TIM2_OC2InitStructure.TIM_OCMode;
+    tmpccmr1 |= TIM_OCMode_PWM1;
+    tmpccmr2 |= TIM_OCMode_PWM1;
     
     //Write to TIM2 CCMR1 & CCMR2 register
     TIM2->CCMR1 = tmpccmr1;
     TIM2->CCMR2 = tmpccmr2;
-    
 
+    //timers where updated atomar, so now we reenable
+    //the H-Bridge and reconfigure the watchdog and 
+    //current measurement and also update the direction value
+    if(directionChangeLastTime) {
+      directionChangeLastTime = 0;
+
+      configureCurrentMeasurement(actualDirection);
+      configureWatchdog(actualDirection);
+
+      //ReEnable ASD and BSD
+      u16 tmpccer = TIM3->CCER;
+
+      tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);
+      
+      // Write to TIMx CCER 
+      TIM3->CCER = tmpccer;
+
+      actualDirection = desieredDirection;
+    }
+      
     if(newPWM != 0) {
       wasinif = 1;
       newPWM = 0;
@@ -511,21 +638,14 @@ void TIM1_CC_IRQHandler(void) {
       TIM_UpdateDisableConfig(TIM1, DISABLE);
       TIM_UpdateDisableConfig(TIM2, DISABLE);
       TIM_UpdateDisableConfig(TIM3, DISABLE);
-      NewPWMLastTime = 1;
-    }
-    
-    //timers where updated atomar, so now we reconfigure 
-    //the watchdog and current measurement and also update
-    //the direction value
-    if(NewPWMLastTime) {
-      NewPWMLastTime = 0;
-      actualDirection = desieredDirection;
-      
-      configureCurrentMeasurement(actualDirection);
-      configureWatchdog(actualDirection);      
+
+      if(actualDirection != desieredDirection) {
+	directionChangeLastTime = 1;
+      }      
     }
   }
-  
+
+  //GPIOA->BRR |= GPIO_Pin_8;
 }
 
 
@@ -537,16 +657,31 @@ void TIM1_CC_IRQHandler(void) {
  * by the TIM1CC3 again.
  */
 inline void ForceHighSideOffAndDisableWatchdog(void) {
+  u16 tmpccmr = 0;
+
   //Force high side gate off
   if(actualDirection) {
-    TIM_ForcedOC1Config(TIM2, TIM_ForcedAction_Active);
+    tmpccmr = TIM2->CCMR1;
+    //clear mode bits
+    tmpccmr &= ((u16)0xFF8F);
+    //Configure The Forced output Mode
+    tmpccmr |= TIM_ForcedAction_Active;
+    //write to register
+    TIM2->CCMR1 = tmpccmr;
   } else {
-    TIM_ForcedOC2Config(TIM2, TIM_ForcedAction_Active);
+    tmpccmr = TIM2->CCMR2;
+    //clear mode bits
+    tmpccmr &= ((u16)0xFF8F);
+    //Configure The Forced output Mode
+    tmpccmr |= TIM_ForcedAction_Active;
+    //write to register
+    TIM2->CCMR2 = tmpccmr;
   }
 
-  //Disable Watchdog
-  ADC_DiscModeCmd(ADC2, DISABLE);
-  ADC_DiscModeCmd(ADC2, ENABLE);  
+  //Stop conversation, and set ADC up for next trigger
+  ADC2->CR2 &= ~0x01;
+  ADC2->CR2 |= 0x01;
+ 
 }
 
 
@@ -557,15 +692,23 @@ inline void ForceHighSideOffAndDisableWatchdog(void) {
  * also the Watchdog is disabled. 
  */
 void TIM2_IRQHandler(void) {
-  if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET) {
+  //GPIOA->BSRR |= GPIO_Pin_8;
+    if (TIM_GetITStatus(TIM2, TIM_IT_CC3) != RESET) {
     //Clear TIM2 Capture compare interrupt pending bit 
     TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
     
     //only call function if AWD didn't trigger
     if(!ADC_GetFlagStatus(ADC2, ADC_FLAG_AWD)) {
+      forcedHighSideOn++;
       ForceHighSideOffAndDisableWatchdog();
     }
+
+    ADC_ClearFlag(ADC2, ADC_FLAG_STRT);
+
   }
+
+    //GPIOA->BRR |= GPIO_Pin_8;
+
 }
 
 /**
@@ -580,23 +723,44 @@ void TIM2_IRQHandler(void) {
  * the Current values. 
  */
 void ADC1_2_IRQHandler(void) {
-  wasinadcit = 1;
-  //Analog Watchdog
-  if(ADC_GetITStatus(ADC2, ADC_IT_AWD)) {
-    ADC_ClearFlag(ADC2, ADC_FLAG_AWD);
+  //GPIOA->BSRR |= GPIO_Pin_8;
+  //wasinadcit = 1;
 
-    wasinawdit = 1;
-    
+  //test if Analog Watchdog Flag is set.
+  //this means the souce of the IT was AWD
+  if(ADC2->SR & ADC_FLAG_AWD) {
     ForceHighSideOffAndDisableWatchdog();
+    //clear interrupt source
+    ADC2->SR = ~(u32) ADC_FLAG_AWD;   
+
+    wasinawdit++;
+
+    adctimes[testcount] = TIM_GetCounter(TIM1);
+    if( testcount < 230)
+      testcount++; 
   }
+  
 
   //End of Conversion
-  if(ADC_GetITStatus(ADC1, ADC_IT_EOC)) {
-    ADC_ClearFlag(ADC1, ADC_FLAG_EOC);
-    //TODO do something with the value
-    wasineocit = 1;
+  if(ADC1->SR & ADC_FLAG_EOC) {
+    //clear interrupt source
+    ADC1->SR = ~(u32) ADC_FLAG_EOC;   
+
+    adctimes[testcount] = TIM_GetCounter(TIM1);
+    if( testcount < 230)
+      testcount++;
+
+    currentValueSum += ADC1->DR;
+    if(adcValueCount < 50) {
+      adcValue[adcValueCount] = ADC1->DR;
+    }
+    adcValueCount++;
+
+    wasineocit++;
     //ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
   }
+
+  //GPIOA->BRR |= GPIO_Pin_8;
 
 }
 
@@ -672,14 +836,29 @@ void InitTimerStructAsInternalTimer(volatile TIM_OCInitTypeDef *ocstruct, u16 va
   ocstruct->TIM_Pulse = value;
 }
 
+volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
+volatile TIM_OCInitTypeDef TIM1_OC4InitStructure;
+
+volatile TIM_OCInitTypeDef TIM2_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC2InitStructure;
+volatile TIM_OCInitTypeDef TIM2_OC3InitStructure;
+
+volatile TIM_OCInitTypeDef TIM3_OC1InitStructure;
+volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
+
 
 void InitTimerStructs() {
 
   //Current Measurement
-  InitTimerStructAsInternalTimer(&TIM1_OC2InitStructure, 750);
-  
+  InitTimerStructAsPWM(&TIM1_OC2InitStructure, 750);
+  //TIM1_OC2InitStructure.TIM_OutputState = TIM_OutputState_Disable;
+  TIM1_OC2InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;  
+
   //start adc watchdog
-  InitTimerStructAsInternalTimer(&TIM1_OC3InitStructure, 1500);
+  InitTimerStructAsPWM(&TIM1_OC3InitStructure, 1500);
+  //TIM1_OC3InitStructure.TIM_OutputState = TIM_OutputState_Disable;
+  TIM1_OC3InitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
 
   //atomar config timer / Resetup AIN/BIN
   InitTimerStructAsInternalTimer(&TIM1_OC4InitStructure, 0);
@@ -832,6 +1011,14 @@ void TIM_Configuration(void)
   TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
   TIM_OC4Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC4InitStructure));
 
+  TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
+  TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
+  TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
+  TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
+  TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
+  TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
+  TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
+
 
   // TIM3 enable counter 
   TIM_Cmd(TIM1, ENABLE);
@@ -905,6 +1092,12 @@ void GPIO_Configuration(void)
   //configure TIM3 channel 2 as Push Pull (for BSD)
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  //LED (PA8)
+  //configure as Push Pull
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   // Configure USART1 Tx (PA09) as alternate function push-pull
@@ -1035,14 +1228,14 @@ void NVIC_Configuration(void)
 
   /* Configure and enable ADC interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   /* Configure and enable USB interrupt -------------------------------------*/
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);

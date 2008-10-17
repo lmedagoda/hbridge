@@ -117,8 +117,8 @@ void ADC_Configuration(void)
 
   // Configure high and low analog watchdog thresholds
   //FIXME upper treshold is hardcoded
-  //ADC_AnalogWatchdogThresholdsConfig(ADC2, 0, 470);
-  ADC_AnalogWatchdogThresholdsConfig(ADC2, 500, 505);
+  ADC_AnalogWatchdogThresholdsConfig(ADC2, 1000, 0);
+  //ADC_AnalogWatchdogThresholdsConfig(ADC2, 470, 0);
 
   // Configure channel4 as the single analog watchdog guarded channel 
   ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);

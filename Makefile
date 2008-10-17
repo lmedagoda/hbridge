@@ -7,7 +7,7 @@ AS      = arm-none-linux-gnueabi-as
 CP      = arm-none-linux-gnueabi-objcopy
 OD	= arm-none-linux-gnueabi-objdump
 
-CFLAGS  =  -I ./ -I inc/ -c -fno-common -O1 -g -mcpu=cortex-m3 -mthumb -ggdb -Wall
+CFLAGS  =  -I ./ -I inc/ -c -fno-common -O2 -g -mcpu=cortex-m3 -mthumb -ggdb -Wall
 AFLAGS  = -ahls -mapcs-32 -o crt.o
 LFLAGS  = -L. -Tstm_h103_rom.ld -nostartfiles
 CPFLAGS = -Obinary
