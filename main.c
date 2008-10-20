@@ -135,6 +135,8 @@ int main(void)
   
   ADC_Configuration();
 
+  print("Loop start \n");
+
   delay = 5000000;
   while(delay)
     delay--;
@@ -162,183 +164,102 @@ int main(void)
 
   
   print("Loop start \n");
-
-
-
-  /** START DEBUG **/
-
-  activeCState->targetValue = 1600;
-  activeCState->controllMode = CONTROLLER_MODE_PWM;
-  
-
-  //TIM_UpdateDisableConfig(TIM1, DISABLE);
-
-  //TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
-
-  //configureCurrentMeasurement(actualDirection);
-  //configureWatchdog(actualDirection);
-
-  /* Enable AWD interupt */
-  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
-
-  /* Start ADC1 Software Conversion */ 
-  //ADC_SoftwareStartConvCmd(ADC2, ENABLE);
-
-  //configureWatchdog(1);
-
-
-
-  /* Start ADC1 Software Conversion */ 
-  //ADC_SoftwareStartConvCmd(ADC1, ENABLE);
-
-  //setNewPWM(1600);
-
-    printf("ADC 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
-
-    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
-
-    printf("ADC2 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC2->SR,  ADC2->CR1,  ADC2->CR2,  ADC2->SMPR1,  ADC2->SMPR2,  ADC2->JOFR1,  ADC2->JOFR2,  ADC2->JOFR3,  ADC2->JOFR4);
-
-    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC2->HTR,  ADC2->LTR,  ADC2->SQR1,  ADC2->SQR2,  ADC2->SQR3,  ADC2->JSQR,  ADC2->JDR1,  ADC2->JDR2,  ADC2->JDR3, ADC2->JDR4, ADC2->DR);
-
-
-  TIM_CtrlPWMOutputs(TIM1, ENABLE);  
-
-  print("Loop start 1\n");
-
+ 
+  /** DEBUG**/
   u16 lastTime = 0;
   u16 time;
-  u16 counter = 0;
-    
+  u16 counter = 0;  
+  activeCState->targetValue = 800;
+  activeCState->controllMode = CONTROLLER_MODE_PWM;
+  /* Enable AWD interupt */
+  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
   
+  TIM_CtrlPWMOutputs(TIM1, ENABLE);  
+    
+  print("Loop start 1\n");
+  
+  /** END DEBUG **/
   while(1) {
 
-    //setNewPWM(1600);
+    /** START DEBUG **/
 
-    u16 tim1Value = TIM_GetCounter(TIM1);
-    u16 tim1Value2 = TIM_GetCounter(TIM1);
-    u16 tim2Value = TIM_GetCounter(TIM2);
-    u16 tim2Value2 = TIM_GetCounter(TIM2);
-    u16 tim3Value = TIM_GetCounter(TIM3);
-    u16 tim3Value2 = TIM_GetCounter(TIM3);
-
-    u8 wrapnotfound = 1;
-
-    while(wrapnotfound) { 
-      tim1Value = TIM_GetCounter(TIM1);
-      tim2Value = TIM_GetCounter(TIM2);
-      tim3Value = TIM_GetCounter(TIM3);
-      if(tim1Value2 > tim1Value) {
-	wrapnotfound = 0;
-      } else {
-	tim1Value2 = tim1Value;
-	tim2Value2 = tim2Value;
-	tim3Value2 = tim3Value;
+    if(counter > 10000) {
+      int i;
+      
+      for(i = 0; i < adcValueCount; i++) {
+	printf("ADC value %d  was %d \n",i, adcValue[i]);
       }
-    }
+      
+      printf("Mean current Value is %lu \n", currentValue);
+      
+      testcount = 0;
     
-    u16 debugvalues[128*3];
-
-    u16 *debugprt = debugvalues;
-
-    int i;
-
-    for(i = 0; i < adcValueCount; i++) {
-      printf("ADC value %d  was %d \n",i, adcValue[i]);
-    }
-
-    printf("Mean current Value is %lu \n", currentValue);
-
-    testcount = 0;
+      //testprintf();
     
-    /*
-    for(i = 0; i < 128; i++) {
-      *debugprt = TIM_GetCounter(TIM1);
-      debugprt++;
-      *debugprt = TIM_GetCounter(TIM2);
-      debugprt++;
-      *debugprt = TIM_GetCounter(TIM3);
-      debugprt++;      
-    }
-    
-    for(i = 0; i < 128*3; i+=3) {
-      printf("i is %d TIM1 is %d TIM2 is %d, TIM3 is %d\n", i, debugvalues[i + 0], debugvalues[i + 1], debugvalues[i + 2]);
-    }
-    */
+      printf("Forced high Side on %d \n", forcedHighSideOn);
+      forcedHighSideOn = 0;
+      
+      printf("wasinif is %d \n", wasinif);
+      printf("Was in Update IT %d \n", wasinit);
+      printf("Was in AWD it %d \n", wasinawdit);
+      wasinawdit = 0;
+      printf("Was in EOC it %d \n", wasineocit);
+      wasineocit = 0;
+      
+      printf("Was in ADC it %d \n", wasinadcit);
+      
+      RCC_ClocksTypeDef RCC_ClocksStatus;
+      RCC_GetClocksFreq(&RCC_ClocksStatus);
+      
+      printf("PCLK2 %lu, PCLK1 %lu\n" ,RCC_ClocksStatus.PCLK2_Frequency ,RCC_ClocksStatus.PCLK1_Frequency);
+      
+      /*if(encoderValue < 500)
+	GPIO_SetBits(GPIOB, GPIO_Pin_6);
+	else 
+	GPIO_ResetBits(GPIOB, GPIO_Pin_6);
+      */
 
-    testprintf();
-    
-    printf("Forced high Side on %d \n", forcedHighSideOn);
-    forcedHighSideOn = 0;
+      counter = 0;
 
-    printf("TIM1 is %d \n", tim1Value);
-    printf("TIM2 is %d \n", tim2Value);
-    printf("TIM3 is %d \n", tim3Value);
+      printf("RX read pointer is %d, writep is %d \n", USART1_Data.RxReadPointer, USART1_Data.RxWritePointer);
+      printf("RX count is %d \n",rxCount);
 
-    printf("last TIM1 is %d \n", tim1Value2);
-    printf("last TIM2 is %d \n", tim2Value2);
-    printf("last TIM3 is %d \n", tim3Value2);
-
-    printf("Update flag set %d \n", TIM_GetFlagStatus(TIM1, TIM_FLAG_Update));
-    printf("Update Interrupt enabled %d \n", TIM_GetITStatus(TIM1, TIM_IT_Update));
-    
-    printf("NewPWM is %d \n", newPWM);
-    printf("wasinif is %d \n", wasinif);
-    printf("Was in Update IT %d \n", wasinit);
-    printf("Was in AWD it %d \n", wasinawdit);
-    wasinawdit = 0;
-    printf("Was in EOC it %d \n", wasineocit);
-    wasineocit = 0;
-    
-    printf("Was in ADC it %d \n", wasinadcit);
-    print("Loop start \n");
-
-    printf("ADC 1 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC1->SR,  ADC1->CR1,  ADC1->CR2,  ADC1->SMPR1,  ADC1->SMPR2,  ADC1->JOFR1,  ADC1->JOFR2,  ADC1->JOFR3,  ADC1->JOFR4);
-
-    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC1->HTR,  ADC1->LTR,  ADC1->SQR1,  ADC1->SQR2,  ADC1->SQR3,  ADC1->JSQR,  ADC1->JDR1,  ADC1->JDR2,  ADC1->JDR3, ADC1->JDR4, ADC1->DR);
-
-    printf("ADC2 : SR is %lu, CR1 is %lu ,CR2 is %lu, SMPR1 is %lu, SMPR2 is %lu, JOFR1 is %lu, JOFR2 is %lu, JOFR3 is %lu, JOFR4 is %lu \n", ADC2->SR,  ADC2->CR1,  ADC2->CR2,  ADC2->SMPR1,  ADC2->SMPR2,  ADC2->JOFR1,  ADC2->JOFR2,  ADC2->JOFR3,  ADC2->JOFR4);
-
-    printf("HTR is %lu ,LTR is %lu ,SQR1 is %lu, SQR2 is %lu ,SQR3 is %lu ,JSQR is %lu ,JDR1 is %lu ,JDR2 is %lu ,JDR3 is %lu ,JDR4 is %lu ,DR is %lu\n",  ADC2->HTR,  ADC2->LTR,  ADC2->SQR1,  ADC2->SQR2,  ADC2->SQR3,  ADC2->JSQR,  ADC2->JDR1,  ADC2->JDR2,  ADC2->JDR3, ADC2->JDR4, ADC2->DR);
-
-
-    printf("TIM1 : CR1 is %hu ,CR2 is %hu ,SMCR is %hu ,DIER is %hu ,SR is %hu ,EGR is %hu ,CCMR1 is %hu \n", TIM1->CR1, TIM1->CR2, TIM1->SMCR, TIM1->DIER, TIM1->SR, TIM1->EGR, TIM1->CCMR1);
-    printf(" ,CCMR2 is %hu ,CCER is %hu ,CNT is %hu ,PSC is %hu ,ARR is %hu ,RCR is %hu \n", TIM1->CCMR2, TIM1->CCER, TIM1->CNT, TIM1->PSC, TIM1->ARR, TIM1->RCR);
-    printf("CCR1 is %hu CCR2 is %hu CCR3 is %hu CCR4 is %hu BDTR is %hu DCR is %hu DMAR  is %hu \n", TIM1->CCR1, TIM1->CCR2, TIM1->CCR3, TIM1->CCR4, TIM1->BDTR, TIM1->DCR, TIM1->DMAR);
-    
-
-    RCC_ClocksTypeDef RCC_ClocksStatus;
-    RCC_GetClocksFreq(&RCC_ClocksStatus);
-    
-    printf("PCLK2 %lu, PCLK1 %lu\n" ,RCC_ClocksStatus.PCLK2_Frequency ,RCC_ClocksStatus.PCLK1_Frequency);
-
-    /*if(encoderValue < 500)
-      GPIO_SetBits(GPIOB, GPIO_Pin_6);
-    else 
-      GPIO_ResetBits(GPIOB, GPIO_Pin_6);
-    */
-
-    lastTime = 0;
-    counter = 0;
-    while(counter < 10000) {
-      time = TIM_GetCounter(TIM1);
-      if(lastTime > time) {
-	counter++;
+      u8 temp[10];
+      
+      for(i = 0;  i < rxCount; i++) {
+	temp[i] = USART1_Data.RxBuffer[i];
       }
-      lastTime = time;
+      temp[rxCount] = 0;
+      printf("Buffer contains: %s \n", temp);
     }
-  }
+    
+    time = TIM_GetCounter(TIM1);
+    if(lastTime > time) {
+      //counter++;
+    }
+    lastTime = time;
+    
 
-  /* END DEBUG */
+    /* END DEBUG */
 
- 
-  while(1) {
+
     //receive and process data
     u32 len = USART1_GetData(rxBuffer + rxCount, 100 - rxCount);
     rxCount += len;
     
+    if(len != 0) {
+      
+      printf("Got data len is %d", len);
+    }
+
+    if(USART1_Data.RxBufferFullError) {
+      print("Error buffer is full \n");
+    }
+    
+    
     //process data
     while(rxCount > sizeof(struct packetHeader)) {
+      print("Got a Packet !\n");
 
       struct packetHeader *ph = (struct packetHeader *) rxBuffer;
 
@@ -349,8 +270,20 @@ int main(void)
 	break;
       }
 
+      printf("receiver ID is %hu !\n", ph->receiverID);
+      
       if(ph->receiverID == ownReceiverID || ph->receiverID == RECEIVER_ID_H_BRIDGE_ALL) {
+	printf("ID is %hu !\n", ph->id);
+      
 	switch(ph->id) {
+	case PACKET_ID_SET_PWM:
+	  lastActiveCState->controllMode = CONTROLLER_MODE_PWM;
+	  signed short *value = (signed short *) (rxBuffer + sizeof(struct packetHeader));
+	  lastActiveCState->targetValue = *value;
+	  printf("Got PWM Value %d\n", *value);
+	  
+	  break;
+	  
 	case PACKET_ID_EMERGENCY_STOP:
 	  break;
 	default:
@@ -366,16 +299,17 @@ int main(void)
       }
       //decrease rxCount by size of processed packet
       rxCount -= packetSize;
+    
+
+      //this is concurrency proff, as this code can not run, while
+      //systick Handler is active !
+      volatile struct ControllerState *tempstate = activeCState;
+      
+      //this is atomar as only the write is relevant!
+      activeCState = lastActiveCState;
+      
+      lastActiveCState = tempstate;
     }
-
-    //this is concurrency proff, as this code can not run, while
-    //systick Handler is active !
-    volatile struct ControllerState *tempstate = activeCState;
-
-    //this is atomar as only the write is relevant!
-    activeCState = lastActiveCState;
-
-    lastActiveCState = tempstate;
   }
 }
 
@@ -430,16 +364,30 @@ void SysTickHandler(void) {
 }
 
 
-void setNewPWM(const s16 value) {
+void setNewPWM(const s16 value2) {
   //init with unnormal value, so that
   //the check between desired and lastDesired
   //will allways match on first execution
   static lastDesieredDirection = 2;
 
   //TODO add magic formular for conversation
+  s16 value = value2;
+
+  if(value < -1600)
+    value = -1600;
+  
+  if(value > 1600)
+    value = 1600;
+
+  u16 dutyTime;
   
   //remove signess
-  u16 dutyTime = value & ((1<<16)-1);
+  if(value < 0) {
+    dutyTime = value * -1;
+  } else {
+    dutyTime = value;
+  }
+  
   
   //disable transfer of values from config register
   //to timer intern shadow register 
@@ -535,7 +483,7 @@ void setNewPWM(const s16 value) {
     tmpccer = TIM2->CCER;
     
     // Reset the Output Polarity level 
-    tmpccer &= ((u16) (~TIM_OCPolarity_Low)) & ((u16) (~(TIM_OutputState_Enable << 4)));
+    tmpccer &= ((u16) (~TIM_OCPolarity_Low)) & (u16) ~(TIM_OCPolarity_Low << 4) & ((u16) (~(TIM_OutputState_Enable << 4)));
   
     if(desieredDirection) {  
       //OC1 low OC2 high
@@ -589,25 +537,20 @@ void TIM1_CC_IRQHandler(void) {
     //Clear TIM1 update interrupt pending bit
     TIM_ClearITPendingBit(TIM1, TIM_IT_CC4);
     
-    //ReInit Output as timer mode (remove Forced high) 
+    //ReInit Tim2 OC1 and OC2 as timer mode (remove Forced high) 
     u16 tmpccmr1 = 0;
-    u16 tmpccmr2 = 0;
     
-    //get CCMR1 and CCMR2 content
+    //get CCMR1 content
     tmpccmr1 = TIM2->CCMR1;
-    tmpccmr2 = TIM2->CCMR2;
     
-    //Reset the OC1M Bits 
-    tmpccmr1 &= 0xFF8F;
-    tmpccmr2 &= 0xFF8F;
+    //Reset the OC1M OC2M Bits 
+    tmpccmr1 &= 0xFF8F & 0x8FFF;
     
     //configure output mode
-    tmpccmr1 |= TIM_OCMode_PWM1;
-    tmpccmr2 |= TIM_OCMode_PWM1;
+    tmpccmr1 |= TIM_OCMode_PWM1 | (TIM_OCMode_PWM1 << 8);
     
-    //Write to TIM2 CCMR1 & CCMR2 register
+    //Write to TIM2 CCMR1 register
     TIM2->CCMR1 = tmpccmr1;
-    TIM2->CCMR2 = tmpccmr2;
 
     //timers where updated atomar, so now we reenable
     //the H-Bridge and reconfigure the watchdog and 
@@ -641,7 +584,7 @@ void TIM1_CC_IRQHandler(void) {
 
       if(actualDirection != desieredDirection) {
 	directionChangeLastTime = 1;
-      }      
+      }
     }
   }
 
@@ -669,13 +612,13 @@ inline void ForceHighSideOffAndDisableWatchdog(void) {
     //write to register
     TIM2->CCMR1 = tmpccmr;
   } else {
-    tmpccmr = TIM2->CCMR2;
+    tmpccmr = TIM2->CCMR1;
     //clear mode bits
-    tmpccmr &= ((u16)0xFF8F);
+    tmpccmr &= ((u16)0x8FFF);
     //Configure The Forced output Mode
-    tmpccmr |= TIM_ForcedAction_Active;
+    tmpccmr |= (u16)(TIM_ForcedAction_Active << 8);
     //write to register
-    TIM2->CCMR2 = tmpccmr;
+    TIM2->CCMR1 = tmpccmr;
   }
 
   //Stop conversation, and set ADC up for next trigger

@@ -104,7 +104,7 @@ u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data
   u32 counter = 0;
   while(counter < buffer_length && usart_data->RxWritePointer != usart_data->RxReadPointer) {
     buffer[counter] = usart_data->RxBuffer[usart_data->RxReadPointer];
-    counter ++;
+    counter++;
     usart_data->RxReadPointer = (usart_data->RxReadPointer + 1) % USART_BUFFER_SIZE;
   }
   return counter;
@@ -134,8 +134,7 @@ void USART_IRQHandler(USART_TypeDef* USARTx,volatile struct USART_Data *data)
 {
   if(USART_GetITStatus(USARTx, USART_IT_RXNE) != RESET)
   {
-
-    u8 nextRxWritePointer = (data->RxWritePointer + 1) % USART_BUFFER_SIZE;
+    vu8 nextRxWritePointer = (data->RxWritePointer + 1) % USART_BUFFER_SIZE;
 
     //ringbuffer is full :-((
     if(nextRxWritePointer == data->RxReadPointer) {
