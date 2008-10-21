@@ -3,12 +3,11 @@
 #include "stm32f10x_dma.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_tim.h"
+#include "adc.h"
 
 #define ADC1_DR_Address    ((u32)0x4001244C)
 
-#define USED_REGULAR_ADC_CHANNELS 1
-
-u16 adc_values[USED_REGULAR_ADC_CHANNELS];
+vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
 
 static ADC_InitTypeDef ADC_InitWatchdog;
 static ADC_InitTypeDef ADC_InitSingleShot;
@@ -28,14 +27,14 @@ void ADC_Configuration(void)
   // Enable ADC1 clock
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
-  /* Not used ATM
+  
   // Enable DMA1 clock 
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
   //DMA1 channel1 configuration
   DMA_DeInit(DMA1_Channel1);
   DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)adc_values;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (u32) adc_values;
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
   DMA_InitStructure.DMA_BufferSize = USED_REGULAR_ADC_CHANNELS;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
@@ -47,11 +46,14 @@ void ADC_Configuration(void)
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
   DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   
+  //enable interrupt when dma is finished
+  DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
+
   //Enable DMA1 channel1
   DMA_Cmd(DMA1_Channel1, ENABLE);
-  */
+  
   ADC_InitSingleShot.ADC_Mode = ADC_Mode_Independent;
-  ADC_InitSingleShot.ADC_ScanConvMode = DISABLE;
+  ADC_InitSingleShot.ADC_ScanConvMode = ENABLE;
   ADC_InitSingleShot.ADC_ContinuousConvMode = DISABLE;
   ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC2;
   //ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
@@ -60,8 +62,8 @@ void ADC_Configuration(void)
   ADC_Init(ADC1, &ADC_InitSingleShot);
 
   // ADC1 regular channel14 configuration 
-  ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_1Cycles5);
-  //ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 2, ADC_SampleTime_1Cycles5);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 2, ADC_SampleTime_1Cycles5);
 
   // Set injected sequencer length
   ADC_InjectedSequencerLengthConfig(ADC1, 1);
@@ -79,7 +81,10 @@ void ADC_Configuration(void)
   ADC_ExternalTrigConvCmd(ADC1, ENABLE);
 
   /* Enable EOC interupt */
-  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+  //ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
+  /* Enable ADC1 DMA */
+  ADC_DMACmd(ADC1, ENABLE);
 
   // Enable ADC1
   ADC_Cmd(ADC1, ENABLE);
@@ -112,11 +117,7 @@ void ADC_Configuration(void)
   ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
   //ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 2, ADC_SampleTime_1Cycles5);
 
-  //TODO switch q3 and q1 on, wait some time to have battery voltage
-  //and use V_Bat/2.0 als upper threshold
-
   // Configure high and low analog watchdog thresholds
-  //FIXME upper treshold is hardcoded
   ADC_AnalogWatchdogThresholdsConfig(ADC2, 1000, 0);
   //ADC_AnalogWatchdogThresholdsConfig(ADC2, 470, 0);
 
@@ -183,7 +184,7 @@ void configureWatchdog(vu8 dir) {
   }
 
   // Enable analog watchdog on one regular channel 
-  ADC_AnalogWatchdogCmd(ADC1, ADC_AnalogWatchdog_SingleRegEnable);
+  ADC_AnalogWatchdogCmd(ADC2, ADC_AnalogWatchdog_SingleRegEnable);
 
   // Enable ADC2
   ADC_Cmd(ADC2, ENABLE);
@@ -198,18 +199,29 @@ void configureWatchdog(vu8 dir) {
  * the direction in which the motor turns.
  */
 void configureCurrentMeasurement(vu8 dir) {
+  // Disable for Configuration
+  ADC_Cmd(ADC1, DISABLE);
+
   if(dir) {
+    //measure VBat on high side for watchdog trigger calibration 
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
     //in forward case the current flows through q3 and q2,
     //so we need to use VIA for measurement
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_1Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 2, ADC_SampleTime_13Cycles5);
   } else {
+    //measure VBat on high side for watchdog trigger calibration 
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
     //in reverse case the current flows through q1 and q4,
     //so we need to use VIB for measurement
-    ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 1, ADC_SampleTime_1Cycles5);
+    ADC_RegularChannelConfig(ADC1, ADC_Channel_3, 2, ADC_SampleTime_13Cycles5);
   }
 
   //Enable End of Conversion interupt
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
+  // Enable ADC2
+  ADC_Cmd(ADC1, ENABLE);
+
 }
 
 

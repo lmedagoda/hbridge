@@ -28,6 +28,7 @@
 #include "usart.h"
 #include "printf.h"
 #include "packet.h"
+#include <stdlib.h>
 
 /* Private typedef --------------------------------------------------------*/
 /* Private define ---------------------------------------------------------*/
@@ -60,8 +61,6 @@ vu8 desieredDirection = 2;
 vu8 actualDirection = 0;
 volatile u8 newPWM = 0;
 
-vu8 pwmBiggerXPercent;
-
 
 vu8 pidEnabled = 0;
 
@@ -71,7 +70,7 @@ vu8 wasinit = 0;
 vu8 wasinif = 0;
 vu32 wasinawdit = 0;
 vu32 wasineocit = 0;
-vu8 wasinadcit = 0;
+vu32 wasinadcit = 0;
 
 vu32 forcedHighSideOn = 0;
 
@@ -83,13 +82,20 @@ vu16 adctimes[230];
 vu32 currentValue = 0;
 vu32 currentValueSum = 0;
 vu16 adcValue[50];
+vu16 batValues[50];
+vu32 batValue = 0;
+vu32 batValueSum = 0;
+
 vu16 adcValueCount = 0;
+
+
 
 enum controllerModes controllMode = CONTROLLER_MODE_PWM;
 
 struct ControllerState {
   enum controllerModes controllMode;
   struct pid_data pid_data;
+  u16 pwmStepPerMillisecond;
   s32 targetValue;
 };
 
@@ -152,7 +158,7 @@ int main(void)
   setKd((struct pid_data *) &(activeCState->pid_data), 0);
 
   activeCState->controllMode = CONTROLLER_MODE_HALT;
-  lastActiveCState->controllMode = CONTROLLER_MODE_HALT;
+  *lastActiveCState = *activeCState;
 
   u8 rxBuffer[100];
   u32 rxCount = 0;
@@ -171,6 +177,9 @@ int main(void)
   u16 counter = 0;  
   activeCState->targetValue = 800;
   activeCState->controllMode = CONTROLLER_MODE_PWM;
+  activeCState->pwmStepPerMillisecond = 3;
+  *lastActiveCState = *activeCState;
+
   /* Enable AWD interupt */
   ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
   
@@ -189,8 +198,27 @@ int main(void)
       for(i = 0; i < adcValueCount; i++) {
 	printf("ADC value %d  was %d \n",i, adcValue[i]);
       }
+
+
+      for(i = 0; i < adcValueCount; i++) {
+	printf("ADC BAT value %d  was %d \n",i, batValues[i]);
+      }
+
       
-      printf("Mean current Value is %lu \n", currentValue);
+      
+
+
+      printf("Mean Bat Value is %lu \n", (batValue *16 * 33 * 100) / 4096);
+
+      //voltage divider is 33/60
+      //100 mV is 1A
+      //1680 is adc value without load
+      printf("RAW Mean current Value is 0 %lu \n", currentValue);
+      if(currentValue < 1653) {
+	print("Mean current Value is 0 \n");
+      } else {
+	printf("Mean current Value is %lu \n", ((((currentValue * 3300) / 4096) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
+      }
       
       testcount = 0;
     
@@ -207,6 +235,7 @@ int main(void)
       wasineocit = 0;
       
       printf("Was in ADC it %d \n", wasinadcit);
+      wasinadcit = 0;
       
       RCC_ClocksTypeDef RCC_ClocksStatus;
       RCC_GetClocksFreq(&RCC_ClocksStatus);
@@ -220,22 +249,11 @@ int main(void)
       */
 
       counter = 0;
-
-      printf("RX read pointer is %d, writep is %d \n", USART1_Data.RxReadPointer, USART1_Data.RxWritePointer);
-      printf("RX count is %d \n",rxCount);
-
-      u8 temp[10];
-      
-      for(i = 0;  i < rxCount; i++) {
-	temp[i] = USART1_Data.RxBuffer[i];
-      }
-      temp[rxCount] = 0;
-      printf("Buffer contains: %s \n", temp);
     }
     
     time = TIM_GetCounter(TIM1);
     if(lastTime > time) {
-      //counter++;
+      counter++;
     }
     lastTime = time;
     
@@ -307,7 +325,9 @@ int main(void)
       
       //this is atomar as only the write is relevant!
       activeCState = lastActiveCState;
-      
+
+      *lastActiveCState = *activeCState;
+ 
       lastActiveCState = tempstate;
     }
   }
@@ -315,16 +335,21 @@ int main(void)
 
 void SysTickHandler(void) {
 
-  GPIOA->BSRR |= GPIO_Pin_8;
+  //GPIOA->BSRR |= GPIO_Pin_8;
 
   u16 encoderValue = 0;
   static u16 lastEncoderValue = 0;
+  static s32 currentPwmValue = 0;
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
 
+  //batValueSum and currentValueSum are increased at the 
+  //same time therefore adcValueCount is valid for both
+  batValue = batValueSum / adcValueCount;
   currentValue = currentValueSum / adcValueCount;
   currentValueSum = 0;
+  batValueSum = 0;
   adcValueCount = 0;
   
   //get encoder
@@ -337,6 +362,7 @@ void SysTickHandler(void) {
       
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
+      
       break;
     
     case CONTROLLER_MODE_SPEED:
@@ -353,13 +379,24 @@ void SysTickHandler(void) {
       break;
   }
   //todo truncate pwmValue s32 -> s16
+
+  if(abs(currentPwmValue - pwmValue) < activeCState-> pwmStepPerMillisecond) {
+    currentPwmValue = pwmValue;
+  } else {
+    if(currentPwmValue - pwmValue < 0) {
+      currentPwmValue += activeCState-> pwmStepPerMillisecond;
+    } else {
+      currentPwmValue -= activeCState-> pwmStepPerMillisecond;      
+    }
+  }
+  
   
   //set pwm
-  setNewPWM( pwmValue);
+  setNewPWM( currentPwmValue);
   
   lastEncoderValue = encoderValue;
 
-  GPIOA->BRR |= GPIO_Pin_8;
+  //  GPIOA->BRR |= GPIO_Pin_8;
 
 }
 
@@ -368,11 +405,18 @@ void setNewPWM(const s16 value2) {
   //init with unnormal value, so that
   //the check between desired and lastDesired
   //will allways match on first execution
-  static lastDesieredDirection = 2;
+  static u8 lastDesieredDirection = 2;
 
   //TODO add magic formular for conversation
   s16 value = value2;
 
+  
+  //trunkate to min of 8% PWM, as Current Measurement needs 1.777 us
+  if((value > 0 && value < 144) || (value < 0 && value > -144))
+    value = 0;
+
+  //TODO exact value
+  //trunkcate to max of 95% PWM
   if(value < -1600)
     value = -1600;
   
@@ -499,19 +543,6 @@ void setNewPWM(const s16 value2) {
     // Write to TIMx CCER 
     TIM2->CCER = tmpccer;
   }
-  
-  
-
-
-  //TODO FIXME, do not use OC init, as it resets the timers during reconfigure
-  //TIM_OC2Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC2InitStructure));
-  //TIM_OC3Init(TIM1, (TIM_OCInitTypeDef *) (&TIM1_OC3InitStructure));
-  //TIM_OC1Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC1InitStructure));
-  //TIM_OC2Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC2InitStructure));
-  //TIM_OC3Init(TIM2, (TIM_OCInitTypeDef *) (&TIM2_OC3InitStructure));
-  //TIM_OC1Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC1InitStructure));
-  //TIM_OC2Init(TIM3, (TIM_OCInitTypeDef *) (&TIM3_OC2InitStructure));
-
 
   lastDesieredDirection = desieredDirection;
   newPWM = 1;
@@ -552,11 +583,17 @@ void TIM1_CC_IRQHandler(void) {
     //Write to TIM2 CCMR1 register
     TIM2->CCMR1 = tmpccmr1;
 
+    //set High Value of ADC threshold to half battery Voltage
+    //batValue is in ADC scale (0 - 4096)
+    ADC2->HTR = batValue / 2;
+
     //timers where updated atomar, so now we reenable
     //the H-Bridge and reconfigure the watchdog and 
     //current measurement and also update the direction value
     if(directionChangeLastTime) {
       directionChangeLastTime = 0;
+
+      actualDirection = desieredDirection;
 
       configureCurrentMeasurement(actualDirection);
       configureWatchdog(actualDirection);
@@ -569,7 +606,6 @@ void TIM1_CC_IRQHandler(void) {
       // Write to TIMx CCER 
       TIM3->CCER = tmpccer;
 
-      actualDirection = desieredDirection;
     }
       
     if(newPWM != 0) {
@@ -686,18 +722,17 @@ void ADC1_2_IRQHandler(void) {
 
   //End of Conversion
   if(ADC1->SR & ADC_FLAG_EOC) {
-    //clear interrupt source
-    ADC1->SR = ~(u32) ADC_FLAG_EOC;   
-
-    adctimes[testcount] = TIM_GetCounter(TIM1);
-    if( testcount < 230)
-      testcount++;
 
     currentValueSum += ADC1->DR;
     if(adcValueCount < 50) {
       adcValue[adcValueCount] = ADC1->DR;
+      batValues[adcValueCount] = adcValue[adcValueCount];
     }
     adcValueCount++;
+
+    //clear interrupt source
+    ADC1->SR = ~(u32) ADC_FLAG_EOC;   
+    
 
     wasineocit++;
     //ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
@@ -706,6 +741,25 @@ void ADC1_2_IRQHandler(void) {
   //GPIOA->BRR |= GPIO_Pin_8;
 
 }
+
+void DMA1_Channel1_IRQHandler(void) {
+  GPIOA->BSRR |= GPIO_Pin_8;
+
+  batValueSum += adc_values[0];
+  currentValueSum += adc_values[1];
+  if(adcValueCount < 50) {
+    adcValue[adcValueCount] = adc_values[1];
+    batValues[adcValueCount] = adc_values[0];
+  }
+  adcValueCount++;
+
+  DMA_ClearITPendingBit(DMA1_FLAG_TC1);
+
+  wasinadcit++;
+  GPIOA->BRR |= GPIO_Pin_8;
+}
+
+
 
 void SysTick_Configuration(void) {
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
@@ -1171,6 +1225,13 @@ void NVIC_Configuration(void)
 
   /* Configure and enable ADC interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Configure and enable ADC interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;

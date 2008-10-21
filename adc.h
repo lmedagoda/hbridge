@@ -1,6 +1,11 @@
 #ifndef __ADC_H
 #define __ADC_H
 
+#define USED_REGULAR_ADC_CHANNELS 2
+
+extern vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
+
+
 /**
  * This function programms the watchdog to be
  * triggered by TI CH3. It also selects the 
