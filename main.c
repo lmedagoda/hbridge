@@ -175,7 +175,7 @@ int main(void)
   u16 lastTime = 0;
   u16 time;
   u16 counter = 0;  
-  activeCState->targetValue = 800;
+  activeCState->targetValue = 880;
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->pwmStepPerMillisecond = 3;
   *lastActiveCState = *activeCState;
@@ -195,14 +195,18 @@ int main(void)
     if(counter > 10000) {
       int i;
       
-      for(i = 0; i < adcValueCount; i++) {
+
+      for( i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+	printf("ADC value %d  was %d \n",i, adcValue[i]);
+      }
+      /*      for(i = 0; i < adcValueCount; i++) {
 	printf("ADC value %d  was %d \n",i, adcValue[i]);
       }
 
 
       for(i = 0; i < adcValueCount; i++) {
 	printf("ADC BAT value %d  was %d \n",i, batValues[i]);
-      }
+	}*/
 
       
       
@@ -213,11 +217,39 @@ int main(void)
       //voltage divider is 33/60
       //100 mV is 1A
       //1680 is adc value without load
+      //adc sample time is 722.22 nsecs
       printf("RAW Mean current Value is 0 %lu \n", currentValue);
-      if(currentValue < 1653) {
+      if(currentValue < 23400) {
 	print("Mean current Value is 0 \n");
       } else {
-	printf("Mean current Value is %lu \n", ((((currentValue * 3300) / 4096) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
+	//substract the 2.5 base volts
+	u32 convCurrent = currentValue-23400;
+
+	//convert from adc to volts
+	convCurrent = (convCurrent * 3300) / 4096;
+	
+	//multiply by voltage divider, to get back to voltage at the
+	//measuaring chip
+	convCurrent = (convCurrent * 60) / 33;
+
+	//as 1000mA is 100mV multiply by 10
+	convCurrent *= 10;
+
+	//multiply by pwm lenght time
+	//u32 measurementToPWMLenght = (25000 * 880 / 1800) / (722 * 14) ;
+	//convCurrent = (convCurrent * 880) / (1800 * 14);
+	convCurrent = (convCurrent / 14);
+
+
+	//do it all in one formular
+	u32 convCurrent2 = ((currentValue - 23400) * 15 * 5 * 55) / (32 * 14 * 18);
+	
+	printf("Mean current Value is %lu \n",	convCurrent);
+	printf("Mean current2 Value is %lu \n",	convCurrent2);
+	
+
+	//printf("Mean current Value is %lu \n", ((((currentValue * 3300) / (4096 * 14)) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
+	//printf("Mean current Value is %lu \n", ((((currentValue * 3300) / 4096) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
       }
       
       testcount = 0;
@@ -402,11 +434,6 @@ void SysTickHandler(void) {
 
 
 void setNewPWM(const s16 value2) {
-  //init with unnormal value, so that
-  //the check between desired and lastDesired
-  //will allways match on first execution
-  static u8 lastDesieredDirection = 2;
-
   //TODO add magic formular for conversation
   s16 value = value2;
 
@@ -486,7 +513,7 @@ void setNewPWM(const s16 value2) {
 
   //Current Measurement timer
   //take current at 80% of PWM high phase
-  TIM1->CCR2 = (((u32) dutyTime) * 4 )/5;
+  TIM1->CCR2 = 1;//(((u32) dutyTime) * 4 )/5;
 
   if(dutyTime < 1600) {
     //Watchdog enable timer
@@ -505,7 +532,7 @@ void setNewPWM(const s16 value2) {
   
   //we had an direction change, disable H-Bridge
   //and reconfigure polarity
-  if(lastDesieredDirection != desieredDirection) {
+  if(actualDirection != desieredDirection) {
 
     //Disable PWM by pulling ADSD and BDSD low 
     u16 tmpccer = TIM3->CCER;
@@ -544,7 +571,6 @@ void setNewPWM(const s16 value2) {
     TIM2->CCER = tmpccer;
   }
 
-  lastDesieredDirection = desieredDirection;
   newPWM = 1;
 }
 
@@ -594,16 +620,12 @@ void TIM1_CC_IRQHandler(void) {
       directionChangeLastTime = 0;
 
       actualDirection = desieredDirection;
-
       configureCurrentMeasurement(actualDirection);
       configureWatchdog(actualDirection);
 
       //ReEnable ASD and BSD
       u16 tmpccer = TIM3->CCER;
-
-      tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);
-      
-      // Write to TIMx CCER 
+      tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);      
       TIM3->CCER = tmpccer;
 
     }
@@ -722,14 +744,14 @@ void ADC1_2_IRQHandler(void) {
 
   //End of Conversion
   if(ADC1->SR & ADC_FLAG_EOC) {
-
+    /*
     currentValueSum += ADC1->DR;
     if(adcValueCount < 50) {
       adcValue[adcValueCount] = ADC1->DR;
       batValues[adcValueCount] = adcValue[adcValueCount];
     }
     adcValueCount++;
-
+    */
     //clear interrupt source
     ADC1->SR = ~(u32) ADC_FLAG_EOC;   
     
@@ -744,18 +766,32 @@ void ADC1_2_IRQHandler(void) {
 
 void DMA1_Channel1_IRQHandler(void) {
   GPIOA->BSRR |= GPIO_Pin_8;
+  
+  wasineocit++;
+  
+  if(DMA_GetITStatus(DMA1_IT_TC1)) {
+    
+  
+    batValueSum += adc_values[0];
+    //currentValueSum += adc_values[1];
+    /*if(adcValueCount < 50) {
+      adcValue[adcValueCount] = adc_values[1];
+      batValues[adcValueCount] = adc_values[0];
+      }*/
+    int i;
+    
+    for( i = 1; i < USED_REGULAR_ADC_CHANNELS; i++) {
+      currentValueSum += adc_values[i];
+      adcValue[i] = adc_values[i];
+    }
+    
+    adcValueCount++;
+    
+    DMA_ClearITPendingBit(DMA1_FLAG_TC1);
 
-  batValueSum += adc_values[0];
-  currentValueSum += adc_values[1];
-  if(adcValueCount < 50) {
-    adcValue[adcValueCount] = adc_values[1];
-    batValues[adcValueCount] = adc_values[0];
+    wasinadcit++;
   }
-  adcValueCount++;
-
-  DMA_ClearITPendingBit(DMA1_FLAG_TC1);
-
-  wasinadcit++;
+  
   GPIOA->BRR |= GPIO_Pin_8;
 }
 
@@ -1226,7 +1262,7 @@ void NVIC_Configuration(void)
   /* Configure and enable ADC interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 

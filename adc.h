@@ -1,7 +1,7 @@
 #ifndef __ADC_H
 #define __ADC_H
 
-#define USED_REGULAR_ADC_CHANNELS 2
+#define USED_REGULAR_ADC_CHANNELS 15
 
 extern vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
 
