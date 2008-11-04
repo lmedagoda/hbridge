@@ -177,7 +177,7 @@ void ADC_Configuration(void)
   //ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 2, ADC_SampleTime_1Cycles5);
 
   // Configure high and low analog watchdog thresholds
-  ADC_AnalogWatchdogThresholdsConfig(ADC2, 1000, 0);
+  ADC_AnalogWatchdogThresholdsConfig(ADC2, 4095, 0);
   //ADC_AnalogWatchdogThresholdsConfig(ADC2, 470, 0);
 
   // Configure channel4 as the single analog watchdog guarded channel 
@@ -230,16 +230,16 @@ void configureWatchdog(vu8 dir) {
   ADC_Cmd(ADC2, DISABLE);
 
   if(dir) {
-    //in forward case we want to detect voltage raise on the B-Side
+    //in forward case we want to detect voltage drop on the A-Side
     //so we use VUB
-    ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
-    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_5);
-  } else {
-    //in reverse case we want to detect voltage raise on the A-Side
-    //so we use VUA
-    // Configure channel4 as the single analog watchdog guarded channel 
     ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
     ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);
+  } else {
+    //in reverse case we want to detect voltage drop on the B-Side
+    //so we use VUA
+    // Configure channel4 as the single analog watchdog guarded channel 
+    ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
+    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_5);
   }
 
   // Enable analog watchdog on one regular channel 

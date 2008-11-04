@@ -79,6 +79,7 @@ u8 ownReceiverID = 0;
 
 vu8 testcount = 0;
 
+
 vu32 currentValue = 0;
 struct adcValues{
   u32 currentValues[32];
@@ -92,7 +93,7 @@ vu8 switchAdcValues = 0;
 volatile struct adcValues *activeAdcValues;
 volatile struct adcValues *inActiveAdcValues;
 
-#define dbgSize 400
+#define dbgSize 100
 vu16 dbgValue[dbgSize];
 vu16 dbgCount = 0;
 vu8 resetdbgCount = 0;
@@ -101,11 +102,13 @@ vu32 batValue = 0;
 vu16 adcValueCount = 0;
 
 vu32 acs712BaseVoltage = 0;
-
+vu8 awdWasTriggered = 0;
 
 struct ControllerState {
   enum controllerModes controllMode;
   struct pid_data pid_data;
+  u8 useBackInduction;
+  u8 useOpenLoop;
   u16 pwmStepPerMillisecond;
   s32 targetValue;
 };
@@ -156,7 +159,7 @@ int main(void)
   
   ADC_Configuration();
 
-  print("Loop start \n");
+  print("Loop start 1\n");
 
   delay = 5000000;
   while(delay)
@@ -227,7 +230,7 @@ int main(void)
   meanacs712base /= 40;
   acs712BaseVoltage = meanacs712base;
   printf("\nMENAN ACS712 base Voltage is %lu \n\n", meanacs712base);
-
+  
 
   //reenable pwm output again for normal usage
   TIM_CtrlPWMOutputs(TIM1, ENABLE);
@@ -238,7 +241,7 @@ int main(void)
 
 
   
-  print("Loop start \n");
+  print("Loop start 2\n");
  
   /** DEBUG**/
   u16 lastTime = 0;
@@ -247,6 +250,8 @@ int main(void)
   activeCState->targetValue = 880;
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->pwmStepPerMillisecond = 3;
+  activeCState->useBackInduction = 0;
+  activeCState->useOpenLoop = 1;
   *lastActiveCState = *activeCState;
 
   /* Enable AWD interupt */
@@ -254,7 +259,7 @@ int main(void)
   
   TIM_CtrlPWMOutputs(TIM1, ENABLE);  
     
-  print("Loop start 1\n");
+  print("Loop start 3\n");
   
   /** END DEBUG **/
   int j = 0;
@@ -282,6 +287,7 @@ int main(void)
       }
 
       printf("Mean Bat Value is %lu \n", (batValue *16 * 33 * 100) / 4096);
+      printf("RAW Mean Bat Value is %lu \n", batValue);
       printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
 
       //voltage divider is 33/60
@@ -329,6 +335,11 @@ int main(void)
       RCC_GetClocksFreq(&RCC_ClocksStatus);
       
       printf("PCLK2 %lu, PCLK1 %lu\n" ,RCC_ClocksStatus.PCLK2_Frequency ,RCC_ClocksStatus.PCLK1_Frequency);
+
+      printf("ActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
+      printf("LastActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
+      
+
       
       /*if(encoderValue < 500)
 	GPIO_SetBits(GPIOB, GPIO_Pin_6);
@@ -443,15 +454,15 @@ void SysTickHandler(void) {
   //length of 13Cycle Sample time is 722nsecs 
   //during 21660nsecs samples are taken, this 
   //is equal to a pwm value of 1559.52
-  if(currentPwmValue < 1559) {
-    usableCurrentValues = currentPwmValue / 52;
+  if(abs(currentPwmValue) < 1559) {
+    usableCurrentValues = abs(currentPwmValue) / 52;
   } else {
     usableCurrentValues = 30;
   }
 
   //wait for adc struct to be switched
   while(switchAdcValues) {
-    ;
+  ;
   }
 
   //sum up all currents measured
@@ -551,15 +562,15 @@ void SysTickHandler(void) {
     currentPwmValue = pwmValue;
   } else {
     if(currentPwmValue - pwmValue < 0) {
-      currentPwmValue += activeCState-> pwmStepPerMillisecond;
+      currentPwmValue += activeCState->pwmStepPerMillisecond;
     } else {
-      currentPwmValue -= activeCState-> pwmStepPerMillisecond;      
+      currentPwmValue -= activeCState->pwmStepPerMillisecond;      
     }
   }
   
   
   //set pwm
-  setNewPWM( currentPwmValue);
+  setNewPWM(currentPwmValue);
   
   lastEncoderValue = encoderValue;
 
@@ -608,61 +619,114 @@ void setNewPWM(const s16 value2) {
    *       Voltage Raise
    *          |
    *         \/
-   * AIN __|--|____
-   * BIN --|_______
-   * ASD ----------
-   * BSD --|_______
+   * AIN __|-------
+   * BIN --|__|----
+   * ASD --|_______
+   * BSD ----------
    *
    */
   if(desieredDirection) {  
-    // AIN
-    TIM2->CCR1 = dutyTime;
-    
+    //AIN 
+    TIM2->CCR1 = 1801;
+
     // BIN
     TIM2->CCR2 = dutyTime;
-    
-    // ASD
-    //Set asd to max_pulse+1, so it is on all the time
-    TIM3->CCR1 = 1801;
 
-    // BSD
-    //the plus 100 is, so that B Lo is switched against
-    //ground and Vb can load up
-    TIM3->CCR2 = dutyTime+100;
+    if(activeCState->useOpenLoop) {
+      // ASD
+      TIM3->CCR1 = dutyTime;
+    
+      if(activeCState->useBackInduction) {
+	// BSD
+	//B Lo is switched against ground and Vb can load up
+	//note this drive mode has problems with boost voltage if
+	//high side variation is used
+	//Set bsd to max_pulse+1, so it is on all the time
+	TIM3->CCR2 = 1801;
+      } else {
+	//BSD
+	//switch on B-low for a short time, so boost voltage
+	//can recharge
+	TIM3->CCR2 = dutyTime + 50;
+      }
+    } else {
+      //closed loop
+      if(activeCState->useBackInduction) {  
+	//TODO implement me
+      } else {
+	//ASD high, all the time, do not shutdown on switch
+	TIM3->CCR1 = 1801;
+
+	//BSD high, all the time, do not shutdown on switch
+	TIM3->CCR2 = 1801;
+      }
+    }
+    
   } else {
     // AIN
     TIM2->CCR1 = dutyTime;
     
     // BIN
-    TIM2->CCR2 = dutyTime;
+    TIM2->CCR2 = 1801;
     
-    // ASD
-    //the plus 100 is, so that A Lo is switched against
-    //ground and Vb can load up
-    TIM3->CCR1 = dutyTime+100;
+    if(activeCState->useOpenLoop) {
+      // BSD
+      TIM3->CCR2 = dutyTime;
+    
+      if(activeCState->useBackInduction) {
+	// ASD
+	//A Lo is switched against ground and Vb can load up
+	//note this drive mode has problems with boost voltage if
+	//high side variation is used
+	//Set bsd to max_pulse+1, so it is on all the time
+	TIM3->CCR1 = 1801;
+      } else {
+	//ASD
+	//switch on A-low for a short time, so boost voltage
+	//can recharge
+	TIM3->CCR1 = dutyTime + 50;
+      }
+    } else {
+      //closed loop
+      if(activeCState->useBackInduction) {  
+	//TODO implement me
+      } else {
+	//ASD high, all the time, do not shutdown on switch
+	TIM3->CCR1 = 1801;
 
-    // BSD
-    //Set bsd to max_pulse+1, so it is on all the time
-    TIM3->CCR2 = 1801;
+	//BSD high, all the time, do not shutdown on switch
+	TIM3->CCR2 = 1801;
+      }
+    }
   }
 
   //Current Measurement timer
   //take current at 80% of PWM high phase
   TIM1->CCR2 = 1;//(((u32) dutyTime) * 4 )/5;
 
-  if(dutyTime < 1600) {
+  if(activeCState->useBackInduction && dutyTime < 1600) {
     //Watchdog enable timer
-    TIM1->CCR3 = dutyTime + 50;
+    TIM1->CCR3 = dutyTime + 10;
     
     //TODO add x to sec timer
     
     //security timer
-    TIM2->CCR3 = dutyTime + 150;
+    TIM2->CCR3 = dutyTime + 550;
+
+    //TODO enable output of TIM1 CC3, and TIM2 CC3 it
+    //reactivate security timer interrupt (TIM2 CC3)
+    TIM2->DIER |= TIM_IT_CC3;
+    
   } else {
     //disable the whole watchdog thing, as it won't 
     //trigger anyway on high pwms and only create 
     //race conditions
+
+    //disable security interrupt
+    TIM2->DIER &= ~TIM_IT_CC3;
+
     
+
   }
   
   //we had an direction change, disable H-Bridge
@@ -744,9 +808,13 @@ void TIM1_CC_IRQHandler(void) {
     //Write to TIM2 CCMR1 register
     TIM2->CCMR1 = tmpccmr1;
 
+    //reset binary flag, for awd trigger indication
+    awdWasTriggered = 0;
+
     //set High Value of ADC threshold to half battery Voltage
     //batValue is in ADC scale (0 - 4096)
-    ADC2->HTR = batValue / 2;
+    ADC2->LTR = batValue *2 /3;
+    //ADC2->HTR = batValue / 2;
 
     //timers where updated atomar, so now we reenable
     //the H-Bridge and reconfigure the watchdog and 
@@ -796,17 +864,11 @@ void TIM1_CC_IRQHandler(void) {
  */
 inline void ForceHighSideOffAndDisableWatchdog(void) {
   u16 tmpccmr = 0;
-
-  //Force high side gate off
+  
+  /*
+  //Force high side gate on
   if(actualDirection) {
-    tmpccmr = TIM2->CCMR1;
-    //clear mode bits
-    tmpccmr &= ((u16)0xFF8F);
-    //Configure The Forced output Mode
-    tmpccmr |= TIM_ForcedAction_Active;
-    //write to register
-    TIM2->CCMR1 = tmpccmr;
-  } else {
+        //bdir low
     tmpccmr = TIM2->CCMR1;
     //clear mode bits
     tmpccmr &= ((u16)0x8FFF);
@@ -814,8 +876,17 @@ inline void ForceHighSideOffAndDisableWatchdog(void) {
     tmpccmr |= (u16)(TIM_ForcedAction_Active << 8);
     //write to register
     TIM2->CCMR1 = tmpccmr;
-  }
-
+  } else {
+    //adir low
+    tmpccmr = TIM2->CCMR1;
+    //clear mode bits
+    tmpccmr &= ((u16)0xFF8F);
+    //Configure The Forced output Mode
+    tmpccmr |= TIM_ForcedAction_Active;
+    //write to register
+    TIM2->CCMR1 = tmpccmr;
+    }
+  */
   //Stop conversation, and set ADC up for next trigger
   ADC2->CR2 &= ~0x01;
   ADC2->CR2 |= 0x01;
@@ -836,7 +907,7 @@ void TIM2_IRQHandler(void) {
     TIM_ClearITPendingBit(TIM2, TIM_IT_CC3);
     
     //only call function if AWD didn't trigger
-    if(!ADC_GetFlagStatus(ADC2, ADC_FLAG_AWD)) {
+    if(!awdWasTriggered) {
       forcedHighSideOn++;
       ForceHighSideOffAndDisableWatchdog();
     }
@@ -861,17 +932,20 @@ void TIM2_IRQHandler(void) {
  * the Current values. 
  */
 void ADC1_2_IRQHandler(void) {
-  //GPIOA->BSRR |= GPIO_Pin_8;
   //wasinadcit = 1;
 
   //test if Analog Watchdog Flag is set.
   //this means the souce of the IT was AWD
   if(ADC2->SR & ADC_FLAG_AWD) {
+    GPIOA->BSRR |= GPIO_Pin_8;
     ForceHighSideOffAndDisableWatchdog();
+    awdWasTriggered = 1;
+
     //clear interrupt source
-    ADC2->SR = ~(u32) ADC_FLAG_AWD;   
+    ADC2->SR = ~(u32) ADC_FLAG_AWD;
 
     wasinawdit++;
+    GPIOA->BRR |= GPIO_Pin_8;
   }
   
 
@@ -893,12 +967,11 @@ void ADC1_2_IRQHandler(void) {
     //ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
     }*/
 
-  //GPIOA->BRR |= GPIO_Pin_8;
 
 }
 
 void DMA1_Channel1_IRQHandler(void) {
-  GPIOA->BSRR |= GPIO_Pin_8;
+  //GPIOA->BSRR |= GPIO_Pin_8;
   static u8 secondInterrupt = 0;
   int i;
 
@@ -956,13 +1029,13 @@ void DMA1_Channel1_IRQHandler(void) {
     if(secondInterrupt) {
       cvp += (USED_REGULAR_ADC_CHANNELS - 1);
 
-      GPIOA->BRR |= GPIO_Pin_8;
+      //GPIOA->BRR |= GPIO_Pin_8;
         //disable continous mode
       configureCurrentMeasurement(actualDirection);
       //clear half transfer finished interrupt pending bit
       //DMA1->IFCR = DMA1_FLAG_HT1;
       //DMA1->IFCR = DMA1_FLAG_GL1;
-      GPIOA->BSRR |= GPIO_Pin_8;
+      //GPIOA->BSRR |= GPIO_Pin_8;
     
       secondInterrupt = 0;
     
@@ -1024,7 +1097,7 @@ void DMA1_Channel1_IRQHandler(void) {
 
   wasineocit++;  
 
-  GPIOA->BRR |= GPIO_Pin_8;
+  //GPIOA->BRR |= GPIO_Pin_8;
 }
 
 
@@ -1471,21 +1544,21 @@ void NVIC_Configuration(void)
 
   //Configure and enable TIM1 Update interrupt
   NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   //Configure and enable TIM1 Update interrupt
   NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   //Configure and enable TIM2 interrupt
   NVIC_InitStructure.NVIC_IRQChannel = TIM2_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
@@ -1499,20 +1572,20 @@ void NVIC_Configuration(void)
 
   /* Configure and enable ADC interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   /* Configure and enable USB interrupt -------------------------------------*/
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
   /* Systick with Preemption Priority 2 and Sub Priority as 0 */ 
-  NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 2, 0);
+  NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 3, 0);
 }
 
 /*******************************************************************************
