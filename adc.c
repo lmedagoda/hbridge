@@ -57,12 +57,15 @@ void ADC_Configuration(void)
   //enable interrupt when dma is finished
   DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
 
+  //enable interrupt when dma half finished
+  DMA_ITConfig(DMA1_Channel1, DMA_IT_HT, ENABLE);
+
   //Enable DMA1 channel1
   DMA_Cmd(DMA1_Channel1, ENABLE);
   
   ADC_InitSingleShot.ADC_Mode = ADC_Mode_Independent;
   ADC_InitSingleShot.ADC_ScanConvMode = ENABLE;
-  ADC_InitSingleShot.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitSingleShot.ADC_ContinuousConvMode = ENABLE;
   ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC2;
   //ADC_InitSingleShot.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
   ADC_InitSingleShot.ADC_DataAlign = ADC_DataAlign_Right;
@@ -223,7 +226,7 @@ void ADC_Configuration(void)
  * to the direction the motor turns.
  */
 void configureWatchdog(vu8 dir) {
-  // Disable for Configuration
+  // Disable ADC for Configuration
   ADC_Cmd(ADC2, DISABLE);
 
   if(dir) {
@@ -254,11 +257,36 @@ void configureWatchdog(vu8 dir) {
  * the current measurement is taken, in respect of
  * the direction in which the motor turns.
  */
-void configureCurrentMeasurement(vu8 dir, u16 highPhaseLength) {
+/*void configureCurrentMeasurement(vu8 dir) {
   // Disable for Configuration
-  ADC_Cmd(ADC1, DISABLE);
-  DMA_Cmd(DMA1_Channel1, DISABLE);
+  ADC1->CR2 &= ~0x01;
+  DMA1_Channel1->CCR &= ~0x01;
 
+  DMA1_Channel1->CNDTR = USED_REGULAR_ADC_CHANNELS;
+
+  if(dir) {
+    ADC1->SQR1 = SQR1Forward;
+    ADC1->SQR2 = SQR2Forward;
+    ADC1->SQR3 = SQR3Forward;
+  } else {
+    ADC1->SQR1 = SQR1Reverse;
+    ADC1->SQR2 = SQR2Reverse;
+    ADC1->SQR3 = SQR3Reverse;
+  }
+  
+  //Enable End of Conversion interupt
+  //ADC1->CR1 |= ADC_IT_EOC
+
+  //enable dma
+  DMA1_Channel1->CCR |= 0x01;
+
+  // Enable ADC1
+  ADC1->CR2 |= 0x01;
+  }*/
+
+/*
+void temp() {
+  
   //takes 630 nsecs
   u8 curSampleTime = ADC_SampleTime_7Cycles5;
   u8 nrOfSamples = (((u32) highPhaseLength) * 250 / 18) / 630;
@@ -297,55 +325,35 @@ void configureCurrentMeasurement(vu8 dir, u16 highPhaseLength) {
   //increase nrOfSamples by one, as we measure vBat in the beginning
   nrOfSamples++;
 
-  DMA1_Channel1->CNDTR = nrOfSamples;//USED_REGULAR_ADC_CHANNELS;
 
   u32 tmpreg1 = 0;
   u32 tmpreg2 = 0;
 
-  /* Get the ADCx SQR1 value */
+  // Get the ADCx SQR1 value 
   tmpreg1 = ADC1->SQR1;
-  /* Clear L bits */
+  // Clear L bits 
   tmpreg1 &= ((u32)0xFF0FFFFF);
 
-  /* Configure ADCx: regular channel sequence length */
-  /* Set L bits according to ADC_NbrOfChannel value */
+  // Configure ADCx: regular channel sequence length
+  // Set L bits according to ADC_NbrOfChannel value
   tmpreg2 |= (nrOfSamples - 1);
   tmpreg1 |= ((u32)tmpreg2 << 20);
-  /* Write to ADCx SQR1 */
+  // Write to ADCx SQR1 
   ADC1->SQR1 = tmpreg1;
 
 
-  /* Get the old register value */
+  // Get the old register value
   tmpreg1 = ADC1->SMPR2;
-  /* Calculate the mask to clear */
+  // Calculate the mask to clear 
   tmpreg2 = ((u32)0x00000007) << (3 * ADC_Channel_2) & ((u32)0x00000007) << (3 * ADC_Channel_3);
-  /* Clear the old discontinuous mode channel count */
+  // Clear the old discontinuous mode channel count 
   tmpreg1 &= ~tmpreg2;
-  /* Calculate the mask to set */
+  // Calculate the mask to set 
   tmpreg2 = (u32)curSampleTime << (3 * ADC_Channel_2) | (u32)curSampleTime << (3 * ADC_Channel_3);
-  /* Set the discontinuous mode channel count */
+  // Set the discontinuous mode channel count 
   tmpreg1 |= tmpreg2;
-  /* Store the new register value */
+  // Store the new register value 
   ADC1->SMPR2 = tmpreg1;
 
-
-  if(dir) {
-    ADC1->SQR1 = SQR1Forward;
-    ADC1->SQR2 = SQR2Forward;
-    ADC1->SQR3 = SQR3Forward;
-  } else {
-    ADC1->SQR1 = SQR1Reverse;
-    ADC1->SQR2 = SQR2Reverse;
-    ADC1->SQR3 = SQR3Reverse;
-  }
-  
-  //Enable End of Conversion interupt
-  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
-
-  DMA_Cmd(DMA1_Channel1, ENABLE);
-
-  // Enable ADC2
-  ADC_Cmd(ADC1, ENABLE);
 }
-
-
+*/

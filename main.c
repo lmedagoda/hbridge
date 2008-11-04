@@ -62,8 +62,6 @@ vu8 actualDirection = 0;
 volatile u8 newPWM = 0;
 
 
-vu8 pidEnabled = 0;
-
 void setNewPWM(const s16 value);
 
 vu8 wasinit = 0;
@@ -71,26 +69,39 @@ vu8 wasinif = 0;
 vu32 wasinawdit = 0;
 vu32 wasineocit = 0;
 vu32 wasinadcit = 0;
+vu32 wasinhtit = 0;
+
+vu8 systickItIsRunning = 0;
 
 vu32 forcedHighSideOn = 0;
 
 u8 ownReceiverID = 0;
 
 vu8 testcount = 0;
-vu16 adctimes[230];
 
 vu32 currentValue = 0;
-vu32 currentValueSum = 0;
-vu16 adcValue[50];
-vu16 batValues[50];
+struct adcValues{
+  u32 currentValues[32];
+  u32 currentValueCount;
+  u32 batValueSum;
+  u32 batValueCount;
+};
+
+vu8 switchAdcValues = 0;
+
+volatile struct adcValues *activeAdcValues;
+volatile struct adcValues *inActiveAdcValues;
+
+#define dbgSize 400
+vu16 dbgValue[dbgSize];
+vu16 dbgCount = 0;
+vu8 resetdbgCount = 0;
 vu32 batValue = 0;
-vu32 batValueSum = 0;
 
 vu16 adcValueCount = 0;
 
+vu32 acs712BaseVoltage = 0;
 
-
-enum controllerModes controllMode = CONTROLLER_MODE_PWM;
 
 struct ControllerState {
   enum controllerModes controllMode;
@@ -113,7 +124,11 @@ volatile struct ControllerState *lastActiveCState;
 int main(void)
 {
   int delay;
-  
+  int i;
+  struct adcValues avs1;
+  struct adcValues avs2;
+  activeAdcValues = &avs1;
+  inActiveAdcValues = &avs2;
 
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -163,6 +178,60 @@ int main(void)
   u8 rxBuffer[100];
   u32 rxCount = 0;
 
+  int k;
+  u32 meanacs712base = 0;
+  meanacs712base = 0;
+  for(k = 0; k < 40; k++) {
+    acs712BaseVoltage = 0;
+    
+    //disable pwm output, so that ADC is not triggered any more
+    TIM_CtrlPWMOutputs(TIM1, DISABLE);
+    
+    //configure ADC for calibration acs712 base voltage
+    configureCurrentMeasurement(1);
+  
+    //reset adc values
+    for( i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+      activeAdcValues->currentValues[i] = 0;
+    }
+    activeAdcValues->currentValueCount = 0;
+    
+    //trigger adc
+    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    
+    //wait for adc conversation to start
+    while(!(activeAdcValues->currentValues[0])) {
+      ;
+    }
+    
+    //disable further triggering
+    TIM_CtrlPWMOutputs(TIM1, DISABLE);
+    
+    //Wait for conversation to be finished
+    while(!activeAdcValues->currentValueCount) {
+      ;
+    }
+
+    //sum up values
+    for( i = 0; i < (USED_REGULAR_ADC_CHANNELS-1)*2; i++) {
+      //printf("Calibration value %d  was %d \n",i, activeAdcValues->currentValues[i]);
+      acs712BaseVoltage += activeAdcValues->currentValues[i];
+    }
+    
+    //average filter, to reduce noise
+    acs712BaseVoltage /= (USED_REGULAR_ADC_CHANNELS-1)*2;
+    printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
+    meanacs712base += acs712BaseVoltage;
+    
+  }
+  meanacs712base /= 40;
+  acs712BaseVoltage = meanacs712base;
+  printf("\nMENAN ACS712 base Voltage is %lu \n\n", meanacs712base);
+
+
+  //reenable pwm output again for normal usage
+  TIM_CtrlPWMOutputs(TIM1, ENABLE);
+
   //activate systick interrupt, at this point
   //activeCState1 hast to be initalized completely sane !
   SysTick_Configuration();
@@ -188,69 +257,55 @@ int main(void)
   print("Loop start 1\n");
   
   /** END DEBUG **/
+  int j = 0;
+ 
   while(1) {
 
     /** START DEBUG **/
 
     if(counter > 10000) {
-      int i;
       
-
-      for( i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
-	printf("ADC value %d  was %d \n",i, adcValue[i]);
-      }
-      /*      for(i = 0; i < adcValueCount; i++) {
-	printf("ADC value %d  was %d \n",i, adcValue[i]);
-      }
-
-
-      for(i = 0; i < adcValueCount; i++) {
-	printf("ADC BAT value %d  was %d \n",i, batValues[i]);
+      
+      /*for(; j < dbgCount; j++) {
+	printf("ADC value %d  was %d \n",j, dbgValue[j]);
+	dbgValue[j] = 123;
 	}*/
-
       
+      if(dbgCount > dbgSize - 20) {
+	j = 0;
+	resetdbgCount = 1;
+      }
       
 
+      for(i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+	printf("ADC value %d  was %d \n",i, dbgValue[i]);
+      }
 
       printf("Mean Bat Value is %lu \n", (batValue *16 * 33 * 100) / 4096);
+      printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
 
       //voltage divider is 33/60
       //100 mV is 1A
       //1680 is adc value without load
       //adc sample time is 722.22 nsecs
-      printf("RAW Mean current Value is 0 %lu \n", currentValue);
-      if(currentValue < 23400) {
-	print("Mean current Value is 0 \n");
-      } else {
-	//substract the 2.5 base volts
-	u32 convCurrent = currentValue-23400;
+      u32 convCurrent = currentValue;
+      printf("RAW Mean current Value is %lu \n", convCurrent);
 
-	//convert from adc to volts
-	convCurrent = (convCurrent * 3300) / 4096;
+      
+      
+      
+      //multiply by pwm lenght time
+      //u32 measurementToPWMLenght = (25000 * 880 / 1800) / (722 * 14) ;
+      //convCurrent = (convCurrent * 880) / (1800 * 14);
+      //convCurrent = (convCurrent / 14);
+      
 	
-	//multiply by voltage divider, to get back to voltage at the
-	//measuaring chip
-	convCurrent = (convCurrent * 60) / 33;
-
-	//as 1000mA is 100mV multiply by 10
-	convCurrent *= 10;
-
-	//multiply by pwm lenght time
-	//u32 measurementToPWMLenght = (25000 * 880 / 1800) / (722 * 14) ;
-	//convCurrent = (convCurrent * 880) / (1800 * 14);
-	convCurrent = (convCurrent / 14);
-
-
-	//do it all in one formular
-	u32 convCurrent2 = ((currentValue - 23400) * 15 * 5 * 55) / (32 * 14 * 18);
-	
-	printf("Mean current Value is %lu \n",	convCurrent);
-	printf("Mean current2 Value is %lu \n",	convCurrent2);
+      printf("Mean current Value is %lu \n",	convCurrent);
 	
 
 	//printf("Mean current Value is %lu \n", ((((currentValue * 3300) / (4096 * 14)) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
 	//printf("Mean current Value is %lu \n", ((((currentValue * 3300) / 4096) - 1350) * (activeCState->targetValue) * 60) / (180 * 33));
-      }
+      
       
       testcount = 0;
     
@@ -265,7 +320,8 @@ int main(void)
       wasinawdit = 0;
       printf("Was in EOC it %d \n", wasineocit);
       wasineocit = 0;
-      
+      printf("Was in HT it %d \n", wasinhtit);
+      wasinhtit = 0;
       printf("Was in ADC it %d \n", wasinadcit);
       wasinadcit = 0;
       
@@ -367,6 +423,10 @@ int main(void)
 
 void SysTickHandler(void) {
 
+  //request switch of adc value struct
+  switchAdcValues = 1;
+  
+
   //GPIOA->BSRR |= GPIO_Pin_8;
 
   u16 encoderValue = 0;
@@ -376,16 +436,91 @@ void SysTickHandler(void) {
   s32 curSpeed = 0;
   s32 pwmValue = 0;
 
-  //batValueSum and currentValueSum are increased at the 
-  //same time therefore adcValueCount is valid for both
-  batValue = batValueSum / adcValueCount;
-  currentValue = currentValueSum / adcValueCount;
-  currentValueSum = 0;
-  batValueSum = 0;
-  adcValueCount = 0;
-  
   //get encoder
   encoderValue = TIM_GetCounter(TIM4);
+
+  int i, usableCurrentValues = 0;
+  //length of 13Cycle Sample time is 722nsecs 
+  //during 21660nsecs samples are taken, this 
+  //is equal to a pwm value of 1559.52
+  if(currentPwmValue < 1559) {
+    usableCurrentValues = currentPwmValue / 52;
+  } else {
+    usableCurrentValues = 30;
+  }
+
+  //wait for adc struct to be switched
+  while(switchAdcValues) {
+    ;
+  }
+
+  //sum up all currents measured
+  currentValue = 0;
+
+  u32 adcValueCount =  inActiveAdcValues->currentValueCount;
+  u32 *currentValues = inActiveAdcValues->currentValues;
+
+  /**DEBUG**/
+  for( i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+    dbgValue[i] = currentValues[i] / adcValueCount;
+  }
+
+  dbgValue[31] = adcValueCount;
+
+  dbgValue[30] = 0;
+  
+  /**END DEBUG**/
+
+
+  //batValueSum and currentValueSum are increased at the 
+  //same time therefore adcValueCount is valid for both
+  batValue = inActiveAdcValues->batValueSum / (2 * inActiveAdcValues->batValueCount);
+  inActiveAdcValues->batValueSum = 0;
+  inActiveAdcValues->batValueCount = 0;
+  
+  //base voltage of ACS712 this is measured at startup, as
+  //it is related to 5V rail. We asume the 5V rail ist stable
+  //since startup
+  u32 baseVoltage = acs712BaseVoltage*adcValueCount;
+
+  for(i = 0; i < usableCurrentValues; i++) {
+    if(currentValues[i] > baseVoltage) {
+      currentValues[i] -= baseVoltage;
+      if(i == 0 || i == 15) {
+	//multiply with 722nsec + 388.88 nsec (battery value conversation) to get integral
+	currentValue += (currentValues[i] * 1111) / (adcValueCount);
+      } else {     
+	//multiply with 722nsec to get integral
+	currentValue += (currentValues[i] * 722) / (adcValueCount);
+      }
+      //(adcValue[30])++;
+    }
+    
+    currentValues[i] = 0;
+  }
+  
+
+  //divide by complete time, to get aritmetic middle value
+  currentValue /= 2500;
+
+  //as 1000mA is 100mV multiply by 10
+  //is included in the divide by 25000 step 
+  //currentValue *= 10;
+  
+  //multiply by voltage divider, to get back to voltage at the
+  //measuaring chip
+  currentValue = (currentValue * 60) / 33;
+  
+  //convert from adc to volts
+  currentValue = (currentValue * 3300) / 4096;
+
+
+  //set rest to zero
+  for(i = usableCurrentValues; i < (USED_REGULAR_ADC_CHANNELS -1) *2; i++) {
+    currentValues[i] = 0;
+  }
+
+  inActiveAdcValues->currentValueCount = 0;
   
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_HALT:
@@ -620,7 +755,6 @@ void TIM1_CC_IRQHandler(void) {
       directionChangeLastTime = 0;
 
       actualDirection = desieredDirection;
-      configureCurrentMeasurement(actualDirection);
       configureWatchdog(actualDirection);
 
       //ReEnable ASD and BSD
@@ -639,6 +773,9 @@ void TIM1_CC_IRQHandler(void) {
       TIM_UpdateDisableConfig(TIM1, DISABLE);
       TIM_UpdateDisableConfig(TIM2, DISABLE);
       TIM_UpdateDisableConfig(TIM3, DISABLE);
+
+      
+      //configureCurrentMeasurement(actualDirection);
 
       if(actualDirection != desieredDirection) {
 	directionChangeLastTime = 1;
@@ -735,30 +872,26 @@ void ADC1_2_IRQHandler(void) {
     ADC2->SR = ~(u32) ADC_FLAG_AWD;   
 
     wasinawdit++;
-
-    adctimes[testcount] = TIM_GetCounter(TIM1);
-    if( testcount < 230)
-      testcount++; 
   }
   
 
   //End of Conversion
-  if(ADC1->SR & ADC_FLAG_EOC) {
-    /*
+  /*if(ADC1->SR & ADC_FLAG_EOC) {
+    
     currentValueSum += ADC1->DR;
     if(adcValueCount < 50) {
       adcValue[adcValueCount] = ADC1->DR;
       batValues[adcValueCount] = adcValue[adcValueCount];
     }
     adcValueCount++;
-    */
+    
     //clear interrupt source
     ADC1->SR = ~(u32) ADC_FLAG_EOC;   
     
 
     wasineocit++;
     //ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
-  }
+    }*/
 
   //GPIOA->BRR |= GPIO_Pin_8;
 
@@ -766,32 +899,131 @@ void ADC1_2_IRQHandler(void) {
 
 void DMA1_Channel1_IRQHandler(void) {
   GPIOA->BSRR |= GPIO_Pin_8;
-  
-  wasineocit++;
-  
-  if(DMA_GetITStatus(DMA1_IT_TC1)) {
-    
-  
-    batValueSum += adc_values[0];
-    //currentValueSum += adc_values[1];
-    /*if(adcValueCount < 50) {
-      adcValue[adcValueCount] = adc_values[1];
-      batValues[adcValueCount] = adc_values[0];
+  static u8 secondInterrupt = 0;
+  int i;
+
+  vu32 *cvp = activeAdcValues->currentValues;
+  vu16 *avp = adc_values;
+
+  /**DEBUG**/
+  //u16 *dbgp = dbgValue + dbgCount;
+
+  /**END DEBUG**/
+
+
+  if(DMA1->ISR & DMA1_IT_HT1) {
+    activeAdcValues->batValueSum += adc_values[0];
+    (activeAdcValues->batValueCount)++;
+    cvp += (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1));
+    avp++;
+
+
+    /**DEBUG**/
+    wasinhtit++;
+    /*if(dbgCount < dbgSize -9) {
+      for(i = 1; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+	*dbgp = *avp;
+	avp++;
+	dbgp++;
+      }
+      avp -= (USED_REGULAR_ADC_CHANNELS / 2)-1;
+      dbgCount += (USED_REGULAR_ADC_CHANNELS / 2)-1;
       }*/
-    int i;
     
-    for( i = 1; i < USED_REGULAR_ADC_CHANNELS; i++) {
-      currentValueSum += adc_values[i];
-      adcValue[i] = adc_values[i];
+    /** END DEBUG **/
+
+    for(i = 1; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+      *cvp += *avp;
+      cvp++;
+      avp++;
     }
-    
-    adcValueCount++;
-    
-    DMA_ClearITPendingBit(DMA1_FLAG_TC1);
+
+    /*for( i = 1; i < USED_REGULAR_ADC_CHANNELS / 2; i++) {
+      currentValues[i-1 + (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1))] += adc_values[i];
+      
+      }*/
+    //clear DMA interrupt pending bit
+    DMA1->IFCR = DMA1_FLAG_HT1;
+  }
+
+
+  if(DMA1->ISR & DMA1_IT_TC1) {
+    cvp = activeAdcValues->currentValues;
+    avp = adc_values;
 
     wasinadcit++;
+
+    if(secondInterrupt) {
+      cvp += (USED_REGULAR_ADC_CHANNELS - 1);
+
+      GPIOA->BRR |= GPIO_Pin_8;
+        //disable continous mode
+      configureCurrentMeasurement(actualDirection);
+      //clear half transfer finished interrupt pending bit
+      //DMA1->IFCR = DMA1_FLAG_HT1;
+      //DMA1->IFCR = DMA1_FLAG_GL1;
+      GPIOA->BSRR |= GPIO_Pin_8;
+    
+      secondInterrupt = 0;
+    
+      //only increase every second iteration
+      (activeAdcValues->currentValueCount)++;
+    } else {
+      secondInterrupt= 1;
+    }
+
+    cvp += (USED_REGULAR_ADC_CHANNELS / 2) -1;
+    avp += (USED_REGULAR_ADC_CHANNELS / 2);
+    /**DEBUG**/
+    /*
+    if(dbgCount < dbgSize - 9) {
+      for(i = 0; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+	*dbgp = *avp;
+	avp++;
+	dbgp++;
+      }
+      avp -= (USED_REGULAR_ADC_CHANNELS / 2);
+      dbgCount += (USED_REGULAR_ADC_CHANNELS / 2);
+      }*/
+    /** END DEBUG **/
+    
+    
+    for(i = 0; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+      *cvp += *avp;
+      cvp++;
+      avp++;
+    }
+
+    /*for( i = USED_REGULAR_ADC_CHANNELS / 2; i < USED_REGULAR_ADC_CHANNELS; i++) {
+      currentValues[i-1 + (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1))] += adc_values[i];
+      }*/
+
+    //there was a request to switch the adc values
+    //this has to be done here, to garantie, the
+    //valid state of the values
+    if(switchAdcValues && !secondInterrupt) {
+      volatile struct adcValues *tempAdcValues;
+
+      tempAdcValues = activeAdcValues;
+      activeAdcValues = inActiveAdcValues;
+      inActiveAdcValues = tempAdcValues;
+      switchAdcValues = 0;
+    }
+    
+
+    /**DEBUG**/
+    /*if(resetdbgCount && !secondInterrupt) {
+	dbgCount = 40;
+	resetdbgCount = 0;
+	}*/
+    /** END DEBUG**/
+    
+    //DMA interrupt pending bit
+    DMA1->IFCR = DMA1_FLAG_TC1;
   }
-  
+
+  wasineocit++;  
+
   GPIOA->BRR |= GPIO_Pin_8;
 }
 
@@ -808,7 +1040,6 @@ void SysTick_Configuration(void) {
 
   // Enable the SysTick Counter
   SysTick_CounterCmd(SysTick_Counter_Enable);
-
 }
 
 
