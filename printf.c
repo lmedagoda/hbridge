@@ -84,6 +84,7 @@ int printf(const char *format, ...) {
     case 'l':               /* unsigned long int */
       fmt++;
       if(*fmt == 'u') {
+	fmt++;
 	d = (unsigned long int) va_arg(ap, long int);
       } else {
 	ds = va_arg(ap, long int);
@@ -106,6 +107,7 @@ int printf(const char *format, ...) {
     case 'h':              /* short int */
       fmt++;
       if(*fmt == 'u') {
+	fmt++;
 	h = (unsigned short int) va_arg(ap, int);
 	d = h;
       } else {
@@ -131,8 +133,7 @@ int printf(const char *format, ...) {
       msg[pos] = c;
       pos++;
       break;
-    }
-    fmt++;
+    }    
   }
   
   va_end(ap);

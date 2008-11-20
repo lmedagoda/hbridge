@@ -98,6 +98,7 @@ vu16 dbgValue[dbgSize];
 vu16 dbgCount = 0;
 vu8 resetdbgCount = 0;
 vu32 batValue = 0;
+vu8 writeNewDebugValues = 0;
 
 vu16 adcValueCount = 0;
 
@@ -261,6 +262,8 @@ int main(void)
     
   print("Loop start 3\n");
   
+  writeNewDebugValues = 1;
+  
   /** END DEBUG **/
   int j = 0;
  
@@ -281,21 +284,33 @@ int main(void)
 	resetdbgCount = 1;
       }
       
-
+      
       for(i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+	printf( "%d ", dbgValue[i]);
+      }
+      printf("%d\n", acs712BaseVoltage);
+      
+      /*
+      for(i = 0; i < USED_REGULAR_ADC_CHANNELS*2 - 2; i++) {
 	printf("ADC value %d  was %d \n",i, dbgValue[i]);
       }
-
-      printf("Mean Bat Value is %lu \n", (batValue *16 * 33 * 100) / 4096);
-      printf("RAW Mean Bat Value is %lu \n", batValue);
+      printf("RAW Mean current Value is %lu \n", dbgValue[30]);
+      printf("Nr of adc Readings was %lu \n", dbgValue[31]);
       printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
+      */
+      
+      //printf("Mean Bat Value is %lu \n", (batValue *16 * 33 * 100) / 4096);
+      //printf("RAW Mean Bat Value is %lu \n", batValue);
+      //printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
+
+      writeNewDebugValues = 1;
 
       //voltage divider is 33/60
       //100 mV is 1A
       //1680 is adc value without load
       //adc sample time is 722.22 nsecs
       u32 convCurrent = currentValue;
-      printf("RAW Mean current Value is %lu \n", convCurrent);
+      //printf("RAW Mean current Value is %lu \n", convCurrent);
 
       
       
@@ -305,7 +320,7 @@ int main(void)
       //convCurrent = (convCurrent * 880) / (1800 * 14);
       //convCurrent = (convCurrent / 14);
       
-	
+      /*
       printf("Mean current Value is %lu \n",	convCurrent);
 	
 
@@ -338,7 +353,7 @@ int main(void)
 
       printf("ActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
       printf("LastActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
-      
+      */
 
       
       /*if(encoderValue < 500)
@@ -472,13 +487,15 @@ void SysTickHandler(void) {
   u32 *currentValues = inActiveAdcValues->currentValues;
 
   /**DEBUG**/
-  for( i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
-    dbgValue[i] = currentValues[i] / adcValueCount;
+  if(writeNewDebugValues) {
+    
+    for( i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+      dbgValue[i] = currentValues[i] / adcValueCount;
+    }
+    
+    dbgValue[31] = adcValueCount;
   }
-
-  dbgValue[31] = adcValueCount;
-
-  dbgValue[30] = 0;
+  
   
   /**END DEBUG**/
 
@@ -525,6 +542,12 @@ void SysTickHandler(void) {
   //convert from adc to volts
   currentValue = (currentValue * 3300) / 4096;
 
+  /**DEBUG**/
+  if(writeNewDebugValues) {
+    dbgValue[30] = currentValue;
+    writeNewDebugValues = 0;
+  }
+  /** END DEBUG **/
 
   //set rest to zero
   for(i = usableCurrentValues; i < (USED_REGULAR_ADC_CHANNELS -1) *2; i++) {
@@ -633,10 +656,11 @@ void setNewPWM(const s16 value2) {
     TIM2->CCR2 = dutyTime;
 
     if(activeCState->useOpenLoop) {
-      // ASD
-      TIM3->CCR1 = dutyTime;
     
       if(activeCState->useBackInduction) {
+	// ASD
+	TIM3->CCR1 = dutyTime;
+
 	// BSD
 	//B Lo is switched against ground and Vb can load up
 	//note this drive mode has problems with boost voltage if
@@ -644,10 +668,13 @@ void setNewPWM(const s16 value2) {
 	//Set bsd to max_pulse+1, so it is on all the time
 	TIM3->CCR2 = 1801;
       } else {
+	// ASD
+	TIM3->CCR1 = 1801;
+
 	//BSD
 	//switch on B-low for a short time, so boost voltage
 	//can recharge
-	TIM3->CCR2 = dutyTime + 50;
+	TIM3->CCR2 = dutyTime + 100;
       }
     } else {
       //closed loop
@@ -670,10 +697,11 @@ void setNewPWM(const s16 value2) {
     TIM2->CCR2 = 1801;
     
     if(activeCState->useOpenLoop) {
-      // BSD
-      TIM3->CCR2 = dutyTime;
     
       if(activeCState->useBackInduction) {
+	// BSD
+	TIM3->CCR2 = dutyTime;
+
 	// ASD
 	//A Lo is switched against ground and Vb can load up
 	//note this drive mode has problems with boost voltage if
@@ -681,10 +709,13 @@ void setNewPWM(const s16 value2) {
 	//Set bsd to max_pulse+1, so it is on all the time
 	TIM3->CCR1 = 1801;
       } else {
+	// BSD
+	TIM3->CCR2 = 1801;
+	
 	//ASD
 	//switch on A-low for a short time, so boost voltage
 	//can recharge
-	TIM3->CCR1 = dutyTime + 50;
+	TIM3->CCR1 = dutyTime + 100;
       }
     } else {
       //closed loop

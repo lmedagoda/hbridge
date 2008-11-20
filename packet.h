@@ -28,10 +28,20 @@ enum receiverIDs {
   RECEIVER_ID_H_BRIDGE_ALL = 4,
 };
 
+
+struct statusData {
+  u8 powerAndIndex[3];
+  u16 positionValue;
+  u8 temperaturHBridge;
+  u8 temperaturMotor;
+  u8 errorBitfield;
+};
+
+/*
 struct statusData {
   u16 encoderValue;
   u16 currentValue;
-};
+  };*/
 
 struct statusPacket {
   struct packetHeader header;
