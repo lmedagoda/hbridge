@@ -259,6 +259,7 @@ FlagStatus CAN_GetFlagStatus(u32 CAN_FLAG);
 void CAN_ClearFlag(u32 CAN_FLAG);
 ITStatus CAN_GetITStatus(u32 CAN_IT);
 void CAN_ClearITPendingBit(u32 CAN_IT);
+void CAN_EnterNormalMode();
 
 #endif /* __STM32F10x_CAN_H */
 

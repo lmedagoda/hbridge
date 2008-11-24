@@ -109,6 +109,7 @@ u8 CAN_Init(CAN_InitTypeDef* CAN_InitStruct)
 {
   u8 InitStatus = 0;
   u16 WaitAck;
+  u8 timeout = 0;
 
   /* Check the parameters */
   assert_param(IS_FUNCTIONAL_STATE(CAN_InitStruct->CAN_TTCM));
@@ -127,97 +128,90 @@ u8 CAN_Init(CAN_InitTypeDef* CAN_InitStruct)
   CAN->MCR = CAN_MCR_INRQ;
 
   /* ...and check acknowledged */
-  if ((CAN->MSR & CAN_MSR_INAK) == 0)
-  {
-    InitStatus = CANINITFAILED;
+  while((CAN->MSR & CAN_MSR_INAK) == 0) {
+    /*if(timeout > 250)
+      return CANINITFAILED;
+      timeout++;*/
   }
-  else
-  {
-    /* Set the time triggered communication mode */
-    if (CAN_InitStruct->CAN_TTCM == ENABLE)
+
+  /* Set the time triggered communication mode */
+  if (CAN_InitStruct->CAN_TTCM == ENABLE)
     {
       CAN->MCR |= CAN_MCR_TTCM;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_TTCM;
     }
 
-    /* Set the automatic bus-off management */
-    if (CAN_InitStruct->CAN_ABOM == ENABLE)
+  /* Set the automatic bus-off management */
+  if (CAN_InitStruct->CAN_ABOM == ENABLE)
     {
       CAN->MCR |= CAN_MCR_ABOM;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_ABOM;
     }
-
-    /* Set the automatic wake-up mode */
-    if (CAN_InitStruct->CAN_AWUM == ENABLE)
+  
+  /* Set the automatic wake-up mode */
+  if (CAN_InitStruct->CAN_AWUM == ENABLE)
     {
       CAN->MCR |= CAN_MCR_AWUM;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_AWUM;
     }
 
-    /* Set the no automatic retransmission */
-    if (CAN_InitStruct->CAN_NART == ENABLE)
+  /* Set the no automatic retransmission */
+  if (CAN_InitStruct->CAN_NART == ENABLE)
     {
       CAN->MCR |= CAN_MCR_NART;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_NART;
     }
 
-    /* Set the receive FIFO locked mode */
-    if (CAN_InitStruct->CAN_RFLM == ENABLE)
+  /* Set the receive FIFO locked mode */
+  if (CAN_InitStruct->CAN_RFLM == ENABLE)
     {
       CAN->MCR |= CAN_MCR_RFLM;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_RFLM;
     }
 
-    /* Set the transmit FIFO priority */
-    if (CAN_InitStruct->CAN_TXFP == ENABLE)
+  /* Set the transmit FIFO priority */
+  if (CAN_InitStruct->CAN_TXFP == ENABLE)
     {
       CAN->MCR |= CAN_MCR_TXFP;
     }
-    else
+  else
     {
       CAN->MCR &= ~CAN_MCR_TXFP;
     }
 
-    /* Set the bit timing register */
-    CAN->BTR = (u32)((u32)CAN_InitStruct->CAN_Mode << 30) | ((u32)CAN_InitStruct->CAN_SJW << 24) |
-               ((u32)CAN_InitStruct->CAN_BS1 << 16) | ((u32)CAN_InitStruct->CAN_BS2 << 20) |
-               ((u32)CAN_InitStruct->CAN_Prescaler - 1);
+  /* Set the bit timing register */
+  CAN->BTR = (u32)((u32)CAN_InitStruct->CAN_Mode << 30) | ((u32)CAN_InitStruct->CAN_SJW << 24) |
+    ((u32)CAN_InitStruct->CAN_BS1 << 16) | ((u32)CAN_InitStruct->CAN_BS2 << 20) |
+    ((u32)CAN_InitStruct->CAN_Prescaler - 1);
 
-    InitStatus = CANINITOK;
-
-    /* Request leave initialisation */
-    CAN->MCR &= ~CAN_MCR_INRQ;
-
-    /* Wait the acknowledge */
-    for(WaitAck = 0x400; WaitAck > 0x0; WaitAck--)
-    {
-    }
-    
-    /* ...and check acknowledged */
-    if ((CAN->MSR & CAN_MSR_INAK) == CAN_MSR_INAK)
-    {
-      InitStatus = CANINITFAILED;
-    }
-  }
-
-  /* At this step, return the status of initialization */
-  return InitStatus;
+  InitStatus = CANINITOK;
 }
+
+void CAN_EnterNormalMode() {
+  /* Request leave initialisation */
+  CAN->MCR &= ~CAN_MCR_INRQ;
+    
+  /* ...and check acknowledged */
+  while(!(CAN->MSR & CAN_MSR_INAK))
+    ;
+}
+
+
 
 /*******************************************************************************
 * Function Name  : CAN_FilterInit
