@@ -20,6 +20,7 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_tim.h"
 #include "stm32f10x_it.h"
+#include "stm32f10x_can.h"
 #include "stdio.h"
 #include "spi.h"
 #include "i2c.h"
@@ -27,7 +28,9 @@
 #include "pid.h"
 #include "usart.h"
 #include "printf.h"
-#include "packet.h"
+#include "protocol.h"
+#include "can.h"
+
 #include <stdlib.h>
 
 /* Private typedef --------------------------------------------------------*/
@@ -55,7 +58,6 @@ void SPI_Configuration(void);
 void ADC_Configuration(void);
 
 void SysTick_Configuration(void);
-
 
 vu8 desieredDirection = 2;
 vu8 actualDirection = 0;
@@ -105,12 +107,21 @@ vu16 adcValueCount = 0;
 vu32 acs712BaseVoltage = 0;
 vu8 awdWasTriggered = 0;
 
+volatile enum hostIDs ownHostId;
+
 struct ControllerState {
   enum controllerModes controllMode;
   struct pid_data pid_data;
   u8 useBackInduction;
   u8 useOpenLoop;
   u16 pwmStepPerMillisecond;
+  u16 maxCurrent;
+  u8 maxCurrentCount;
+  u8 maxMotorTemp;
+  u8 maxMotorTempCount;
+  u8 maxBoardTemp;
+  u8 maxBoardTempCount;
+  u16 timeout;
   s32 targetValue;
 };
 
@@ -134,6 +145,12 @@ int main(void)
   activeAdcValues = &avs1;
   inActiveAdcValues = &avs2;
 
+  /** DEBUG**/
+
+  //FIXME replace by gpio read
+  ownHostId = RECEIVER_ID_H_BRIDGE_1;
+  /**END DEBUG **/
+
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
@@ -153,6 +170,9 @@ int main(void)
 
   USART_Configuration();
   //setupI2C();
+
+  CAN_Configuration();
+  CAN_ConfigureFilters(ownHostId);
 
   TIM_Configuration();
 
@@ -179,8 +199,6 @@ int main(void)
   activeCState->controllMode = CONTROLLER_MODE_HALT;
   *lastActiveCState = *activeCState;
 
-  u8 rxBuffer[100];
-  u32 rxCount = 0;
 
   int k;
   u32 meanacs712base = 0;
@@ -245,6 +263,9 @@ int main(void)
   print("Loop start 2\n");
  
   /** DEBUG**/
+
+  ownHostId = RECEIVER_ID_H_BRIDGE_1;
+
   u16 lastTime = 0;
   u16 time;
   u16 counter = 0;  
@@ -261,9 +282,32 @@ int main(void)
   TIM_CtrlPWMOutputs(TIM1, ENABLE);  
     
   print("Loop start 3\n");
+
+//send status message over CAN
+  CanTxMsg statusMessage;
+  statusMessage.StdId= 1367; //PACKET_ID_STATUS + ownHostId;
+  statusMessage.RTR=CAN_RTR_DATA;
+  statusMessage.IDE=CAN_ID_STD;
+  statusMessage.DLC= 8; //sizeof(struct statusData);
   
-  writeNewDebugValues = 1;
-  
+  statusMessage.Data[0] = 0;
+  statusMessage.Data[1] = 1;
+  statusMessage.Data[2] = 2;
+  statusMessage.Data[3] = 3;
+  statusMessage.Data[4] = 4;
+  statusMessage.Data[5] = 5;
+  statusMessage.Data[6] = 6;
+  statusMessage.Data[7] = 7;
+
+
+  if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+    print("Error Tranmitting status Message : No free TxMailbox \n");
+  } else {
+    print("Tranmitting status Message : OK \n");  
+  }
+
+  u32 idxcounter = 100;
+
   /** END DEBUG **/
   int j = 0;
  
@@ -283,7 +327,7 @@ int main(void)
 	j = 0;
 	resetdbgCount = 1;
       }
-      
+      /*
       
       for(i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
 	printf( "%d ", dbgValue[i]);
@@ -355,13 +399,17 @@ int main(void)
       printf("LastActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
       */
 
-      
+      */
       /*if(encoderValue < 500)
 	GPIO_SetBits(GPIOB, GPIO_Pin_6);
 	else 
 	GPIO_ResetBits(GPIOB, GPIO_Pin_6);
       */
 
+      extern u16 wasincanit;
+
+      //printf("Was in CAN it %d \n", wasincanit);
+  
       counter = 0;
     }
     
@@ -370,68 +418,115 @@ int main(void)
       counter++;
     }
     lastTime = time;
+   
     
+    if(idxcounter > 1<<10)
+      idxcounter = 100;
+
+    statusMessage.StdId= idxcounter; //PACKET_ID_STATUS + ownHostId;
+    statusMessage.RTR=CAN_RTR_DATA;
+    statusMessage.IDE=CAN_ID_STD;
+    statusMessage.DLC= 8; //sizeof(struct statusData);
+    
+    statusMessage.Data[0] = 0;
+    statusMessage.Data[1] = 1;
+    statusMessage.Data[2] = 2;
+    statusMessage.Data[3] = 3;
+    statusMessage.Data[4] = 4;
+    statusMessage.Data[5] = 5;
+    statusMessage.Data[6] = 6;
+    statusMessage.Data[7] = 7;
+  
+
+    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+      print("Error Tranmitting status Message : No free TxMailbox \n");
+    } else {
+      idxcounter++;
+      //print("Tranmitting status Message : OK \n");  
+    } 
 
     /* END DEBUG */
 
-
-    //receive and process data
-    u32 len = USART1_GetData(rxBuffer + rxCount, 100 - rxCount);
-    rxCount += len;
+    CanRxMsg *curMsg;
     
-    if(len != 0) {
+    //check if we got a new message
+    if((curMsg = CAN_GetNextData()) != 0) {
+      print("Got a Msg \n");
       
-      printf("Got data len is %d", len);
-    }
 
-    if(USART1_Data.RxBufferFullError) {
-      print("Error buffer is full \n");
-    }
+      //clear device specific adress bits
+      curMsg->StdId &= ~ownHostId;
     
-    
-    //process data
-    while(rxCount > sizeof(struct packetHeader)) {
-      print("Got a Packet !\n");
-
-      struct packetHeader *ph = (struct packetHeader *) rxBuffer;
-
-      u16 packetSize = sizeof(struct packetHeader) + ph->length;
-
-      //check if whole packet was received
-      if(rxCount < packetSize) {
-	break;
-      }
-
-      printf("receiver ID is %hu !\n", ph->receiverID);
-      
-      if(ph->receiverID == ownReceiverID || ph->receiverID == RECEIVER_ID_H_BRIDGE_ALL) {
-	printf("ID is %hu !\n", ph->id);
-      
-	switch(ph->id) {
-	case PACKET_ID_SET_PWM:
-	  lastActiveCState->controllMode = CONTROLLER_MODE_PWM;
-	  signed short *value = (signed short *) (rxBuffer + sizeof(struct packetHeader));
-	  lastActiveCState->targetValue = *value;
-	  printf("Got PWM Value %d\n", *value);
-	  
+      switch(curMsg->StdId) {
+        case PACKET_ID_EMERGENCY_STOP:
+	  print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
+	  lastActiveCState->controllMode = CONTROLLER_MODE_HALT;
+	  lastActiveCState->targetValue = 0;
 	  break;
-	  
-	case PACKET_ID_EMERGENCY_STOP:
-	  break;
-	default:
+        case PACKET_ID_SET_VALUE: {
+	  print("Got PACKET_ID_SET_VALUE Msg \n");
+	  struct setValueData *data = (struct setValueData *) curMsg->Data;
+	  switch(ownHostId) {
+	    case RECEIVER_ID_H_BRIDGE_1:
+	      lastActiveCState->targetValue = data->board1Value;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_2:
+	      lastActiveCState->targetValue = data->board2Value;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_3:
+	      lastActiveCState->targetValue = data->board3Value;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_4:
+	      lastActiveCState->targetValue = data->board4Value;
+	      break;
+	  }
 	  break;
 	}
-      }
+        case PACKET_ID_SET_MODE: {
+	  print("Got PACKET_ID_SET_MODE Msg \n");
+	  struct setModeData *data = (struct setModeData *) curMsg->Data;
+	  lastActiveCState->controllMode = data->driveMode;
+	  setKp((struct pid_data *) &(lastActiveCState->pid_data), data->kp);
+	  setKi((struct pid_data *) &(lastActiveCState->pid_data), data->ki);
+	  setKd((struct pid_data *) &(lastActiveCState->pid_data), data->kd);
+	  break;
+	}
+        case PACKET_ID_SET_CONFIGURE: {
+	  print("Got PACKET_ID_SET_CONFIGURE Msg \n");
+	  struct configure1Data *data = (struct configure1Data *) curMsg->Data;
+	  lastActiveCState->useBackInduction = data->activeFieldCollapse;
+	  lastActiveCState->useOpenLoop = data->openCircuit;
 
-      //TODO, this is slow
-      //copy bytes down
-      int i;
-      for(i = 0; i < rxCount - packetSize; i++) {
-	rxBuffer[i] = rxBuffer[packetSize + i];
+	  lastActiveCState->maxMotorTemp = data->maxMotorTemp;
+	  lastActiveCState->maxMotorTempCount = data->maxMotorTempCount;
+	  lastActiveCState->maxBoardTemp = data->maxBoardTemp;
+	  lastActiveCState->maxBoardTempCount = data->maxBoardTempCount;
+	  lastActiveCState->timeout = data->timeout;
+	  break;
+	}
+	  
+        case PACKET_ID_SET_CONFIGURE2: {
+	  print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
+	  struct configure2Data *data = (struct configure2Data *) curMsg->Data;
+	  lastActiveCState->maxCurrent = data->maxCurrent;
+	  lastActiveCState->maxCurrentCount = data->maxCurrentCount;
+	  lastActiveCState->pwmStepPerMillisecond = data->pwmStepPerMs;
+	  break;
+	}
+
+      default: 
+	{
+	  u16 id = curMsg->StdId;
+	  
+	  printf("Got unknown packet id : %hu ! \n", id);
+	  break;
+	}
+	
       }
-      //decrease rxCount by size of processed packet
-      rxCount -= packetSize;
     
+      //mark current message als processed
+      CAN_MarkNextDataAsRead();
+
 
       //this is concurrency proff, as this code can not run, while
       //systick Handler is active !
@@ -439,9 +534,9 @@ int main(void)
       
       //this is atomar as only the write is relevant!
       activeCState = lastActiveCState;
-
+      
       *lastActiveCState = *activeCState;
- 
+      
       lastActiveCState = tempstate;
     }
   }
@@ -452,12 +547,12 @@ void SysTickHandler(void) {
   //request switch of adc value struct
   switchAdcValues = 1;
   
-
   //GPIOA->BSRR |= GPIO_Pin_8;
 
   u16 encoderValue = 0;
   static u16 lastEncoderValue = 0;
   static s32 currentPwmValue = 0;
+  static u16 index = 0;
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
@@ -523,7 +618,6 @@ void SysTickHandler(void) {
       }
       //(adcValue[30])++;
     }
-    
     currentValues[i] = 0;
   }
   
@@ -555,6 +649,35 @@ void SysTickHandler(void) {
   }
 
   inActiveAdcValues->currentValueCount = 0;
+
+  index++;
+  
+  if(index >= (1<<10))
+    index = 0;
+  
+  
+  //send status message over CAN
+  CanTxMsg statusMessage;
+  statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
+  statusMessage.RTR=CAN_RTR_DATA;
+  statusMessage.IDE=CAN_ID_STD;
+  statusMessage.DLC= sizeof(struct statusData);
+  
+  struct statusData *sdata = (struct statusData *) statusMessage.Data;
+
+  sdata->currentValue = currentValue;
+  sdata->index = index;
+  //TODO calculate position,temp, and error
+  sdata->position = 0;
+  sdata->tempHBrigde = 0;
+  sdata->tempMotor = 0;
+  sdata->error = 0;
+
+  if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+    print("Error Tranmitting status Message : No free TxMailbox \n");
+  } else {
+    //print("Tranmitting status Message : OK \n");  
+  }
   
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_HALT:
@@ -1611,6 +1734,20 @@ void NVIC_Configuration(void)
   /* Configure and enable USB interrupt -------------------------------------*/
   NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Enable CAN RX0 interrupt IRQ channel */
+  NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN_RX0_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Enable CAN RX0 interrupt IRQ channel */
+  NVIC_InitStructure.NVIC_IRQChannel = CAN_RX1_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
