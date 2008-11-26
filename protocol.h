@@ -1,7 +1,9 @@
 #ifndef __PROTOCOL_H
 #define __PROTOCOL_H
 
+#ifndef __NO_STM32
 #include "stm32f10x_type.h"
+#endif
 
 enum controllerModes {
   CONTROLLER_MODE_HALT = 0,
@@ -70,7 +72,7 @@ struct configure2Data {
   u16 maxCurrent;
   u8 maxCurrentCount;
   u16 pwmStepPerMs;
-  unsigned unused :24;
+  //  unsigned unused :24;
 } __attribute__ ((packed));
 
 
