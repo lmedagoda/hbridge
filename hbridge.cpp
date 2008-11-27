@@ -1,0 +1,286 @@
+//
+// C++ Implementation: interface
+//
+// Description: 
+//
+//
+// Author:  <>, (C) 2008
+//
+// Copyright: See COPYING file that comes with this distribution
+//
+//
+#include "hbridge.h"
+#include <stdint.h>
+
+//define types similar to STM32 firmeware lib,
+//so we can use same protocoll.h
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef int16_t s16;
+#define __NO_STM32
+
+#include "firmware/protocol.h"
+#include "hico_api.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/select.h>
+#include <iostream>
+		 
+namespace hbridge {
+
+  Interface::Interface() : initalized(false)
+{
+}
+
+
+Interface::~Interface()
+{
+}
+
+/*!
+    \fn Hbridge::Interface::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
+ */
+int Interface::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
+{
+    if(!initalized)
+	return -1;
+
+    struct can_msg msg;
+    struct setValueData *data = (struct setValueData *) msg.data;
+
+    data->board1Value = board1;
+    data->board2Value = board2;
+    data->board3Value = board3;
+    data->board4Value = board4;
+
+    return sendCanMessage(&msg, sizeof(struct setValueData), PACKET_ID_SET_VALUE);
+}
+
+
+int Interface::setPWMMode(const enum HOST_IDS host) {
+    if(!initalized)
+	return -1;
+
+    struct can_msg msg;
+    struct setModeData *data = (struct setModeData *) msg.data;
+
+    data->driveMode = CONTROLLER_MODE_PWM;
+    data->kp = 0;
+    data->ki = 0;
+    data->kd = 0;
+
+    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
+}
+    
+int Interface::setSpeedMode(const enum HOST_IDS host, const double kp,const double ki, const double kd){
+    if(!initalized)
+	return -1;
+
+    struct can_msg msg;
+    struct setModeData *data = (struct setModeData *) msg.data;
+
+    data->driveMode = CONTROLLER_MODE_SPEED;
+    data->kp = kp * 1000;
+    data->ki = ki * 1000;
+    data->kd = kd * 1000;
+
+    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
+}
+
+int Interface::setPositionMode(const enum HOST_IDS host, const double kp,const double ki, const double kd){
+    if(!initalized)
+	return -1;
+    
+    struct can_msg msg;
+    struct setModeData *data = (struct setModeData *) msg.data;
+
+    data->driveMode = CONTROLLER_MODE_POSITION;
+    data->kp = kp * 1000;
+    data->ki = ki * 1000;
+    data->kd = kd * 1000;
+
+    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
+
+}
+
+int Interface::emergencyShutdown() {
+    struct can_msg msg;
+    if(sendCanMessage(&msg, 0, PACKET_ID_EMERGENCY_STOP) < 0 ) {
+	return -1;
+    }
+    return 0;
+}
+
+
+int Interface::setConfiguration(const enum HOST_IDS host, const Configuration newConfig) {
+    if(!initalized)
+	return -1;
+
+    struct can_msg msg1;
+    struct can_msg msg2;
+
+    struct configure1Data *conf1 = (struct configure1Data *) msg1.data;
+    struct configure2Data *conf2 = (struct configure2Data *) msg2.data;
+
+    conf1->openCircuit = newConfig.openCircuit;
+    conf1->activeFieldCollapse = newConfig.activeFieldCollapse;
+    conf1->externalTempSensor = newConfig.externalTempSensor;
+    conf1->maxMotorTemp = newConfig.maxMotorTemp;
+    conf1->maxMotorTempCount = newConfig.maxMotorTempCount;
+    conf1->maxBoardTemp = newConfig.maxBoardTemp;
+    conf1->maxBoardTempCount = newConfig.maxBoardTempCount;
+    conf1->timeout = newConfig.timeout;
+
+    conf2->maxCurrent = newConfig.maxCurrent;
+    conf2->maxCurrentCount = newConfig.maxCurrentCount;
+    conf2->pwmStepPerMs = newConfig.pwmStepPerMs;
+
+    if(sendCanMessage(&msg1, sizeof(struct configure1Data), PACKET_ID_SET_CONFIGURE | host) < 0 ) {
+	return -1;
+    }
+    
+    if(sendCanMessage(&msg2, sizeof(struct configure2Data), PACKET_ID_SET_CONFIGURE2 | host) < 0 ) {
+	return -1;
+    }
+
+    return 0;
+}
+
+bool Interface::getNextStatus(Status &status) {
+    if(!initalized)
+	return false;
+
+    can_msg msg;
+
+    while(1) {
+	int ret = receiveCanMessage(&msg, 100);
+	if(ret <= 0) {
+	    return false;
+	}
+
+	//check if we got a status packet
+	if((msg.id & 0x1F) != PACKET_ID_STATUS) {
+	    std::cout << "Got a packet, that did not have status ID" << std::endl;
+	    continue;
+	}
+	
+	struct statusData *data = (struct statusData *) msg.data; 
+	
+	status.current = data->currentValue;
+	status.position = data->position;
+	status.motorTemp = data->tempMotor;
+	status.hbridgeTemp = data->tempHBrigde;
+	status.index = data->index;
+	status.errors = data->error;
+	status.host = (enum HOST_IDS) (msg.id & ~0x1F);
+
+	return true;
+    }
+    return false;
+}
+
+int Interface::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
+    fd_set fds;
+    struct timeval tv;
+    int sec,ret;
+    FD_ZERO(&fds);
+
+    sec=timeout/1000;
+    tv.tv_sec=sec;
+    tv.tv_usec=(timeout-(sec*1000))*1000;
+
+    FD_SET(canFd,&fds);
+
+    ret=select(canFd+1,&fds,0,0,&tv);
+    if(ret==0){
+	return 0; /* timeout */
+    } else if (ret<0) {
+	return -1;
+    } else {
+	unsigned int readCount = 0;
+	while(readCount < sizeof(struct can_msg)) { 
+            ret=read(canFd, msg+ readCount,sizeof(struct can_msg) - readCount);
+	    if(ret < 0)
+		return -1;
+	    readCount += ret;
+	}
+	return 1;
+    }
+    return -1;
+}
+
+int Interface::sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id) {
+    msg->ff = 0;
+    msg->rtr = 0;
+    msg->id = id;
+    msg->dlc = dlc;
+    
+    unsigned int send = 0;
+    int ret;
+    while(send < sizeof(struct can_msg)) {
+        ret = write(canFd, msg + send, sizeof(struct can_msg) - send);
+	if(ret < 0) {
+            return -1;
+	} else {
+	    send +=ret;
+	}
+    }
+    return 0;
+}
+
+/*!
+    \fn Hbridge::Interface::openCanDevice(char *path)
+ */
+int Interface::openCanDevice(std::string &path)
+{
+    if(initalized)
+      return true;
+  
+    int ret;
+
+    canFd = open(path.c_str(), O_RDWR);
+    if (canFd == -1) {
+	perror(path.c_str());
+        return -1;
+    }
+
+    //reset board, to have it in defined state
+    ret = ioctl(canFd, IOC_RESET_BOARD);
+    if (ret == -1) {
+	perror("IOC_RESET_BOARD");
+	return -1;
+    }
+
+    //set bitrate to 1 mbit
+    int bitrate = BITRATE_1000k;
+    ret = ioctl(canFd, IOC_SET_BITRATE, &bitrate);
+    if (ret == -1) {
+	perror("IOC_SET_BITRATE");
+        return -1;
+    }
+
+    //set to active mode
+    ret=ioctl(canFd,IOC_STOP);
+    if (ret == -1) {
+	perror("IOC_STOP");
+        return -1;
+    }
+    ret=ioctl(canFd,IOC_START);
+    if (ret == -1) {
+	perror("IOC_START");
+        return -1;
+    }
+
+    initalized = true;
+
+    return 0;
+}
+
+}
+
+
+
+
