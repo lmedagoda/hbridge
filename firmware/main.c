@@ -59,6 +59,14 @@ void ADC_Configuration(void);
 
 void SysTick_Configuration(void);
 
+enum internalState {
+  STATE_UNCONFIGURED,
+  STATE_CONFIG1_RECEIVED,
+  STATE_CONFIG2_RECEIVED,
+  STATE_CONFIGURED,
+  STATE_ERROR,
+};
+
 vu8 desieredDirection = 2;
 vu8 actualDirection = 0;
 volatile u8 newPWM = 0;
@@ -111,6 +119,8 @@ volatile enum hostIDs ownHostId;
 
 struct ControllerState {
   enum controllerModes controllMode;
+  enum internalState internalState;
+  enum errorCodes error;
   struct pid_data pid_data;
   u8 useBackInduction;
   u8 useOpenLoop;
@@ -166,11 +176,11 @@ int main(void)
   USART_Configuration();
   //setupI2C();
 
-  u8 gpioData = 0;
-  gpioData |= GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_13);
-  gpioData |= (GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_14) << 1);
-  gpioData |= (GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_15) << 2);
-  gpioData |= (GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_1) << 3);
+  u16 gpioData = 0;
+  gpioData |= GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
+  gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_14) << 1);
+  gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_15) << 2);
+  gpioData |= (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) << 3);
 
   //get correct host id from gpio pins
   switch(gpioData) {
@@ -187,7 +197,7 @@ int main(void)
     ownHostId = RECEIVER_ID_H_BRIDGE_4;
     break;
   default:
-    print("Wrong host ide configured \n");
+    printf("Wrong host ide configured %hu\n", gpioData);
     //blink and do nothing
     assert_failed((u8 *)__FILE__, __LINE__);
     break;
@@ -218,7 +228,19 @@ int main(void)
   setKi((struct pid_data *) &(activeCState->pid_data), 0);
   setKd((struct pid_data *) &(activeCState->pid_data), 0);
 
-  activeCState->controllMode = CONTROLLER_MODE_HALT;
+  activeCState->controllMode = CONTROLLER_MODE_PWM;
+  activeCState->internalState = STATE_UNCONFIGURED;
+  activeCState->error = 0;
+  activeCState->useBackInduction = 0;
+  activeCState->useOpenLoop = 0;
+  activeCState->pwmStepPerMillisecond = 0;
+  activeCState->maxCurrent = 0;
+  activeCState->maxMotorTemp = 0;
+  activeCState->maxMotorTempCount = 0;
+  activeCState->maxBoardTemp = 0;
+  activeCState->maxBoardTempCount = 0;
+  activeCState->timeout = 1;
+  activeCState->targetValue = 0;
   *lastActiveCState = *activeCState;
 
 
@@ -285,50 +307,22 @@ int main(void)
   print("Loop start 2\n");
  
   /** DEBUG**/
-
-  ownHostId = RECEIVER_ID_H_BRIDGE_1;
-
   u16 lastTime = 0;
   u16 time;
   u16 counter = 0;  
-  activeCState->targetValue = 880;
+  /*  activeCState->targetValue = 880;
   activeCState->controllMode = CONTROLLER_MODE_PWM;
+  activeCState->internalState = STATE_CONFIGURED;
   activeCState->pwmStepPerMillisecond = 3;
   activeCState->useBackInduction = 0;
   activeCState->useOpenLoop = 1;
   *lastActiveCState = *activeCState;
+  */
 
   /* Enable AWD interupt */
-  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
-  
-  TIM_CtrlPWMOutputs(TIM1, ENABLE);  
+  //ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
     
   print("Loop start 3\n");
-
-//send status message over CAN
-  CanTxMsg statusMessage;
-  statusMessage.StdId= 1367; //PACKET_ID_STATUS + ownHostId;
-  statusMessage.RTR=CAN_RTR_DATA;
-  statusMessage.IDE=CAN_ID_STD;
-  statusMessage.DLC= 8; //sizeof(struct statusData);
-  
-  statusMessage.Data[0] = 0;
-  statusMessage.Data[1] = 1;
-  statusMessage.Data[2] = 2;
-  statusMessage.Data[3] = 3;
-  statusMessage.Data[4] = 4;
-  statusMessage.Data[5] = 5;
-  statusMessage.Data[6] = 6;
-  statusMessage.Data[7] = 7;
-
-
-  if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-    print("Error Tranmitting status Message : No free TxMailbox \n");
-  } else {
-    print("Tranmitting status Message : OK \n");  
-  }
-
-  u32 idxcounter = 100;
 
   /** END DEBUG **/
   int j = 0;
@@ -455,13 +449,14 @@ int main(void)
       switch(curMsg->StdId) {
         case PACKET_ID_EMERGENCY_STOP:
 	  print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
-	  lastActiveCState->controllMode = CONTROLLER_MODE_HALT;
+	  lastActiveCState->internalState = STATE_UNCONFIGURED;
 	  lastActiveCState->targetValue = 0;
 	  break;
         case PACKET_ID_SET_VALUE: {
 	  print("Got PACKET_ID_SET_VALUE Msg \n");
-	  struct setValueData *data = (struct setValueData *) curMsg->Data;
-	  switch(ownHostId) {
+	  if(activeCState->internalState == STATE_CONFIGURED) {
+	    struct setValueData *data = (struct setValueData *) curMsg->Data;
+	    switch(ownHostId) {
 	    case RECEIVER_ID_H_BRIDGE_1:
 	      lastActiveCState->targetValue = data->board1Value;
 	      break;
@@ -474,16 +469,27 @@ int main(void)
 	    case RECEIVER_ID_H_BRIDGE_4:
 	      lastActiveCState->targetValue = data->board4Value;
 	      break;
+	    }
+	  } else {
+	    print("Error, not configured \n");
+	    lastActiveCState->internalState = STATE_ERROR;
+	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
 	  }
 	  break;
 	}
         case PACKET_ID_SET_MODE: {
 	  print("Got PACKET_ID_SET_MODE Msg \n");
-	  struct setModeData *data = (struct setModeData *) curMsg->Data;
-	  lastActiveCState->controllMode = data->driveMode;
-	  setKp((struct pid_data *) &(lastActiveCState->pid_data), data->kp);
-	  setKi((struct pid_data *) &(lastActiveCState->pid_data), data->ki);
-	  setKd((struct pid_data *) &(lastActiveCState->pid_data), data->kd);
+	  if(activeCState->internalState == STATE_CONFIGURED) {
+	    struct setModeData *data = (struct setModeData *) curMsg->Data;
+	    lastActiveCState->controllMode = data->driveMode;
+	    setKp((struct pid_data *) &(lastActiveCState->pid_data), data->kp);
+	    setKi((struct pid_data *) &(lastActiveCState->pid_data), data->ki);
+	    setKd((struct pid_data *) &(lastActiveCState->pid_data), data->kd);
+	  } else {
+	    print("Error, not configured \n");
+	    lastActiveCState->internalState = STATE_ERROR;
+	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	  }
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
@@ -497,6 +503,13 @@ int main(void)
 	  lastActiveCState->maxBoardTemp = data->maxBoardTemp;
 	  lastActiveCState->maxBoardTempCount = data->maxBoardTempCount;
 	  lastActiveCState->timeout = data->timeout;
+
+	  if(activeCState->internalState == STATE_CONFIG2_RECEIVED) {
+	    lastActiveCState->internalState = STATE_CONFIGURED;
+	  } else {
+	    lastActiveCState->internalState = STATE_CONFIG1_RECEIVED;
+	  }
+	  
 	  break;
 	}
 	  
@@ -506,6 +519,12 @@ int main(void)
 	  lastActiveCState->maxCurrent = data->maxCurrent;
 	  lastActiveCState->maxCurrentCount = data->maxCurrentCount;
 	  lastActiveCState->pwmStepPerMillisecond = data->pwmStepPerMs;
+
+	  if(activeCState->internalState == STATE_CONFIG1_RECEIVED) {
+	    lastActiveCState->internalState = STATE_CONFIGURED;
+	  } else {
+	    lastActiveCState->internalState = STATE_CONFIG2_RECEIVED;
+	  }
 	  break;
 	}
 
@@ -529,10 +548,25 @@ int main(void)
       
       //this is atomar as only the write is relevant!
       activeCState = lastActiveCState;
+
+      lastActiveCState = tempstate;
       
+      /*u8 *d1 = (u8 *) lastActiveCState;
+      u8 *d2 = (u8 *) activeCState;
+
+      for(i = 0; i < sizeof(struct ControllerState); i++) {
+	*d1 = *d2;
+	d1++;
+	d2++;
+	}*/
+      
+
       *lastActiveCState = *activeCState;
       
-      lastActiveCState = tempstate;
+
+        printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
+      printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
+
     }
   }
 }
@@ -645,40 +679,40 @@ void SysTickHandler(void) {
 
   inActiveAdcValues->currentValueCount = 0;
 
-  index++;
-  
-  if(index >= (1<<10))
-    index = 0;
-  
-  
-  //send status message over CAN
-  CanTxMsg statusMessage;
-  statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
-  statusMessage.RTR=CAN_RTR_DATA;
-  statusMessage.IDE=CAN_ID_STD;
-  statusMessage.DLC= sizeof(struct statusData);
-  
-  struct statusData *sdata = (struct statusData *) statusMessage.Data;
 
-  sdata->currentValue = currentValue;
-  sdata->index = index;
-  //TODO calculate position,temp, and error
-  sdata->position = 0;
-  sdata->tempHBrigde = 0;
-  sdata->tempMotor = 0;
-  sdata->error = 0;
+  if(activeCState->internalState == STATE_CONFIGURED ||
+     activeCState->internalState == STATE_ERROR) {
 
-  if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-    print("Error Tranmitting status Message : No free TxMailbox \n");
-  } else {
-    //print("Tranmitting status Message : OK \n");  
+    index++;
+    
+    if(index >= (1<<10))
+      index = 0;
+  
+    //send status message over CAN
+    CanTxMsg statusMessage;
+    statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
+    statusMessage.RTR=CAN_RTR_DATA;
+    statusMessage.IDE=CAN_ID_STD;
+    statusMessage.DLC= sizeof(struct statusData);
+    
+    struct statusData *sdata = (struct statusData *) statusMessage.Data;
+    
+    sdata->currentValue = currentValue;
+    sdata->index = index;
+    //TODO calculate position,temp, and error
+    sdata->position = encoderValue;
+    sdata->tempHBrigde = 0;
+    sdata->tempMotor = 0;
+    sdata->error = activeCState->error;
+    
+    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+      print("Error Tranmitting status Message : No free TxMailbox \n");
+    } else {
+      //print("Tranmitting status Message : OK \n");  
+    }
   }
   
   switch(activeCState->controllMode) {
-    case CONTROLLER_MODE_HALT:
-      pwmValue = 0;
-      break;
-      
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
       
@@ -708,11 +742,14 @@ void SysTickHandler(void) {
       currentPwmValue -= activeCState->pwmStepPerMillisecond;      
     }
   }
-  
-  
-  //set pwm
-  setNewPWM(currentPwmValue);
-  
+
+  if(activeCState->internalState == STATE_CONFIGURED) {
+    //set pwm
+    setNewPWM(currentPwmValue);
+  } else {
+    setNewPWM(0);   
+  }
+ 
   lastEncoderValue = encoderValue;
 
   //  GPIOA->BRR |= GPIO_Pin_8;
