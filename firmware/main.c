@@ -145,11 +145,6 @@ int main(void)
   activeAdcValues = &avs1;
   inActiveAdcValues = &avs2;
 
-  /** DEBUG**/
-
-  //FIXME replace by gpio read
-  ownHostId = RECEIVER_ID_H_BRIDGE_1;
-  /**END DEBUG **/
 
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -170,6 +165,33 @@ int main(void)
 
   USART_Configuration();
   //setupI2C();
+
+  u8 gpioData = 0;
+  gpioData |= GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_13);
+  gpioData |= (GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_14) << 1);
+  gpioData |= (GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_15) << 2);
+  gpioData |= (GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_1) << 3);
+
+  //get correct host id from gpio pins
+  switch(gpioData) {
+  case 1 :
+    ownHostId = RECEIVER_ID_H_BRIDGE_1;
+    break;
+  case 2 :
+    ownHostId = RECEIVER_ID_H_BRIDGE_2;
+    break;
+  case 4 :
+    ownHostId = RECEIVER_ID_H_BRIDGE_3;
+    break;
+  case 8 :
+    ownHostId = RECEIVER_ID_H_BRIDGE_4;
+    break;
+  default:
+    print("Wrong host ide configured \n");
+    //blink and do nothing
+    assert_failed((u8 *)__FILE__, __LINE__);
+    break;
+  }
 
   CAN_Configuration();
   CAN_ConfigureFilters(ownHostId);
@@ -399,7 +421,6 @@ int main(void)
       printf("LastActiveCstate: targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
       */
 
-      */
       /*if(encoderValue < 500)
 	GPIO_SetBits(GPIOB, GPIO_Pin_6);
 	else 
@@ -418,32 +439,6 @@ int main(void)
       counter++;
     }
     lastTime = time;
-   
-    
-    if(idxcounter > 1<<10)
-      idxcounter = 100;
-
-    statusMessage.StdId= idxcounter; //PACKET_ID_STATUS + ownHostId;
-    statusMessage.RTR=CAN_RTR_DATA;
-    statusMessage.IDE=CAN_ID_STD;
-    statusMessage.DLC= 8; //sizeof(struct statusData);
-    
-    statusMessage.Data[0] = 0;
-    statusMessage.Data[1] = 1;
-    statusMessage.Data[2] = 2;
-    statusMessage.Data[3] = 3;
-    statusMessage.Data[4] = 4;
-    statusMessage.Data[5] = 5;
-    statusMessage.Data[6] = 6;
-    statusMessage.Data[7] = 7;
-  
-
-    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-      print("Error Tranmitting status Message : No free TxMailbox \n");
-    } else {
-      idxcounter++;
-      //print("Tranmitting status Message : OK \n");  
-    } 
 
     /* END DEBUG */
 
@@ -1617,6 +1612,12 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
+  //configure pb 1 input pull up (maeuseklavier)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
   //TODO perhaps OD is wrong for SMBA !!
   // Configure SMBA
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
@@ -1651,9 +1652,18 @@ void GPIO_Configuration(void)
 
   // Configure PC.12 as output push-pull (LED)
   GPIO_WriteBit(GPIOC,GPIO_Pin_12,Bit_SET);
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+  //configure pc 13/14/15 as input pull up (maeuseklavier)
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+  
 }
 
 
