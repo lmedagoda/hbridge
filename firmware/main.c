@@ -59,6 +59,13 @@ void ADC_Configuration(void);
 
 void SysTick_Configuration(void);
 
+#define MIN_S16 (-(1<<15))
+#define MAX_S16 ((1<<15) -1)
+
+//motorticks * gear reduction
+//512 * 729 / 16
+#define WHEEL_TURN_TICKS (23328)
+
 enum internalState {
   STATE_UNCONFIGURED,
   STATE_CONFIG1_RECEIVED,
@@ -229,6 +236,7 @@ int main(void)
   setKd((struct pid_data *) &(activeCState->pid_data), 0);
 
   activeCState->controllMode = CONTROLLER_MODE_PWM;
+  activeCState->controllMode = CONTROLLER_MODE_POSITION;
   activeCState->internalState = STATE_UNCONFIGURED;
   activeCState->error = 0;
   activeCState->useBackInduction = 0;
@@ -582,6 +590,7 @@ void SysTickHandler(void) {
   static u16 lastEncoderValue = 0;
   static s32 currentPwmValue = 0;
   static u16 index = 0;
+  static u16 dbgCount = 0;
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
@@ -719,19 +728,84 @@ void SysTickHandler(void) {
       break;
     
     case CONTROLLER_MODE_SPEED:
-      //TODO FIXME convert to a real value like m/s
-      //FIXME Wrap around
       curSpeed = encoderValue - lastEncoderValue;
+      
+      //this assumes, that the motor will never turn faster than
+      //a half wheel turn (or 23 motor turns) in a ms 
+      if(abs(lastEncoderValue - encoderValue) > WHEEL_TURN_TICKS / 2) {
+	//wheel ist turning backward
+	if(lastEncoderValue < encoderValue) {
+	  curSpeed -= WHEEL_TURN_TICKS;
+	}
+	
+	//wheel is turning forward
+	if(lastEncoderValue > encoderValue) {
+	  curSpeed += WHEEL_TURN_TICKS;
+	}
+      }
+
+      //TODO FIXME convert to a real value like m/s
+      
+      //convert to ticks per second
+      curSpeed *= 1000;
       
       //calculate PID value
       setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
-      pwmValue = pid((struct pid_data *) &(activeCState->pid_data), curSpeed);
-      break;
+      pwmValue = -pid((struct pid_data *) &(activeCState->pid_data), curSpeed);
+
+      //trunkcate to s16
+      if(pwmValue > MAX_S16) 
+	pwmValue = MAX_S16;
+      if(pwmValue < MIN_S16)
+	pwmValue = MIN_S16;
+      
+      CanTxMsg statusMessage;
+      statusMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
+      statusMessage.RTR=CAN_RTR_DATA;
+      statusMessage.IDE=CAN_ID_STD;
+      statusMessage.DLC= sizeof(struct statusData);
+      
+      struct speedDebugData *sdbgdata = (struct speedDebugData *) statusMessage.Data;
+      sdbgdata->targetVal = activeCState->targetValue;
+      sdbgdata->pwmVal = pwmValue;
+      sdbgdata->encoderVal = encoderValue;
+      sdbgdata->speedVal = curSpeed;
     
-    case CONTROLLER_MODE_POSITION:
+      if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+	print("Error Tranmitting status Message : No free TxMailbox \n");
+      } else {
+	//print("Tranmitting status Message : OK \n");  
+      }
+
+      break;
+    case CONTROLLER_MODE_POSITION: {
+      s32 curVal = encoderValue;
+      if(abs(activeCState->targetValue - encoderValue) > WHEEL_TURN_TICKS / 2) {
+	if(encoderValue < WHEEL_TURN_TICKS / 2)
+	  curVal += WHEEL_TURN_TICKS;
+	else 
+	  curVal -= WHEEL_TURN_TICKS;
+      }
+      
+      
+      //calculate PID value
+      setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
+      pwmValue = -pid((struct pid_data *) &(activeCState->pid_data), curVal);
+
+      dbgCount++;
+      if(dbgCount >= 1000) {
+	printf("T: %l, PWM: %l, E: %hu, C: %l\n", activeCState->targetValue, pwmValue, encoderValue, curVal);
+	dbgCount = 0;
+      }
+    }
       break;
   }
-  //todo truncate pwmValue s32 -> s16
+
+  //trunkcate to s16
+  if(pwmValue > MAX_S16) 
+    pwmValue = MAX_S16;
+  if(pwmValue < MIN_S16)
+    pwmValue = MIN_S16;
 
   if(abs(currentPwmValue - pwmValue) < activeCState-> pwmStepPerMillisecond) {
     currentPwmValue = pwmValue;
@@ -1431,7 +1505,7 @@ void TIM_Configuration(void)
 			     TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
   
   //configure value to reload after wrap around
-  TIM_SetAutoreload(TIM4, 1<<15);
+  TIM_SetAutoreload(TIM4, WHEEL_TURN_TICKS);
 
   TIM_ARRPreloadConfig(TIM4, ENABLE);
 

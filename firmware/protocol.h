@@ -26,6 +26,8 @@ enum packetIDs {
   PACKET_ID_SET_MODE = 3,
   PACKET_ID_SET_CONFIGURE = 4,
   PACKET_ID_SET_CONFIGURE2 = 5,
+  PACKET_ID_SPEED_DEBUG = 8,
+  PACKET_ID_POS_DEBUG = 9,
 };
 
 enum hostIDs {
@@ -34,6 +36,14 @@ enum hostIDs {
   RECEIVER_ID_H_BRIDGE_3 = (3<<5),
   RECEIVER_ID_H_BRIDGE_4 = (4<<5),
 };
+
+struct speedDebugData {
+  s16 targetVal;
+  s16 pwmVal;
+  u16 encoderVal;
+  s16 speedVal;
+} __attribute__ ((packed));
+
 
 struct statusData {
   unsigned currentValue :14;
