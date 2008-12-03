@@ -149,6 +149,49 @@ int Interface::setConfiguration(const enum HOST_IDS host, const Configuration ne
     return 0;
 }
 
+bool Interface::getNextCanMessage(can_msg &msg) {
+  if(!initalized)
+    return false;
+
+  int ret = receiveCanMessage(&msg, 100);
+  if(ret <= 0) {
+    return false;
+  }
+  return true;
+}
+
+
+bool Interface::isStatusPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_STATUS;
+}
+
+bool Interface::isSpeedDebugPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_SPEED_DEBUG;
+}
+
+void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
+  struct statusData *data = (struct statusData *) msg.data; 
+  
+  status.current = data->currentValue;
+  status.position = data->position;
+  status.motorTemp = data->tempMotor;
+  status.hbridgeTemp = data->tempHBrigde;
+  status.index = data->index;
+  status.errors = data->error;
+  status.host = (enum HOST_IDS) (msg.id & ~0x1F);  
+}
+
+void Interface::getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg) {
+  struct speedDebugData *data = (struct speedDebugData *) msg.data;
+
+  sdbg.targetVal = data->targetVal;
+  sdbg.pwmVal = data->pwmVal;
+  sdbg.encoderVal = data->encoderVal;
+  sdbg.speedVal = data->speedVal;
+  sdbg.host = (enum HOST_IDS) (msg.id & ~0x1F);  
+}
+
+
 bool Interface::getNextStatus(Status &status) {
     if(!initalized)
 	return false;

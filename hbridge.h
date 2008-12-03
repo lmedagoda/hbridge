@@ -51,6 +51,14 @@ struct Configuration {
   unsigned short pwmStepPerMs;
 };
 
+struct SpeedDebug {
+  int16_t targetVal;
+  int16_t pwmVal;
+  uint16_t encoderVal;
+  int16_t speedVal;
+  enum HOST_IDS host;  
+};
+
 struct AllStatus {
   struct Status status[4];
 };
@@ -84,12 +92,19 @@ public:
 
     bool getNextStatus(Status &status);
     int openCanDevice(std::string &path);
+    void getStatusFromCanMessage(can_msg &msg, Status &status);
+    void getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg);
+    bool getNextCanMessage(can_msg &msg);
+    bool isStatusPacket(can_msg &msg);
+    bool isSpeedDebugPacket(can_msg &msg);
+    
 private:
     int canFd;
     bool initalized;
 
     int sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id);
     int receiveCanMessage(struct can_msg *msg, unsigned int timeout);
+
 };
 #endif
 
