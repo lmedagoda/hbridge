@@ -28,7 +28,8 @@ typedef int16_t s16;
 #include <stdio.h>
 #include <sys/select.h>
 #include <iostream>
-		 
+#include <errno.h>	
+	 
 namespace hbridge {
 
   Interface::Interface() : initalized(false)
@@ -112,6 +113,12 @@ int Interface::emergencyShutdown() {
 	return -1;
     }
     return 0;
+}
+
+int Interface::getFileDescriptor() const {
+  if(!initalized)
+    return -1;
+  return canFd;
 }
 
 
@@ -226,52 +233,41 @@ bool Interface::getNextStatus(Status &status) {
 }
 
 int Interface::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
-    fd_set fds;
-    struct timeval tv;
-    int sec,ret;
-    FD_ZERO(&fds);
-
-    sec=timeout/1000;
-    tv.tv_sec=sec;
-    tv.tv_usec=(timeout-(sec*1000))*1000;
-
-    FD_SET(canFd,&fds);
-
-    ret=select(canFd+1,&fds,0,0,&tv);
-    if(ret==0){
-	return 0; /* timeout */
-    } else if (ret<0) {
+  int sec,ret;
+  unsigned int readCount = 0;
+  while(readCount < sizeof(struct can_msg)) { 
+    ret=read(canFd, msg+ readCount,sizeof(struct can_msg) - readCount);
+    if(ret < 0) {
+      if(errno != EAGAIN)
 	return -1;
-    } else {
-	unsigned int readCount = 0;
-	while(readCount < sizeof(struct can_msg)) { 
-            ret=read(canFd, msg+ readCount,sizeof(struct can_msg) - readCount);
-	    if(ret < 0)
-		return -1;
-	    readCount += ret;
-	}
-	return 1;
+
+      if(errno == EAGAIN && readCount == 0)
+	return 0;
+    } else {  
+      readCount += ret;
     }
-    return -1;
+  }
+  return 1;
 }
 
 int Interface::sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id) {
-    msg->ff = 0;
-    msg->rtr = 0;
-    msg->id = id;
-    msg->dlc = dlc;
-    
-    unsigned int send = 0;
-    int ret;
-    while(send < sizeof(struct can_msg)) {
-        ret = write(canFd, msg + send, sizeof(struct can_msg) - send);
-	if(ret < 0) {
-            return -1;
-	} else {
-	    send +=ret;
-	}
+  msg->ff = 0;
+  msg->rtr = 0;
+  msg->id = id;
+  msg->dlc = dlc;
+  
+  unsigned int send = 0;
+  int ret;
+  while(send < sizeof(struct can_msg)) {
+    ret = write(canFd, msg + send, sizeof(struct can_msg) - send);
+    if(ret < 0) {
+      if(errno != EAGAIN)
+	return -1;
+    } else {
+      send +=ret;
     }
-    return 0;
+  }
+  return 0;
 }
 
 /*!
@@ -284,7 +280,7 @@ int Interface::openCanDevice(std::string &path)
   
     int ret;
 
-    canFd = open(path.c_str(), O_RDWR);
+    canFd = open(path.c_str(), O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
     if (canFd == -1) {
 	perror(path.c_str());
         return -1;

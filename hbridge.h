@@ -97,6 +97,8 @@ public:
     bool getNextCanMessage(can_msg &msg);
     bool isStatusPacket(can_msg &msg);
     bool isSpeedDebugPacket(can_msg &msg);
+
+    int getFileDescriptor() const;
     
 private:
     int canFd;
