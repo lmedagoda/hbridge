@@ -84,9 +84,9 @@ int Interface::setSpeedMode(const enum HOST_IDS host, const double kp,const doub
     struct setModeData *data = (struct setModeData *) msg.data;
 
     data->driveMode = CONTROLLER_MODE_SPEED;
-    data->kp = kp * 1000;
-    data->ki = ki * 1000;
-    data->kd = kd * 1000;
+    data->kp = kp * 100;
+    data->ki = ki * 100;
+    data->kd = kd * 100;
 
     return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
 }
@@ -99,9 +99,9 @@ int Interface::setPositionMode(const enum HOST_IDS host, const double kp,const d
     struct setModeData *data = (struct setModeData *) msg.data;
 
     data->driveMode = CONTROLLER_MODE_POSITION;
-    data->kp = kp * 1000;
-    data->ki = ki * 1000;
-    data->kd = kd * 1000;
+    data->kp = kp * 100;
+    data->ki = ki * 100;
+    data->kd = kd * 100;
 
     return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
 
