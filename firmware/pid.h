@@ -16,22 +16,22 @@ struct pid_data {
 
 /**
  * This function set the kp value. Note, 
- * that kp is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * that kp is a fixed point with 2 values
+ * behind the , 
  */
 void setKp(struct pid_data *data, s32 kp);
 
 /**
  * This function set the ki value. Note, 
- * that ki is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * that ki is a fixed point with 2 values
+ * behind the , 
  */
 void setKi(struct pid_data *data, s32 ki);
 
 /**
  * This function set the kd value. Note, 
- * that kd is a fixed point with 3 values
- * behind the , and thus must be >= 1000
+ * that kd is a fixed point with 2 values
+ * behind the , 
  */
 void setKd(struct pid_data *data, s32 kd);
 

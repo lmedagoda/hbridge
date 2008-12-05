@@ -434,6 +434,9 @@ int main(void)
       //printf("Was in CAN it %d \n", wasincanit);
   
       counter = 0;
+
+      print(".");
+      
     }
     
     time = TIM_GetCounter(TIM1);
@@ -448,7 +451,8 @@ int main(void)
     
     //check if we got a new message
     if((curMsg = CAN_GetNextData()) != 0) {
-      print("Got a Msg \n");
+      //print("Got a Msg \n");
+      print("P");
       
 
       //clear device specific adress bits
@@ -456,12 +460,12 @@ int main(void)
     
       switch(curMsg->StdId) {
         case PACKET_ID_EMERGENCY_STOP:
-	  print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
+	  //print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
 	  lastActiveCState->internalState = STATE_UNCONFIGURED;
 	  lastActiveCState->targetValue = 0;
 	  break;
         case PACKET_ID_SET_VALUE: {
-	  print("Got PACKET_ID_SET_VALUE Msg \n");
+	  //print("Got PACKET_ID_SET_VALUE Msg \n");
 	  if(activeCState->internalState == STATE_CONFIGURED) {
 	    struct setValueData *data = (struct setValueData *) curMsg->Data;
 	    switch(ownHostId) {
@@ -486,7 +490,7 @@ int main(void)
 	  break;
 	}
         case PACKET_ID_SET_MODE: {
-	  print("Got PACKET_ID_SET_MODE Msg \n");
+	  //print("Got PACKET_ID_SET_MODE Msg \n");
 	  if(activeCState->internalState == STATE_CONFIGURED) {
 	    struct setModeData *data = (struct setModeData *) curMsg->Data;
 	    lastActiveCState->controllMode = data->driveMode;
@@ -501,7 +505,7 @@ int main(void)
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
-	  print("Got PACKET_ID_SET_CONFIGURE Msg \n");
+	  //print("Got PACKET_ID_SET_CONFIGURE Msg \n");
 	  struct configure1Data *data = (struct configure1Data *) curMsg->Data;
 	  lastActiveCState->useBackInduction = data->activeFieldCollapse;
 	  lastActiveCState->useOpenLoop = data->openCircuit;
@@ -522,7 +526,7 @@ int main(void)
 	}
 	  
         case PACKET_ID_SET_CONFIGURE2: {
-	  print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
+	  //print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
 	  struct configure2Data *data = (struct configure2Data *) curMsg->Data;
 	  lastActiveCState->maxCurrent = data->maxCurrent;
 	  lastActiveCState->maxCurrentCount = data->maxCurrentCount;
@@ -572,8 +576,8 @@ int main(void)
       *lastActiveCState = *activeCState;
       
 
-        printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
-      printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
+      //        printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
+      //printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
 
     }
   }
@@ -745,10 +749,7 @@ void SysTickHandler(void) {
       }
 
       //TODO FIXME convert to a real value like m/s
-      
-      //convert to ticks per second
-      curSpeed *= 1000;
-      
+            
       //calculate PID value
       setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
       pwmValue = -pid((struct pid_data *) &(activeCState->pid_data), curSpeed);
