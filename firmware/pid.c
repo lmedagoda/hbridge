@@ -31,34 +31,48 @@ void setKd(struct pid_data *data, s32 kd) {
 
 void setTargetValue(struct pid_data *data, s32 target_val) {
   data->target_val = target_val;
-  if(data->last_target_val != data->target_val) {
-    data->last_target_val = data->target_val;
-    data->integrated_error = 0;
-  }
-  
 }
 
 
 s32 pid(struct pid_data *data, s32 cur_val) {
 
-  s32 result = 0;
-  data->error = data->target_val - cur_val;
+  s32 result = data->last_command_val;
+  s32 error = data->target_val - cur_val;
 
   if ( data->kp ) {
-    result += (data->error * data->kp) / 100;
+    result += ((error -data->last_error) * data->kp) / 100;
   }
-  data->integrated_error += data->error;
   
   if ( data->ki ) {
-    result += (data->integrated_error + data->ki) / 100;
+    //(e+ e_old) * ki
+    result += ((error + data->last_error) * data->ki) / 50;
   }
 
   if ( data->kd ) {
-    // (error-last_error)  * kd / 1ms
-    // kd/1ms == kd / 0.001 == kd * 1000
-    result += ((data->error - data->last_error) * data->kd)*10;
+    result += ((error - (2 * data->last_error) + data->last2_error) * data->kd) / 100;
   }
-  data->last_error = data->error; 
+  
+  data->last2_error = data->last_error;
+  data->last_error = error;
+  
+  if(result < data->min_command_val)
+    result = data->min_command_val;
+  
+  if(result > data->max_command_val)
+    result = data->max_command_val;
+  
+  data->last_command_val = result;
   
   return result;
 }
+
+void setMinMaxCommandVal(struct pid_data *data, s32 min, s32 max) {
+  data->max_command_val = max;
+  data->min_command_val = min;
+
+  data->last_command_val = 0;
+  data->target_val = 0;
+  data->last_error = 0;
+  data->last2_error = 0;
+}
+

@@ -4,15 +4,24 @@
 #include "stm32f10x_type.h"
 
 struct pid_data {
-  s32 error;
-  s32 integrated_error;
   s32 kp;
   s32 ki;
   s32 kd;
+  s32 last_command_val;
   s32 target_val;
-  s32 last_target_val;
   s32 last_error;
+  s32 last2_error;
+  s32 max_command_val;
+  s32 min_command_val;
 };
+
+
+/**
+ * This function sets the minimum and maximum return 
+ * value of the PID function. The return value of PID()
+ * it clamped automatically clamped
+ */
+void setMinMaxCommandVal(struct pid_data *data, s32 min, s32 max);
 
 /**
  * This function set the kp value. Note, 

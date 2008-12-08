@@ -124,11 +124,16 @@ vu8 awdWasTriggered = 0;
 
 volatile enum hostIDs ownHostId;
 
+volatile struct pid_data pid_data;
+
 struct ControllerState {
   enum controllerModes controllMode;
   enum internalState internalState;
+  s16 kp;
+  s16 ki;
+  s16 kd;
+  u8 newPIDData;
   enum errorCodes error;
-  struct pid_data pid_data;
   u8 useBackInduction;
   u8 useOpenLoop;
   u16 pwmStepPerMillisecond;
@@ -231,9 +236,10 @@ int main(void)
   activeCState = &(cs1);
   lastActiveCState = &(cs2);
 
-  setKp((struct pid_data *) &(activeCState->pid_data), 100);
-  setKi((struct pid_data *) &(activeCState->pid_data), 0);
-  setKd((struct pid_data *) &(activeCState->pid_data), 0);
+  setKp((struct pid_data *) &(pid_data), 100);
+  setKi((struct pid_data *) &(pid_data), 0);
+  setKd((struct pid_data *) &(pid_data), 0);
+  setMinMaxCommandVal((struct pid_data *) &(pid_data), -1800, 1800);
 
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->controllMode = CONTROLLER_MODE_POSITION;
@@ -494,9 +500,10 @@ int main(void)
 	  if(activeCState->internalState == STATE_CONFIGURED) {
 	    struct setModeData *data = (struct setModeData *) curMsg->Data;
 	    lastActiveCState->controllMode = data->driveMode;
-	    setKp((struct pid_data *) &(lastActiveCState->pid_data), data->kp);
-	    setKi((struct pid_data *) &(lastActiveCState->pid_data), data->ki);
-	    setKd((struct pid_data *) &(lastActiveCState->pid_data), data->kd);
+	    lastActiveCState->kp = data->kp;
+	    lastActiveCState->ki = data->ki;
+	    lastActiveCState->kd = data->kd;
+	    lastActiveCState->newPIDData = 1;
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
@@ -557,27 +564,28 @@ int main(void)
       //this is concurrency proff, as this code can not run, while
       //systick Handler is active !
       volatile struct ControllerState *tempstate = activeCState;
+
+      //wait till pid data is taken up by controll loop,
+      //if meanwhile new pid data came in, just go on,
+      //as the pid data is old anyway
+      if(activeCState->newPIDData && !(lastActiveCState->newPIDData)) {
+	;
+      }
       
       //this is atomar as only the write is relevant!
       activeCState = lastActiveCState;
 
       lastActiveCState = tempstate;
       
-      /*u8 *d1 = (u8 *) lastActiveCState;
-      u8 *d2 = (u8 *) activeCState;
-
-      for(i = 0; i < sizeof(struct ControllerState); i++) {
-	*d1 = *d2;
-	d1++;
-	d2++;
-	}*/
-      
-
       *lastActiveCState = *activeCState;
       
+      //pid values are written to controll loop,
+      //so the are not new any more
+      lastActiveCState->newPIDData = 0;
+      
 
-      //        printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
-      //printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
+      printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
+      printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
 
     }
   }
@@ -724,6 +732,13 @@ void SysTickHandler(void) {
       //print("Tranmitting status Message : OK \n");  
     }
   }
+
+  if(activeCState->newPIDData) {
+    setKp((struct pid_data *) &(pid_data), activeCState->kp);
+    setKi((struct pid_data *) &(pid_data), activeCState->ki);
+    setKd((struct pid_data *) &(pid_data), activeCState->kd);
+    activeCState->newPIDData = 0; 
+  }
   
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_PWM:
@@ -751,8 +766,8 @@ void SysTickHandler(void) {
       //TODO FIXME convert to a real value like m/s
             
       //calculate PID value
-      setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
-      pwmValue = -pid((struct pid_data *) &(activeCState->pid_data), curSpeed);
+      setTargetValue((struct pid_data *) &(pid_data), activeCState->targetValue);
+      pwmValue = -pid((struct pid_data *) &(pid_data), curSpeed);
 
       //trunkcate to s16
       if(pwmValue > MAX_S16) 
@@ -790,8 +805,8 @@ void SysTickHandler(void) {
       
       
       //calculate PID value
-      setTargetValue((struct pid_data *) &(activeCState->pid_data), activeCState->targetValue);
-      pwmValue = -pid((struct pid_data *) &(activeCState->pid_data), curVal);
+      setTargetValue((struct pid_data *) &(pid_data), activeCState->targetValue);
+      pwmValue = -pid((struct pid_data *) &(pid_data), curVal);
 
       dbgCount++;
       if(dbgCount >= 1000) {
@@ -1925,4 +1940,17 @@ void assert_failed(u8* file, u32 line)
   }
 }
 
-/******************* (C) COPYRIGHT 2008 STMicroelectronics *****END OF FILE****/
+void *memcpy(void *dest, const void *src, size_t n) {
+  size_t i;
+  u8 *d = (u8 *) dest;
+  u8 *s = (u8 *) src;
+  
+
+  for(i = 0; i < n; i++) {
+    *d = *s;
+    d++;
+    s++;
+  }
+
+  return dest;
+}
