@@ -64,7 +64,7 @@ void SysTick_Configuration(void);
 
 //motorticks * gear reduction
 //512 * 729 / 16
-#define WHEEL_TURN_TICKS (23328)
+#define HALF_WHEEL_TURN_TICKS (23328 * 2)
 
 enum internalState {
   STATE_UNCONFIGURED,
@@ -236,7 +236,7 @@ int main(void)
   activeCState = &(cs1);
   lastActiveCState = &(cs2);
 
-  setKp((struct pid_data *) &(pid_data), 100);
+  setKp((struct pid_data *) &(pid_data), 1);
   setKi((struct pid_data *) &(pid_data), 0);
   setKd((struct pid_data *) &(pid_data), 0);
   setMinMaxCommandVal((struct pid_data *) &(pid_data), -1800, 1800);
@@ -434,7 +434,17 @@ int main(void)
 	else 
 	GPIO_ResetBits(GPIOB, GPIO_Pin_6);
       */
-
+      
+      /*      static int bla = 0;
+      if(bla) {
+	bla = 0;
+	GPIO_SetBits(GPIOB, GPIO_Pin_10);
+      } else {
+	bla = 1;
+	GPIO_ResetBits(GPIOB, GPIO_Pin_10);
+	}*/
+      
+      
       extern u16 wasincanit;
 
       //printf("Was in CAN it %d \n", wasincanit);
@@ -591,6 +601,35 @@ int main(void)
   }
 }
 
+void detectTouchdown(const int current) {
+  static int highTimeCounter = 0;
+  enum touchdownStates {
+    TOUCHDOWN_DETECTED,
+    LIFTOFF,
+  };
+  
+  static enum touchdownStates state = LIFTOFF;
+
+  switch (state) {
+    case TOUCHDOWN_DETECTED:
+      highTimeCounter++;
+      if(highTimeCounter > 20) {
+	state = LIFTOFF;
+	highTimeCounter = 0;
+	GPIO_SetBits(GPIOB, GPIO_Pin_10);
+      }
+      break;
+      
+    case LIFTOFF:
+      if(current > 500) {
+	state = TOUCHDOWN_DETECTED;
+	GPIO_ResetBits(GPIOB, GPIO_Pin_10);
+      }
+      break;
+  }
+}
+
+
 void SysTickHandler(void) {
 
   //request switch of adc value struct
@@ -603,6 +642,7 @@ void SysTickHandler(void) {
   static s32 currentPwmValue = 0;
   static u16 index = 0;
   static u16 dbgCount = 0;
+  static u8 wheelHalfTurned = 0;
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
@@ -700,6 +740,8 @@ void SysTickHandler(void) {
 
   inActiveAdcValues->currentValueCount = 0;
 
+  //try to detect touchdown and switch on led
+  detectTouchdown(currentValue);
 
   if(activeCState->internalState == STATE_CONFIGURED ||
      activeCState->internalState == STATE_ERROR) {
@@ -740,6 +782,14 @@ void SysTickHandler(void) {
     activeCState->newPIDData = 0; 
   }
   
+  //calculate correct half wheel position
+  if(abs(lastEncoderValue - encoderValue) > HALF_WHEEL_TURN_TICKS / 2) {
+      if(wheelHalfTurned)
+	wheelHalfTurned = 0;
+      else
+	wheelHalfTurned = 1;
+  }
+
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
@@ -750,16 +800,16 @@ void SysTickHandler(void) {
       curSpeed = encoderValue - lastEncoderValue;
       
       //this assumes, that the motor will never turn faster than
-      //a half wheel turn (or 23 motor turns) in a ms 
-      if(abs(lastEncoderValue - encoderValue) > WHEEL_TURN_TICKS / 2) {
+      //a quarter wheel turn (or 12.5 motor turns) in a ms 
+      if(abs(lastEncoderValue - encoderValue) > HALF_WHEEL_TURN_TICKS / 2) {
 	//wheel ist turning backward
 	if(lastEncoderValue < encoderValue) {
-	  curSpeed -= WHEEL_TURN_TICKS;
+	  curSpeed -= HALF_WHEEL_TURN_TICKS;
 	}
 	
 	//wheel is turning forward
 	if(lastEncoderValue > encoderValue) {
-	  curSpeed += WHEEL_TURN_TICKS;
+	  curSpeed += HALF_WHEEL_TURN_TICKS;
 	}
       }
 
@@ -796,11 +846,12 @@ void SysTickHandler(void) {
       break;
     case CONTROLLER_MODE_POSITION: {
       s32 curVal = encoderValue;
-      if(abs(activeCState->targetValue - encoderValue) > WHEEL_TURN_TICKS / 2) {
-	if(encoderValue < WHEEL_TURN_TICKS / 2)
-	  curVal += WHEEL_TURN_TICKS;
+      curVal += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
+      if(abs(activeCState->targetValue - curVal) > HALF_WHEEL_TURN_TICKS) {
+	if(curVal < HALF_WHEEL_TURN_TICKS)
+	  curVal += HALF_WHEEL_TURN_TICKS * 2;
 	else 
-	  curVal -= WHEEL_TURN_TICKS;
+	  curVal -= HALF_WHEEL_TURN_TICKS * 2;
       }
       
       
@@ -1511,7 +1562,7 @@ void TIM_Configuration(void)
 
   // Time base configuration 
   TIM_TimeBaseStructure.TIM_Period = 65000;
-  TIM_TimeBaseStructure.TIM_Prescaler = 2;
+  TIM_TimeBaseStructure.TIM_Prescaler = 0;
   TIM_TimeBaseStructure.TIM_ClockDivision = 0;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
   TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
@@ -1521,7 +1572,7 @@ void TIM_Configuration(void)
 			     TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
   
   //configure value to reload after wrap around
-  TIM_SetAutoreload(TIM4, WHEEL_TURN_TICKS);
+  TIM_SetAutoreload(TIM4, HALF_WHEEL_TURN_TICKS);
 
   TIM_ARRPreloadConfig(TIM4, ENABLE);
 
@@ -1790,6 +1841,14 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
+  /** DEBUG**/
+  // Configure I2C2 pins: SCL and SDA as push pull for testLED
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  /** END DEBUG**/
+  
   
 }
 
@@ -1940,6 +1999,7 @@ void assert_failed(u8* file, u32 line)
   }
 }
 
+/*
 void *memcpy(void *dest, const void *src, size_t n) {
   size_t i;
   u8 *d = (u8 *) dest;
@@ -1953,4 +2013,4 @@ void *memcpy(void *dest, const void *src, size_t n) {
   }
 
   return dest;
-}
+  }*/

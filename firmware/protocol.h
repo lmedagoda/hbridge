@@ -26,8 +26,9 @@ enum packetIDs {
   PACKET_ID_SET_MODE = 3,
   PACKET_ID_SET_CONFIGURE = 4,
   PACKET_ID_SET_CONFIGURE2 = 5,
-  PACKET_ID_SPEED_DEBUG = 8,
-  PACKET_ID_POS_DEBUG = 9,
+  PACKET_ID_SPEED_DEBUG = 9,
+  PACKET_ID_PID_DEBUG = 8,
+  PACKET_ID_POS_DEBUG = 10,
 };
 
 enum hostIDs {
@@ -42,6 +43,13 @@ struct speedDebugData {
   s16 pwmVal;
   u16 encoderVal;
   s16 speedVal;
+} __attribute__ ((packed));
+
+struct pidDebugData {
+  s16 pPart;
+  s16 iPart;
+  s16 dPart;
+  s16 errorSum;
 } __attribute__ ((packed));
 
 

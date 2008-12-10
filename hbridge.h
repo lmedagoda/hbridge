@@ -59,6 +59,21 @@ struct SpeedDebug {
   enum HOST_IDS host;  
 };
 
+struct PIDDebug {
+  int16_t pPart;
+  int16_t iPart;
+  int16_t dPart;
+  int16_t errorSum;
+  enum HOST_IDS host;  
+};
+
+struct SpeedAndPIDDebug {
+  struct PIDDebug pidDebug;
+  struct SpeedDebug speedDebug;
+};
+ 
+ 
+
 struct AllStatus {
   struct Status status[4];
 };
@@ -94,10 +109,13 @@ public:
     int openCanDevice(std::string &path);
     void getStatusFromCanMessage(can_msg &msg, Status &status);
     void getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg);
+    void getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg);
+    
     bool getNextCanMessage(can_msg &msg);
     bool isStatusPacket(can_msg &msg);
     bool isSpeedDebugPacket(can_msg &msg);
-
+    bool isPIDDebugPacket(can_msg &msg);
+    
     int getFileDescriptor() const;
     
 private:
