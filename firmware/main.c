@@ -124,7 +124,8 @@ vu8 awdWasTriggered = 0;
 
 volatile enum hostIDs ownHostId;
 
-volatile struct pid_data pid_data;
+volatile struct pid_data speedPidData;
+volatile struct pid_data posPidData;
 
 struct ControllerState {
   enum controllerModes controllMode;
@@ -136,6 +137,7 @@ struct ControllerState {
   enum errorCodes error;
   u8 useBackInduction;
   u8 useOpenLoop;
+  u8 cascadedPositionController;
   u16 pwmStepPerMillisecond;
   u16 maxCurrent;
   u8 maxCurrentCount;
@@ -197,15 +199,19 @@ int main(void)
   //get correct host id from gpio pins
   switch(gpioData) {
   case 1 :
+    print("Configured as H_BRIDGE_1\n");
     ownHostId = RECEIVER_ID_H_BRIDGE_1;
     break;
   case 2 :
+    print("Configured as H_BRIDGE_2\n");
     ownHostId = RECEIVER_ID_H_BRIDGE_2;
     break;
   case 4 :
+    print("Configured as H_BRIDGE_3\n");
     ownHostId = RECEIVER_ID_H_BRIDGE_3;
     break;
   case 8 :
+    print("Configured as H_BRIDGE_4\n");
     ownHostId = RECEIVER_ID_H_BRIDGE_4;
     break;
   default:
@@ -236,10 +242,15 @@ int main(void)
   activeCState = &(cs1);
   lastActiveCState = &(cs2);
 
-  setKp((struct pid_data *) &(pid_data), 1);
-  setKi((struct pid_data *) &(pid_data), 0);
-  setKd((struct pid_data *) &(pid_data), 0);
-  setMinMaxCommandVal((struct pid_data *) &(pid_data), -1800, 1800);
+  setKp((struct pid_data *) &(posPidData), 0);
+  setKi((struct pid_data *) &(posPidData), 0);
+  setKd((struct pid_data *) &(posPidData), 0);
+  setMinMaxCommandVal((struct pid_data *) &(posPidData), -1800, 1800);
+
+  setKp((struct pid_data *) &(speedPidData), 0);
+  setKi((struct pid_data *) &(speedPidData), 0);
+  setKd((struct pid_data *) &(speedPidData), 0);
+  setMinMaxCommandVal((struct pid_data *) &(speedPidData), -1800, 1800);
 
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->controllMode = CONTROLLER_MODE_POSITION;
@@ -247,6 +258,7 @@ int main(void)
   activeCState->error = 0;
   activeCState->useBackInduction = 0;
   activeCState->useOpenLoop = 0;
+  activeCState->cascadedPositionController = 0;
   activeCState->pwmStepPerMillisecond = 0;
   activeCState->maxCurrent = 0;
   activeCState->maxMotorTemp = 0;
@@ -255,6 +267,10 @@ int main(void)
   activeCState->maxBoardTempCount = 0;
   activeCState->timeout = 1;
   activeCState->targetValue = 0;
+  activeCState->kp = 0;
+  activeCState->ki = 0;
+  activeCState->kd = 0;
+  activeCState->newPIDData = 0;
   *lastActiveCState = *activeCState;
 
 
@@ -526,6 +542,7 @@ int main(void)
 	  struct configure1Data *data = (struct configure1Data *) curMsg->Data;
 	  lastActiveCState->useBackInduction = data->activeFieldCollapse;
 	  lastActiveCState->useOpenLoop = data->openCircuit;
+	  lastActiveCState->cascadedPositionController = data->cascadedPositionController;
 
 	  lastActiveCState->maxMotorTemp = data->maxMotorTemp;
 	  lastActiveCState->maxMotorTempCount = data->maxMotorTempCount;
@@ -576,9 +593,7 @@ int main(void)
       volatile struct ControllerState *tempstate = activeCState;
 
       //wait till pid data is taken up by controll loop,
-      //if meanwhile new pid data came in, just go on,
-      //as the pid data is old anyway
-      if(activeCState->newPIDData && !(lastActiveCState->newPIDData)) {
+      if(activeCState->newPIDData) {
 	;
       }
       
@@ -621,7 +636,7 @@ void detectTouchdown(const int current) {
       break;
       
     case LIFTOFF:
-      if(current > 500) {
+      if(current > 200) {
 	state = TOUCHDOWN_DETECTED;
 	GPIO_ResetBits(GPIOB, GPIO_Pin_10);
       }
@@ -776,10 +791,22 @@ void SysTickHandler(void) {
   }
 
   if(activeCState->newPIDData) {
-    setKp((struct pid_data *) &(pid_data), activeCState->kp);
-    setKi((struct pid_data *) &(pid_data), activeCState->ki);
-    setKd((struct pid_data *) &(pid_data), activeCState->kd);
-    activeCState->newPIDData = 0; 
+    switch(activeCState->controllMode) {
+      case CONTROLLER_MODE_SPEED:
+	setKp((struct pid_data *) &(speedPidData), activeCState->kp);
+	setKi((struct pid_data *) &(speedPidData), activeCState->ki);
+	setKd((struct pid_data *) &(speedPidData), activeCState->kd);
+	break;
+      case CONTROLLER_MODE_POSITION:
+	setKp((struct pid_data *) &(posPidData), activeCState->kp);
+	setKi((struct pid_data *) &(posPidData), activeCState->ki);
+	setKd((struct pid_data *) &(posPidData), activeCState->kd);
+	break;
+      default:
+	print("Error got PID data for nonPID driving mode\n");
+	break;
+    }
+    activeCState->newPIDData = 0;
   }
   
   //calculate correct half wheel position
@@ -793,9 +820,34 @@ void SysTickHandler(void) {
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
-      
       break;
     
+    case CONTROLLER_MODE_POSITION: {
+      s32 curVal = encoderValue;
+      
+      curVal += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
+      if(abs(activeCState->targetValue - curVal) > HALF_WHEEL_TURN_TICKS) {
+	if(curVal < HALF_WHEEL_TURN_TICKS)
+	  curVal += HALF_WHEEL_TURN_TICKS * 2;
+	else 
+	  curVal -= HALF_WHEEL_TURN_TICKS * 2;
+      }
+      
+      //calculate PID value
+      setTargetValue((struct pid_data *) &(posPidData), activeCState->targetValue * 4);
+      pwmValue = pid((struct pid_data *) &(posPidData), curVal);
+
+      dbgCount++;
+      if(dbgCount >= 1000) {
+	printf("Kp: %l, Ki: %l, Kd: %l\n", speedPidData.kp, speedPidData.ki, speedPidData.kd);
+	printf("T: %l, PWM: %l, E: %hu, C: %l\n", activeCState->targetValue, pwmValue, encoderValue, curVal);
+	dbgCount = 0;
+      }
+    }
+      if(!activeCState->cascadedPositionController) {
+	break;
+      }
+      
     case CONTROLLER_MODE_SPEED:
       curSpeed = encoderValue - lastEncoderValue;
       
@@ -816,15 +868,16 @@ void SysTickHandler(void) {
       //TODO FIXME convert to a real value like m/s
             
       //calculate PID value
-      setTargetValue((struct pid_data *) &(pid_data), activeCState->targetValue);
-      pwmValue = -pid((struct pid_data *) &(pid_data), curSpeed);
-
-      //trunkcate to s16
-      if(pwmValue > MAX_S16) 
-	pwmValue = MAX_S16;
-      if(pwmValue < MIN_S16)
-	pwmValue = MIN_S16;
+      if(activeCState->cascadedPositionController && activeCState->controllMode == CONTROLLER_MODE_POSITION) {
+	//use output of position controller as input
+	setTargetValue((struct pid_data *) &(speedPidData), pwmValue);
+      } else {
+	//use input from PC-Side
+	setTargetValue((struct pid_data *) &(speedPidData), activeCState->targetValue);
+      }
       
+      pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed);
+
       CanTxMsg statusMessage;
       statusMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
       statusMessage.RTR=CAN_RTR_DATA;
@@ -844,28 +897,7 @@ void SysTickHandler(void) {
       }
 
       break;
-    case CONTROLLER_MODE_POSITION: {
-      s32 curVal = encoderValue;
-      curVal += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
-      if(abs(activeCState->targetValue - curVal) > HALF_WHEEL_TURN_TICKS) {
-	if(curVal < HALF_WHEEL_TURN_TICKS)
-	  curVal += HALF_WHEEL_TURN_TICKS * 2;
-	else 
-	  curVal -= HALF_WHEEL_TURN_TICKS * 2;
-      }
-      
-      
-      //calculate PID value
-      setTargetValue((struct pid_data *) &(pid_data), activeCState->targetValue);
-      pwmValue = -pid((struct pid_data *) &(pid_data), curVal);
-
-      dbgCount++;
-      if(dbgCount >= 1000) {
-	printf("T: %l, PWM: %l, E: %hu, C: %l\n", activeCState->targetValue, pwmValue, encoderValue, curVal);
-	dbgCount = 0;
-      }
-    }
-      break;
+    
   }
 
   //trunkcate to s16
@@ -906,6 +938,8 @@ void setNewPWM(const s16 value2) {
   //trunkate to min of 8% PWM, as Current Measurement needs 1.777 us
   if((value > 0 && value < 144) || (value < 0 && value > -144))
     value = 0;
+
+  
 
   //TODO exact value
   //trunkcate to max of 95% PWM
@@ -1575,6 +1609,10 @@ void TIM_Configuration(void)
   TIM_SetAutoreload(TIM4, HALF_WHEEL_TURN_TICKS);
 
   TIM_ARRPreloadConfig(TIM4, ENABLE);
+
+  //signal needs to be 8 clock cycles stable
+  TIM4->CCMR1 |= (3<<4) | (3<<12);
+  TIM4->CCMR2 |= (3<<4) | (3<<12);
 
   // TIM enable counter
   TIM_Cmd(TIM4, ENABLE);

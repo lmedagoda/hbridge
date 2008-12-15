@@ -81,7 +81,8 @@ struct configure1Data {
   unsigned openCircuit :1;
   unsigned activeFieldCollapse :1;
   unsigned externalTempSensor :1;
-  unsigned unused : 13;
+  unsigned cascadedPositionController :1;
+  unsigned unused : 12;
   u8 maxMotorTemp;
   u8 maxMotorTempCount;
   u8 maxBoardTemp;

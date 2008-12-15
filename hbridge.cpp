@@ -135,6 +135,7 @@ int Interface::setConfiguration(const enum HOST_IDS host, const Configuration ne
     conf1->openCircuit = newConfig.openCircuit;
     conf1->activeFieldCollapse = newConfig.activeFieldCollapse;
     conf1->externalTempSensor = newConfig.externalTempSensor;
+    conf1->cascadedPositionController = newConfig.cascadedPositionController;
     conf1->maxMotorTemp = newConfig.maxMotorTemp;
     conf1->maxMotorTempCount = newConfig.maxMotorTempCount;
     conf1->maxBoardTemp = newConfig.maxBoardTemp;
