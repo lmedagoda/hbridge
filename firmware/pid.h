@@ -45,9 +45,9 @@ void setKd(struct pid_data *data, s32 kd);
 
 void setTargetValue(struct pid_data *data, s32 target_val);
 
-s32 pid(struct pid_data *data, s32 cur_val, u8 senddbg);
+s32 pid(struct pid_data *data, s32 cur_val);
 
-
+void getInternalPIDValues(s16 *pPart, s16 *iPart, s16 *dPart);
 
 
 #endif

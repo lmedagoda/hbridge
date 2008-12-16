@@ -816,6 +816,11 @@ void SysTickHandler(void) {
 	wheelHalfTurned = 1;
   }
 
+  CanTxMsg pidMessagePos;
+  CanTxMsg posDbgMessage;
+  CanTxMsg pidMessageSpeed;
+  CanTxMsg speedDbgMessage;
+
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
@@ -834,9 +839,19 @@ void SysTickHandler(void) {
       
       //calculate PID value
       setTargetValue((struct pid_data *) &(posPidData), activeCState->targetValue * 4);
-      pwmValue = pid((struct pid_data *) &(posPidData), curVal, 1);
+      pwmValue = pid((struct pid_data *) &(posPidData), curVal);
 
-      CanTxMsg posDbgMessage;
+
+      //send status message over CAN
+      pidMessagePos.StdId= PACKET_ID_PID_DEBUG_POS + ownHostId;
+      pidMessagePos.RTR=CAN_RTR_DATA;
+      pidMessagePos.IDE=CAN_ID_STD;
+      pidMessagePos.DLC= sizeof(struct pidDebugData);
+      
+      struct pidDebugData *sdata = (struct pidDebugData *) pidMessagePos.Data;
+      getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+      
+
       posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
       posDbgMessage.RTR=CAN_RTR_DATA;
       posDbgMessage.IDE=CAN_ID_STD;
@@ -847,9 +862,6 @@ void SysTickHandler(void) {
       pdbgdata->pwmVal = pwmValue;
       pdbgdata->encoderVal = encoderValue;
       pdbgdata->posVal = (curVal / 4);
-      while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
-	;
-      }
     }
 
       if(!activeCState->cascadedPositionController) {
@@ -878,13 +890,12 @@ void SysTickHandler(void) {
 
       //TODO FIXME convert to a real value like m/s
         
-      CanTxMsg statusMessage;
-      statusMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
-      statusMessage.RTR=CAN_RTR_DATA;
-      statusMessage.IDE=CAN_ID_STD;
-      statusMessage.DLC= sizeof(struct statusData);
+      speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
+      speedDbgMessage.RTR=CAN_RTR_DATA;
+      speedDbgMessage.IDE=CAN_ID_STD;
+      speedDbgMessage.DLC= sizeof(struct speedDebugData);
 
-      struct speedDebugData *sdbgdata = (struct speedDebugData *) statusMessage.Data;
+      struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
 	
     
       //calculate PID value
@@ -894,13 +905,13 @@ void SysTickHandler(void) {
 
 	sdbgdata->targetVal = pwmValue;
       
-	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed, 0);
+	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed);
 	
       } else {
 	//use input from PC-Side
 	setTargetValue((struct pid_data *) &(speedPidData), activeCState->targetValue);
       
-	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed, 1);
+	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed);
 
 	sdbgdata->targetVal = activeCState->targetValue;
       }
@@ -908,12 +919,17 @@ void SysTickHandler(void) {
       sdbgdata->pwmVal = pwmValue;
       sdbgdata->encoderVal = encoderValue;
       sdbgdata->speedVal = curSpeed;
+
+      //send status message over CAN
+      pidMessageSpeed.StdId= PACKET_ID_PID_DEBUG_SPEED + ownHostId;
+      pidMessageSpeed.RTR=CAN_RTR_DATA;
+      pidMessageSpeed.IDE=CAN_ID_STD;
+      pidMessageSpeed.DLC= sizeof(struct pidDebugData);
       
-      while(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-	;
-      }
-      break;
-    
+      struct pidDebugData *sdata = (struct pidDebugData *) pidMessageSpeed.Data;
+      getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+      
+      break; 
   }
 
   //trunkcate to s16
@@ -935,6 +951,25 @@ void SysTickHandler(void) {
   if(activeCState->internalState == STATE_CONFIGURED) {
     //set pwm
     setNewPWM(currentPwmValue);
+
+
+    //send out all debug messages in right order
+    while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
+      ;
+    }
+    
+    while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
+      ;
+    }
+    
+    while(CAN_Transmit(&pidMessageSpeed) == CAN_NO_MB){
+      ;
+    }
+    
+    //send speed status message
+    while(CAN_Transmit(&speedDbgMessage) == CAN_NO_MB) {
+      ;
+    }
   } else {
     setNewPWM(0);   
   }

@@ -181,8 +181,12 @@ bool Interface::isPosDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_POS_DEBUG;
 }
 
-bool Interface::isPIDDebugPacket(can_msg &msg) {
-  return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG;
+bool Interface::isPIDSpeedDebugPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG_SPEED;
+}
+
+bool Interface::isPIDPositionDebugPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG_POS;
 }
 
 void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
@@ -223,7 +227,6 @@ void Interface::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
   dbg.pPart = data->pPart;
   dbg.iPart = data->iPart;
   dbg.dPart = data->dPart;
-  dbg.errorSum = data->errorSum;
   dbg.host = (enum HOST_IDS) (msg.id & ~0x1F);
 }
 

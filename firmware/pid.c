@@ -4,6 +4,10 @@
 #include "protocol.h"
 #include "can.h"
 
+static s16 pPart = 0;
+static s16 iPart = 0;
+static s16 dPart = 0;
+
 /**
  * This function set the kp value. Note, 
  * that kp is a fixed point with 2 values
@@ -35,14 +39,16 @@ void setTargetValue(struct pid_data *data, s32 target_val) {
   data->target_val = target_val;
 }
 
+void getInternalPIDValues(s16 *pPart1, s16 *iPart1, s16 *dPart1) {
+  *pPart1 = pPart;
+  *iPart1 = iPart;
+  *dPart1 = dPart;
+}
 
-s32 pid(struct pid_data *data, s32 cur_val, u8 senddbg) {
+s32 pid(struct pid_data *data, s32 cur_val) {
 
   s32 result = 0;
   s32 error = data->target_val - cur_val;
-  s16 pPart = 0;
-  s16 iPart = 0;
-  s16 dPart = 0;
   
   if ( data->kp ) {
     result += ((error) * data->kp) / 100;
@@ -78,29 +84,8 @@ s32 pid(struct pid_data *data, s32 cur_val, u8 senddbg) {
     result = data->min_command_val;
   
   if(result > data->max_command_val)
-    result = data->max_command_val;
+    result = data->max_command_val;  
   
-  if(senddbg) {
-    //send status message over CAN
-    CanTxMsg statusMessage;
-    statusMessage.StdId= PACKET_ID_PID_DEBUG + RECEIVER_ID_H_BRIDGE_1;
-    statusMessage.RTR=CAN_RTR_DATA;
-    statusMessage.IDE=CAN_ID_STD;
-    statusMessage.DLC= sizeof(struct pidDebugData);
-    
-    struct pidDebugData *sdata = (struct pidDebugData *) statusMessage.Data;
-    sdata->pPart = pPart;
-    sdata->iPart = iPart;
-    sdata->dPart = dPart;
-    sdata->errorSum = data->error_sum;
-    
-    
-    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-      print("Error Tranmitting pidDebug Message : No free TxMailbox \n");
-    } else {
-      //print("Tranmitting status Message : OK \n");  
-    }
-  }
   return result;
 }
 

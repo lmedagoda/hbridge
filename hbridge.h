@@ -127,7 +127,8 @@ public:
     bool getNextCanMessage(can_msg &msg);
     bool isStatusPacket(can_msg &msg);
     bool isSpeedDebugPacket(can_msg &msg);
-    bool isPIDDebugPacket(can_msg &msg);
+    bool isPIDSpeedDebugPacket(can_msg &msg);
+    bool isPIDPositionDebugPacket(can_msg &msg);
     bool isPosDebugPacket(can_msg &msg);
     
     int getFileDescriptor() const;
