@@ -36,7 +36,7 @@ void setTargetValue(struct pid_data *data, s32 target_val) {
 }
 
 
-s32 pid(struct pid_data *data, s32 cur_val) {
+s32 pid(struct pid_data *data, s32 cur_val, u8 senddbg) {
 
   s32 result = 0;
   s32 error = data->target_val - cur_val;
@@ -80,27 +80,27 @@ s32 pid(struct pid_data *data, s32 cur_val) {
   if(result > data->max_command_val)
     result = data->max_command_val;
   
-
-  //send status message over CAN
-  CanTxMsg statusMessage;
-  statusMessage.StdId= PACKET_ID_PID_DEBUG + RECEIVER_ID_H_BRIDGE_1;
-  statusMessage.RTR=CAN_RTR_DATA;
-  statusMessage.IDE=CAN_ID_STD;
-  statusMessage.DLC= sizeof(struct pidDebugData);
-  
-  struct pidDebugData *sdata = (struct pidDebugData *) statusMessage.Data;
-  sdata->pPart = pPart;
-  sdata->iPart = iPart;
-  sdata->dPart = dPart;
-  sdata->errorSum = data->error_sum;
-  
-  
-  if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-    print("Error Tranmitting status Message : No free TxMailbox \n");
-  } else {
-    //print("Tranmitting status Message : OK \n");  
+  if(senddbg) {
+    //send status message over CAN
+    CanTxMsg statusMessage;
+    statusMessage.StdId= PACKET_ID_PID_DEBUG + RECEIVER_ID_H_BRIDGE_1;
+    statusMessage.RTR=CAN_RTR_DATA;
+    statusMessage.IDE=CAN_ID_STD;
+    statusMessage.DLC= sizeof(struct pidDebugData);
+    
+    struct pidDebugData *sdata = (struct pidDebugData *) statusMessage.Data;
+    sdata->pPart = pPart;
+    sdata->iPart = iPart;
+    sdata->dPart = dPart;
+    sdata->errorSum = data->error_sum;
+    
+    
+    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+      print("Error Tranmitting pidDebug Message : No free TxMailbox \n");
+    } else {
+      //print("Tranmitting status Message : OK \n");  
+    }
   }
-
   return result;
 }
 

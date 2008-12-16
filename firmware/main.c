@@ -656,7 +656,6 @@ void SysTickHandler(void) {
   static u16 lastEncoderValue = 0;
   static s32 currentPwmValue = 0;
   static u16 index = 0;
-  static u16 dbgCount = 0;
   static u8 wheelHalfTurned = 0;
 
   s32 curSpeed = 0;
@@ -826,7 +825,7 @@ void SysTickHandler(void) {
       s32 curVal = encoderValue;
       
       curVal += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
-      if(abs(activeCState->targetValue - curVal) > HALF_WHEEL_TURN_TICKS) {
+      if(abs((activeCState->targetValue *4) - curVal) > HALF_WHEEL_TURN_TICKS) {
 	if(curVal < HALF_WHEEL_TURN_TICKS)
 	  curVal += HALF_WHEEL_TURN_TICKS * 2;
 	else 
@@ -835,18 +834,30 @@ void SysTickHandler(void) {
       
       //calculate PID value
       setTargetValue((struct pid_data *) &(posPidData), activeCState->targetValue * 4);
-      pwmValue = pid((struct pid_data *) &(posPidData), curVal);
+      pwmValue = pid((struct pid_data *) &(posPidData), curVal, 1);
 
-      dbgCount++;
-      if(dbgCount >= 1000) {
-	printf("Kp: %l, Ki: %l, Kd: %l\n", speedPidData.kp, speedPidData.ki, speedPidData.kd);
-	printf("T: %l, PWM: %l, E: %hu, C: %l\n", activeCState->targetValue, pwmValue, encoderValue, curVal);
-	dbgCount = 0;
+      CanTxMsg posDbgMessage;
+      posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
+      posDbgMessage.RTR=CAN_RTR_DATA;
+      posDbgMessage.IDE=CAN_ID_STD;
+      posDbgMessage.DLC= sizeof(struct posDebugData);
+
+      struct posDebugData *pdbgdata = (struct posDebugData *) posDbgMessage.Data;
+      pdbgdata->targetVal = activeCState->targetValue;
+      pdbgdata->pwmVal = pwmValue;
+      pdbgdata->encoderVal = encoderValue;
+      pdbgdata->posVal = (curVal / 4);
+      while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
+	;
       }
     }
+
       if(!activeCState->cascadedPositionController) {
 	break;
+      } else {
+	pwmValue /= 10;
       }
+      
       
     case CONTROLLER_MODE_SPEED:
       curSpeed = encoderValue - lastEncoderValue;
@@ -866,36 +877,41 @@ void SysTickHandler(void) {
       }
 
       //TODO FIXME convert to a real value like m/s
-            
-      //calculate PID value
-      if(activeCState->cascadedPositionController && activeCState->controllMode == CONTROLLER_MODE_POSITION) {
-	//use output of position controller as input
-	setTargetValue((struct pid_data *) &(speedPidData), pwmValue);
-      } else {
-	//use input from PC-Side
-	setTargetValue((struct pid_data *) &(speedPidData), activeCState->targetValue);
-      }
-      
-      pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed);
-
+        
       CanTxMsg statusMessage;
       statusMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
       statusMessage.RTR=CAN_RTR_DATA;
       statusMessage.IDE=CAN_ID_STD;
       statusMessage.DLC= sizeof(struct statusData);
-      
+
       struct speedDebugData *sdbgdata = (struct speedDebugData *) statusMessage.Data;
-      sdbgdata->targetVal = activeCState->targetValue;
+	
+    
+      //calculate PID value
+      if(activeCState->cascadedPositionController && activeCState->controllMode == CONTROLLER_MODE_POSITION) {
+	//use output of position controller as input
+	setTargetValue((struct pid_data *) &(speedPidData), pwmValue);
+
+	sdbgdata->targetVal = pwmValue;
+      
+	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed, 0);
+	
+      } else {
+	//use input from PC-Side
+	setTargetValue((struct pid_data *) &(speedPidData), activeCState->targetValue);
+      
+	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed, 1);
+
+	sdbgdata->targetVal = activeCState->targetValue;
+      }
+      
       sdbgdata->pwmVal = pwmValue;
       sdbgdata->encoderVal = encoderValue;
       sdbgdata->speedVal = curSpeed;
-    
-      if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-	print("Error Tranmitting status Message : No free TxMailbox \n");
-      } else {
-	//print("Tranmitting status Message : OK \n");  
+      
+      while(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+	;
       }
-
       break;
     
   }

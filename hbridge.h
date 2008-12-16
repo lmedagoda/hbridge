@@ -60,6 +60,14 @@ struct SpeedDebug {
   enum HOST_IDS host;  
 };
 
+struct PosDebug {
+  uint16_t targetVal;
+  int16_t pwmVal;
+  uint16_t encoderVal;
+  uint16_t posVal;
+  enum HOST_IDS host;  
+};
+
 struct PIDDebug {
   int16_t pPart;
   int16_t iPart;
@@ -68,9 +76,12 @@ struct PIDDebug {
   enum HOST_IDS host;  
 };
 
+
 struct SpeedAndPIDDebug {
-  struct PIDDebug pidDebug;
+  struct PIDDebug pidDebugSpeed;
   struct SpeedDebug speedDebug;
+  struct PIDDebug pidDebugPos;
+  struct PosDebug posDebug;
 };
  
  
@@ -111,11 +122,13 @@ public:
     void getStatusFromCanMessage(can_msg &msg, Status &status);
     void getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg);
     void getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg);
+    void getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg);
     
     bool getNextCanMessage(can_msg &msg);
     bool isStatusPacket(can_msg &msg);
     bool isSpeedDebugPacket(can_msg &msg);
     bool isPIDDebugPacket(can_msg &msg);
+    bool isPosDebugPacket(can_msg &msg);
     
     int getFileDescriptor() const;
     

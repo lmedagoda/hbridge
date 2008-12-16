@@ -45,6 +45,13 @@ struct speedDebugData {
   s16 speedVal;
 } __attribute__ ((packed));
 
+struct posDebugData {
+  u16 targetVal;
+  s16 pwmVal;
+  u16 encoderVal;
+  u16 posVal;
+} __attribute__ ((packed));
+
 struct pidDebugData {
   s16 pPart;
   s16 iPart;

@@ -177,6 +177,10 @@ bool Interface::isSpeedDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_SPEED_DEBUG;
 }
 
+bool Interface::isPosDebugPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_POS_DEBUG;
+}
+
 bool Interface::isPIDDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG;
 }
@@ -202,6 +206,17 @@ void Interface::getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg) {
   sdbg.speedVal = data->speedVal;
   sdbg.host = (enum HOST_IDS) (msg.id & ~0x1F);  
 }
+
+void Interface::getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg) {
+  struct posDebugData *data = (struct posDebugData *) msg.data;
+
+  sdbg.targetVal = data->targetVal;
+  sdbg.pwmVal = data->pwmVal;
+  sdbg.encoderVal = data->encoderVal;
+  sdbg.posVal = data->posVal;
+  sdbg.host = (enum HOST_IDS) (msg.id & ~0x1F);  
+}
+
 
 void Interface::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
   struct pidDebugData *data = (struct pidDebugData *) msg.data;
