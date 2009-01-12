@@ -245,7 +245,7 @@ int main(void)
   setKp((struct pid_data *) &(posPidData), 0);
   setKi((struct pid_data *) &(posPidData), 0);
   setKd((struct pid_data *) &(posPidData), 0);
-  setMinMaxCommandVal((struct pid_data *) &(posPidData), -1800, 1800);
+  setMinMaxCommandVal((struct pid_data *) &(posPidData), -4000, 4000);
 
   setKp((struct pid_data *) &(speedPidData), 0);
   setKi((struct pid_data *) &(speedPidData), 0);
@@ -952,6 +952,8 @@ void SysTickHandler(void) {
     //set pwm
     setNewPWM(currentPwmValue);
 
+    struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
+    sdbgdata->pwmVal = currentPwmValue;
 
     //send out all debug messages in right order
     while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
@@ -986,10 +988,10 @@ void setNewPWM(const s16 value2) {
   s16 value = value2;
 
   
-  //trunkate to min of 8% PWM, as Current Measurement needs 1.777 us
-  if((value > 0 && value < 144) || (value < 0 && value > -144))
+  //trunkate to min of 3.0% PWM, as Current Measurement needs 763.8 us
+  //388.8us for vbat and 375us for first current sample
+  if((value > 0 && value < 55) || (value < 0 && value > -55))
     value = 0;
-
   
 
   //TODO exact value
@@ -1136,9 +1138,6 @@ void setNewPWM(const s16 value2) {
 
     //disable security interrupt
     TIM2->DIER &= ~TIM_IT_CC3;
-
-    
-
   }
   
   //we had an direction change, disable H-Bridge
