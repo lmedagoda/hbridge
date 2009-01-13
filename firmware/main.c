@@ -137,6 +137,7 @@ struct ControllerState {
   enum errorCodes error;
   u8 useBackInduction;
   u8 useOpenLoop;
+  u8 enablePIDDebug;
   u8 cascadedPositionController;
   u16 pwmStepPerMillisecond;
   u16 maxCurrent;
@@ -189,6 +190,9 @@ int main(void)
 
   USART_Configuration();
   //setupI2C();
+
+  //turn of red led
+  GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
   u16 gpioData = 0;
   gpioData |= GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
@@ -543,6 +547,7 @@ int main(void)
 	  lastActiveCState->useBackInduction = data->activeFieldCollapse;
 	  lastActiveCState->useOpenLoop = data->openCircuit;
 	  lastActiveCState->cascadedPositionController = data->cascadedPositionController;
+	  lastActiveCState->enablePIDDebug = data->enablePIDDebug;
 
 	  lastActiveCState->maxMotorTemp = data->maxMotorTemp;
 	  lastActiveCState->maxMotorTempCount = data->maxMotorTempCount;
@@ -841,27 +846,26 @@ void SysTickHandler(void) {
       setTargetValue((struct pid_data *) &(posPidData), activeCState->targetValue * 4);
       pwmValue = pid((struct pid_data *) &(posPidData), curVal);
 
-
-      //send status message over CAN
-      pidMessagePos.StdId= PACKET_ID_PID_DEBUG_POS + ownHostId;
-      pidMessagePos.RTR=CAN_RTR_DATA;
-      pidMessagePos.IDE=CAN_ID_STD;
-      pidMessagePos.DLC= sizeof(struct pidDebugData);
-      
-      struct pidDebugData *sdata = (struct pidDebugData *) pidMessagePos.Data;
-      getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
-      
-
-      posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
-      posDbgMessage.RTR=CAN_RTR_DATA;
-      posDbgMessage.IDE=CAN_ID_STD;
-      posDbgMessage.DLC= sizeof(struct posDebugData);
-
-      struct posDebugData *pdbgdata = (struct posDebugData *) posDbgMessage.Data;
-      pdbgdata->targetVal = activeCState->targetValue;
-      pdbgdata->pwmVal = pwmValue;
-      pdbgdata->encoderVal = encoderValue;
-      pdbgdata->posVal = (curVal / 4);
+      if(activeCState->enablePIDDebug) {
+	//send status message over CAN
+	pidMessagePos.StdId= PACKET_ID_PID_DEBUG_POS + ownHostId;
+	pidMessagePos.RTR=CAN_RTR_DATA;
+	pidMessagePos.IDE=CAN_ID_STD;
+	pidMessagePos.DLC= sizeof(struct pidDebugData);
+	
+	struct pidDebugData *sdata = (struct pidDebugData *) pidMessagePos.Data;
+	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+	posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
+	posDbgMessage.RTR=CAN_RTR_DATA;
+	posDbgMessage.IDE=CAN_ID_STD;
+	posDbgMessage.DLC= sizeof(struct posDebugData);
+	
+	struct posDebugData *pdbgdata = (struct posDebugData *) posDbgMessage.Data;
+	pdbgdata->targetVal = activeCState->targetValue;
+	pdbgdata->pwmVal = pwmValue;
+	pdbgdata->encoderVal = encoderValue;
+	pdbgdata->posVal = (curVal / 4);
+      }
     }
 
       if(!activeCState->cascadedPositionController) {
@@ -889,14 +893,15 @@ void SysTickHandler(void) {
       }
 
       //TODO FIXME convert to a real value like m/s
-        
-      speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
-      speedDbgMessage.RTR=CAN_RTR_DATA;
-      speedDbgMessage.IDE=CAN_ID_STD;
-      speedDbgMessage.DLC= sizeof(struct speedDebugData);
+      
+      if(activeCState->enablePIDDebug) {
+	speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
+	speedDbgMessage.RTR=CAN_RTR_DATA;
+	speedDbgMessage.IDE=CAN_ID_STD;
+	speedDbgMessage.DLC= sizeof(struct speedDebugData);
+      }
 
       struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
-	
     
       //calculate PID value
       if(activeCState->cascadedPositionController && activeCState->controllMode == CONTROLLER_MODE_POSITION) {
@@ -904,6 +909,7 @@ void SysTickHandler(void) {
 	setTargetValue((struct pid_data *) &(speedPidData), pwmValue);
 
 	sdbgdata->targetVal = pwmValue;
+	
       
 	pwmValue = pid((struct pid_data *) &(speedPidData), curSpeed);
 	
@@ -916,18 +922,20 @@ void SysTickHandler(void) {
 	sdbgdata->targetVal = activeCState->targetValue;
       }
       
-      sdbgdata->pwmVal = pwmValue;
-      sdbgdata->encoderVal = encoderValue;
-      sdbgdata->speedVal = curSpeed;
+      if(activeCState->enablePIDDebug) {
+	sdbgdata->pwmVal = pwmValue;
+	sdbgdata->encoderVal = encoderValue;
+	sdbgdata->speedVal = curSpeed;
 
-      //send status message over CAN
-      pidMessageSpeed.StdId= PACKET_ID_PID_DEBUG_SPEED + ownHostId;
-      pidMessageSpeed.RTR=CAN_RTR_DATA;
-      pidMessageSpeed.IDE=CAN_ID_STD;
-      pidMessageSpeed.DLC= sizeof(struct pidDebugData);
-      
-      struct pidDebugData *sdata = (struct pidDebugData *) pidMessageSpeed.Data;
-      getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+	//send status message over CAN
+	pidMessageSpeed.StdId= PACKET_ID_PID_DEBUG_SPEED + ownHostId;
+	pidMessageSpeed.RTR=CAN_RTR_DATA;
+	pidMessageSpeed.IDE=CAN_ID_STD;
+	pidMessageSpeed.DLC= sizeof(struct pidDebugData);
+	
+	struct pidDebugData *sdata = (struct pidDebugData *) pidMessageSpeed.Data;
+	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+      }
       
       break; 
   }
@@ -952,25 +960,28 @@ void SysTickHandler(void) {
     //set pwm
     setNewPWM(currentPwmValue);
 
-    struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
-    sdbgdata->pwmVal = currentPwmValue;
+    if(activeCState->enablePIDDebug) {
 
-    //send out all debug messages in right order
-    while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
-      ;
-    }
+      struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
+      sdbgdata->pwmVal = currentPwmValue;
+
+      //send out all debug messages in right order
+      while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
+	;
+      }
     
-    while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
-      ;
-    }
+      while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
+	;
+      }
+      
+      while(CAN_Transmit(&pidMessageSpeed) == CAN_NO_MB){
+	;
+      }
     
-    while(CAN_Transmit(&pidMessageSpeed) == CAN_NO_MB){
-      ;
-    }
-    
-    //send speed status message
-    while(CAN_Transmit(&speedDbgMessage) == CAN_NO_MB) {
-      ;
+      //send speed status message
+      while(CAN_Transmit(&speedDbgMessage) == CAN_NO_MB) {
+	;
+      }
     }
   } else {
     setNewPWM(0);   
@@ -2067,18 +2078,24 @@ void assert_failed(u8* file, u32 line)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
   
-  int delay;
+  volatile int delay;
+  int waittime = 500000;
+  
+
 
   while(1)
     {    
-      GPIOC->BRR |= 0x00001000;
-      delay = 500000;
-      while(delay) 
+      GPIO_SetBits(GPIOA, GPIO_Pin_8);
+      delay = waittime;
+      while(delay) {
 	delay--;
-      GPIOC->BSRR |= 0x00001000;
-      delay = 500000;
-      while(delay)
-	delay--; 
+      }
+      
+      GPIO_ResetBits(GPIOA, GPIO_Pin_8);
+      delay = waittime;
+      while(delay) {
+	delay--;
+      }
     }
 
   /* Infinite loop */
