@@ -54,26 +54,26 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitTypeDef  CAN_FilterInitStructure;
 
   //TODO perhaps filter ide seem to be a bit different(stdId + RTR + IDE + EXId)
-  //Emergency stop and setValue are matched to FIFO0
+  //Emergency stop, setMode and setValue are matched to FIFO0
   CAN_FilterInitStructure.CAN_FilterNumber=0;
-  CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdMask;
+  CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
   CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
   CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
   CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE<<5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdHigh=0xFFFF;
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE<<5;
   CAN_FilterInitStructure.CAN_FilterMaskIdLow=0xFFFF;
   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;
   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
   CAN_FilterInit(&CAN_FilterInitStructure);
 
-  //configure, configure 2 and set mode matched to FIFO1
+  //configure, configure 2 and set pis values matched to FIFO1
   CAN_FilterInitStructure.CAN_FilterNumber=1;
   CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
   CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
   CAN_FilterInitStructure.CAN_FilterIdHigh=(PACKET_ID_SET_CONFIGURE + boardNr)<<5;
   CAN_FilterInitStructure.CAN_FilterIdLow=(PACKET_ID_SET_CONFIGURE2 + boardNr)<<5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdHigh=(PACKET_ID_SET_MODE + boardNr)<<5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdLow=(0xFFFF);
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh=(PACKET_ID_SET_PID_POS + boardNr)<<5;
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow=(PACKET_ID_SET_PID_SPEED + boardNr)<<5;;
   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO1;
   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
   CAN_FilterInit(&CAN_FilterInitStructure);
