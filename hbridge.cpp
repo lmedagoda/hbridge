@@ -32,10 +32,19 @@ typedef int16_t s16;
 	 
 namespace hbridge {
 
+Interface *Interface::instance;
+
   Interface::Interface() : initalized(false)
 {
 }
 
+Interface &Interface::getInstance() {
+  if(!instance)
+    instance = new Interface();
+
+  return *instance;
+};
+  
 
 Interface::~Interface()
 {
@@ -61,50 +70,48 @@ int Interface::setNewTargetValues(const short int board1, const short int board2
 }
 
 
-int Interface::setPWMMode(const enum HOST_IDS host) {
+int Interface::setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, enum DRIVE_MODES board3, enum DRIVE_MODES board4) {
     if(!initalized)
 	return -1;
 
     struct can_msg msg;
     struct setModeData *data = (struct setModeData *) msg.data;
 
-    data->driveMode = CONTROLLER_MODE_PWM;
-    data->kp = 0;
-    data->ki = 0;
-    data->kd = 0;
+    data->board1Mode = board1;
+    data->board2Mode = board2;
+    data->board3Mode = board3;
+    data->board4Mode = board4;
 
-    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
+    return sendCanMessage(&msg, sizeof(struct setValueData), PACKET_ID_SET_MODE);
 }
-    
-int Interface::setSpeedMode(const enum HOST_IDS host, const double kp,const double ki, const double kd){
+
+
+int Interface::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
     if(!initalized)
 	return -1;
 
     struct can_msg msg;
-    struct setModeData *data = (struct setModeData *) msg.data;
+    struct setPidData *data = (struct setPidData *) msg.data;
 
-    data->driveMode = CONTROLLER_MODE_SPEED;
     data->kp = kp * 100;
     data->ki = ki * 100;
     data->kd = kd * 100;
-
-    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
+    data->minMaxPidOutput = minMaxValue;
+    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_POS);
 }
 
-int Interface::setPositionMode(const enum HOST_IDS host, const double kp,const double ki, const double kd){
+int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
     if(!initalized)
 	return -1;
     
     struct can_msg msg;
-    struct setModeData *data = (struct setModeData *) msg.data;
+    struct setPidData *data = (struct setPidData *) msg.data;
 
-    data->driveMode = CONTROLLER_MODE_POSITION;
     data->kp = kp * 100;
     data->ki = ki * 100;
     data->kd = kd * 100;
-
-    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_MODE);
-
+    data->minMaxPidOutput = minMaxValue;
+    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_SPEED);
 }
 
 int Interface::emergencyShutdown() {
@@ -267,7 +274,7 @@ bool Interface::getNextStatus(Status &status) {
 }
 
 int Interface::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
-  int sec,ret;
+  int ret;
   unsigned int readCount = 0;
   while(readCount < sizeof(struct can_msg)) { 
     ret=read(canFd, msg+ readCount,sizeof(struct can_msg) - readCount);
@@ -349,7 +356,7 @@ int Interface::openCanDevice(std::string &path)
 
     initalized = true;
 
-    return 0;
+    return true;
 }
 
 }

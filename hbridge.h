@@ -27,6 +27,12 @@ enum HOST_IDS {
   H_BRIDGE_4 = (4<<5)
 };
 
+enum DRIVE_MODES {
+  PWM = 0,
+  SPEED = 1,
+  POSITION = 2
+};
+
 struct Status {
   unsigned short current;
   unsigned short index;
@@ -50,6 +56,43 @@ struct Configuration {
   unsigned short maxCurrent;
   unsigned char maxCurrentCount;
   unsigned short pwmStepPerMs;
+
+#ifndef __orogen
+  Configuration() : openCircuit(0), activeFieldCollapse(0), externalTempSensor(0), cascadedPositionController(0), maxMotorTemp(0), maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0), timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0) {};
+  
+  bool operator == (const Configuration &val) const {
+    return openCircuit == val.openCircuit &&
+    activeFieldCollapse  == val.activeFieldCollapse &&
+    externalTempSensor == val.externalTempSensor &&
+    cascadedPositionController == val.cascadedPositionController &&
+    maxMotorTemp == val.maxMotorTemp &&
+    maxMotorTempCount == val.maxMotorTempCount &&
+    maxBoardTemp == val.maxBoardTemp &&
+    maxBoardTempCount == val.maxBoardTempCount &&
+    timeout == val.timeout &&
+    maxCurrent == val.maxCurrent &&
+    maxCurrentCount == val.maxCurrentCount &&
+      pwmStepPerMs == val.pwmStepPerMs;
+
+  };
+
+  bool operator != (const Configuration &val) const {
+    return openCircuit != val.openCircuit ||
+    activeFieldCollapse  != val.activeFieldCollapse ||
+    externalTempSensor != val.externalTempSensor ||
+    cascadedPositionController != val.cascadedPositionController ||
+    maxMotorTemp != val.maxMotorTemp ||
+    maxMotorTempCount != val.maxMotorTempCount ||
+    maxBoardTemp != val.maxBoardTemp ||
+    maxBoardTempCount != val.maxBoardTempCount ||
+    timeout != val.timeout ||
+    maxCurrent != val.maxCurrent ||
+    maxCurrentCount != val.maxCurrentCount ||
+    pwmStepPerMs != val.pwmStepPerMs;
+  };
+#endif  
+
+
 };
 
 struct SpeedDebug {
@@ -84,17 +127,6 @@ struct SpeedAndPIDDebug {
   struct PosDebug posDebug;
 };
  
- 
-
-struct AllStatus {
-  struct Status status[4];
-};
-
-struct AllConfiguration {
-  struct Configuration configs[4];
-};
- 
- 
 
 #ifndef __orogen
 /**
@@ -103,17 +135,18 @@ struct AllConfiguration {
 class Interface{
 public:
 
-    Interface();
+  static Interface &getInstance();
+  
 
     ~Interface();
 
     int emergencyShutdown();
 
     int setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4);
+    int setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, enum DRIVE_MODES board3, enum DRIVE_MODES board4);
 
-    int setPWMMode(const enum HOST_IDS host);
-    int setSpeedMode(const enum HOST_IDS host, const double kp,const double ki, const double kd);
-    int setPositionMode(const enum HOST_IDS host, const double kp,const double ki, const double kd);
+    int setSpeedPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue);
+    int setPositionPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue);
 
     int setConfiguration(const enum HOST_IDS host, const Configuration);
 
@@ -134,8 +167,11 @@ public:
     int getFileDescriptor() const;
     
 private:
+    Interface();
     int canFd;
     bool initalized;
+    static Interface *instance;
+
 
     int sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id);
     int receiveCanMessage(struct can_msg *msg, unsigned int timeout);

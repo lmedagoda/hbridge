@@ -93,12 +93,20 @@ s32 pid(struct pid_data *data, s32 cur_val) {
   return result;
 }
 
-void setMinMaxCommandVal(struct pid_data *data, s32 min, s32 max) {
-  data->max_command_val = max;
-  data->min_command_val = min;
-
+void initPIDStruct(struct pid_data *data) {
   data->target_val = 0;
   data->last_error = 0;
   data->error_sum = 0;
+  data->max_command_val = 0;
+  data->min_command_val = 0;
+  data->kp = 0;
+  data->ki = 0;
+  data->kd = 0;
+}
+
+
+void setMinMaxCommandVal(struct pid_data *data, s32 min, s32 max) {
+  data->max_command_val = max;
+  data->min_command_val = min;
 }
 

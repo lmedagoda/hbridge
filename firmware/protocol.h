@@ -24,8 +24,10 @@ enum packetIDs {
   PACKET_ID_STATUS = 1,
   PACKET_ID_SET_VALUE = 2,
   PACKET_ID_SET_MODE = 3,
-  PACKET_ID_SET_CONFIGURE = 4,
-  PACKET_ID_SET_CONFIGURE2 = 5,
+  PACKET_ID_SET_PID_POS = 4,
+  PACKET_ID_SET_PID_SPEED = 5,
+  PACKET_ID_SET_CONFIGURE = 6,
+  PACKET_ID_SET_CONFIGURE2 = 7,
   PACKET_ID_PID_DEBUG_POS = 8,
   PACKET_ID_POS_DEBUG = 9,
   PACKET_ID_PID_DEBUG_SPEED = 10,
@@ -57,6 +59,7 @@ struct pidDebugData {
   s16 pPart;
   s16 iPart;
   s16 dPart;
+  u16 minMaxPidOutput;
 } __attribute__ ((packed));
 
 
@@ -77,11 +80,17 @@ struct setValueData {
 } __attribute__ ((packed));
 
 struct setModeData {
-  u8 driveMode;
-  u8 unused;
-  u16 kp;
-  u16 ki;
-  u16 kd;
+  enum controllerModes board1Mode:8;
+  enum controllerModes board2Mode:8;
+  enum controllerModes board3Mode:8;
+  enum controllerModes board4Mode:8;
+} __attribute__ ((packed));
+
+struct setPidData {
+  s16 kp;
+  s16 ki;
+  s16 kd;
+  u16 minMaxPidOutput;
 } __attribute__ ((packed));
 
 struct configure1Data {

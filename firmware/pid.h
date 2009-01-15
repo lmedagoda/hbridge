@@ -49,5 +49,6 @@ s32 pid(struct pid_data *data, s32 cur_val);
 
 void getInternalPIDValues(s16 *pPart, s16 *iPart, s16 *dPart);
 
+void initPIDStruct(struct pid_data *data);
 
 #endif

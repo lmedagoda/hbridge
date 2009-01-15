@@ -133,6 +133,8 @@ struct ControllerState {
   s16 kp;
   s16 ki;
   s16 kd;
+  u16 minMaxPidOutput;
+  enum controllerModes newPidDataType;
   u8 newPIDData;
   enum errorCodes error;
   u8 useBackInduction;
@@ -246,16 +248,11 @@ int main(void)
   activeCState = &(cs1);
   lastActiveCState = &(cs2);
 
-  setKp((struct pid_data *) &(posPidData), 0);
-  setKi((struct pid_data *) &(posPidData), 0);
-  setKd((struct pid_data *) &(posPidData), 0);
-  setMinMaxCommandVal((struct pid_data *) &(posPidData), -4000, 4000);
+  //init pid structs with sane values
+  initPIDStruct(&(posPidData));
+  initPIDStruct(&(speedPidData));
 
-  setKp((struct pid_data *) &(speedPidData), 0);
-  setKi((struct pid_data *) &(speedPidData), 0);
-  setKd((struct pid_data *) &(speedPidData), 0);
-  setMinMaxCommandVal((struct pid_data *) &(speedPidData), -1800, 1800);
-
+  //init cotroller state with sane values
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->controllMode = CONTROLLER_MODE_POSITION;
   activeCState->internalState = STATE_UNCONFIGURED;
@@ -274,6 +271,7 @@ int main(void)
   activeCState->kp = 0;
   activeCState->ki = 0;
   activeCState->kd = 0;
+  activeCState->minMaxPidOutput = 0;
   activeCState->newPIDData = 0;
   *lastActiveCState = *activeCState;
 
@@ -465,7 +463,7 @@ int main(void)
 	}*/
       
       
-      extern u16 wasincanit;
+      //extern u16 wasincanit;
 
       //printf("Was in CAN it %d \n", wasincanit);
   
@@ -525,14 +523,57 @@ int main(void)
 	  }
 	  break;
 	}
+
         case PACKET_ID_SET_MODE: {
-	  //print("Got PACKET_ID_SET_MODE Msg \n");
 	  if(activeCState->internalState == STATE_CONFIGURED) {
 	    struct setModeData *data = (struct setModeData *) curMsg->Data;
-	    lastActiveCState->controllMode = data->driveMode;
+	    switch(ownHostId) {
+	    case RECEIVER_ID_H_BRIDGE_1:
+	      
+	      lastActiveCState->controllMode = data->board1Mode;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_2:
+	      lastActiveCState->controllMode = data->board2Mode;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_3:
+	      lastActiveCState->controllMode = data->board3Mode;
+	      break;
+	    case RECEIVER_ID_H_BRIDGE_4:
+	      lastActiveCState->controllMode = data->board4Mode;
+	      break;
+	    }
+	  } else {
+	    print("Error, not configured \n");
+	    lastActiveCState->internalState = STATE_ERROR;
+	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	  }
+	  break;
+	}
+	  
+        case PACKET_ID_SET_PID_POS: {
+	  if(activeCState->internalState == STATE_CONFIGURED) {
+	    struct setPidData *data = (struct setPidData *) curMsg->Data;
+	    lastActiveCState->newPidDataType = CONTROLLER_MODE_POSITION;
 	    lastActiveCState->kp = data->kp;
 	    lastActiveCState->ki = data->ki;
 	    lastActiveCState->kd = data->kd;
+	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
+	    lastActiveCState->newPIDData = 1;
+	  } else {
+	    print("Error, not configured \n");
+	    lastActiveCState->internalState = STATE_ERROR;
+	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	  }
+	  break;
+	}
+        case PACKET_ID_SET_PID_SPEED: {
+	  if(activeCState->internalState == STATE_CONFIGURED) {
+	    struct setPidData *data = (struct setPidData *) curMsg->Data;
+	    lastActiveCState->newPidDataType = CONTROLLER_MODE_SPEED;
+	    lastActiveCState->kp = data->kp;
+	    lastActiveCState->ki = data->ki;
+	    lastActiveCState->kd = data->kd;
+	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
 	    lastActiveCState->newPIDData = 1;
 	  } else {
 	    print("Error, not configured \n");
@@ -795,16 +836,18 @@ void SysTickHandler(void) {
   }
 
   if(activeCState->newPIDData) {
-    switch(activeCState->controllMode) {
+    switch(activeCState->newPidDataType) {
       case CONTROLLER_MODE_SPEED:
 	setKp((struct pid_data *) &(speedPidData), activeCState->kp);
 	setKi((struct pid_data *) &(speedPidData), activeCState->ki);
 	setKd((struct pid_data *) &(speedPidData), activeCState->kd);
+	setMinMaxCommandVal((struct pid_data *) &(speedPidData), -activeCState->minMaxPidOutput, activeCState->minMaxPidOutput);
 	break;
       case CONTROLLER_MODE_POSITION:
 	setKp((struct pid_data *) &(posPidData), activeCState->kp);
 	setKi((struct pid_data *) &(posPidData), activeCState->ki);
 	setKd((struct pid_data *) &(posPidData), activeCState->kd);
+	setMinMaxCommandVal((struct pid_data *) &(posPidData), -activeCState->minMaxPidOutput, activeCState->minMaxPidOutput);
 	break;
       default:
 	print("Error got PID data for nonPID driving mode\n");
