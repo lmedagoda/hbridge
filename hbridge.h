@@ -152,6 +152,7 @@ public:
 
     bool getNextStatus(Status &status);
     int openCanDevice(std::string &path);
+    bool canInitalized();
     void getStatusFromCanMessage(can_msg &msg, Status &status);
     void getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg);
     void getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg);

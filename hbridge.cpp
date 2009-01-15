@@ -128,6 +128,10 @@ int Interface::getFileDescriptor() const {
   return canFd;
 }
 
+bool Interface::canInitalized() {
+  return initalized;
+}
+
 
 int Interface::setConfiguration(const enum HOST_IDS host, const Configuration newConfig) {
     if(!initalized)
