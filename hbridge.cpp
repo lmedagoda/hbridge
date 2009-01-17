@@ -77,10 +77,10 @@ int Interface::setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, en
     struct can_msg msg;
     struct setModeData *data = (struct setModeData *) msg.data;
 
-    data->board1Mode = board1;
-    data->board2Mode = board2;
-    data->board3Mode = board3;
-    data->board4Mode = board4;
+    data->board1Mode = (enum controllerModes) board1;
+    data->board2Mode = (enum controllerModes) board2;
+    data->board3Mode = (enum controllerModes) board3;
+    data->board4Mode = (enum controllerModes) board4;
 
     return sendCanMessage(&msg, sizeof(struct setValueData), PACKET_ID_SET_MODE);
 }
@@ -93,9 +93,9 @@ int Interface::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const
     struct can_msg msg;
     struct setPidData *data = (struct setPidData *) msg.data;
 
-    data->kp = kp * 100;
-    data->ki = ki * 100;
-    data->kd = kd * 100;
+    data->kp = (s16) (kp * 100);
+    data->ki = (s16) (ki * 100);
+    data->kd = (s16) (kd * 100);
     data->minMaxPidOutput = minMaxValue;
     return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_SPEED);
 }
@@ -107,9 +107,9 @@ int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,co
     struct can_msg msg;
     struct setPidData *data = (struct setPidData *) msg.data;
 
-    data->kp = kp * 100;
-    data->ki = ki * 100;
-    data->kd = kd * 100;
+    data->kp = (s16) (kp * 100);
+    data->ki = (s16) (ki * 100);
+    data->kd = (s16) (kd * 100);
     data->minMaxPidOutput = minMaxValue;
     return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_POS);
 }
