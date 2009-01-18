@@ -97,7 +97,7 @@ int Interface::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const
     data->ki = (s16) (ki * 100);
     data->kd = (s16) (kd * 100);
     data->minMaxPidOutput = minMaxValue;
-    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_SPEED);
+    return sendCanMessage(&msg, sizeof(struct setPidData), host | PACKET_ID_SET_PID_SPEED);
 }
 
 int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
@@ -111,7 +111,7 @@ int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,co
     data->ki = (s16) (ki * 100);
     data->kd = (s16) (kd * 100);
     data->minMaxPidOutput = minMaxValue;
-    return sendCanMessage(&msg, sizeof(struct setModeData), host | PACKET_ID_SET_PID_POS);
+    return sendCanMessage(&msg, sizeof(struct setPidData), host | PACKET_ID_SET_PID_POS);
 }
 
 int Interface::emergencyShutdown() {
