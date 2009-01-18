@@ -121,6 +121,7 @@ vu16 adcValueCount = 0;
 
 vu32 acs712BaseVoltage = 0;
 vu8 awdWasTriggered = 0;
+volatile u16 timeoutCounter = 0;
 
 volatile enum hostIDs ownHostId;
 
@@ -150,6 +151,7 @@ struct ControllerState {
   u8 maxBoardTempCount;
   u16 timeout;
   s32 targetValue;
+  u8 resetTimeoutCounter;
 };
 
 volatile struct ControllerState *activeCState;
@@ -642,6 +644,9 @@ int main(void)
       if(activeCState->newPIDData) {
 	;
       }
+
+      //we go an new packet, so reset the timout
+      lastActiveCState->resetTimeoutCounter = 1;
       
       //this is atomar as only the write is relevant!
       activeCState = lastActiveCState;
@@ -658,7 +663,25 @@ int main(void)
       printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
       printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
 
-    }
+    } else {
+      //check for timeout and go into error state
+      if(lastActiveCState->timout && (timeoutCounter > lastActiveCState->timout)) {
+
+	//this is concurrency proff, as this code can not run, while
+	//systick Handler is active !
+	volatile struct ControllerState *tempstate = activeCState;
+
+	lastActiveCState->internalState = STATE_ERROR;
+	lastActiveCState->error = ERROR_CODE_TIMEOUT;
+
+	//this is atomar as only the write is relevant!
+	activeCState = lastActiveCState;
+
+	lastActiveCState = tempstate;
+      
+	*lastActiveCState = *activeCState;
+      }
+    }  
   }
 }
 
@@ -747,6 +770,7 @@ void SysTickHandler(void) {
 
   //batValueSum and currentValueSum are increased at the 
   //same time therefore adcValueCount is valid for both
+  //TODO FIXME bat value is only valid if PWM is on
   batValue = inActiveAdcValues->batValueSum / (2 * inActiveAdcValues->batValueCount);
   inActiveAdcValues->batValueSum = 0;
   inActiveAdcValues->batValueCount = 0;
@@ -802,6 +826,13 @@ void SysTickHandler(void) {
 
   //try to detect touchdown and switch on led
   detectTouchdown(currentValue);
+
+  //reset timeout, if "userspace" requested it
+  if(activeCState->resetTimeoutCounter) {
+    activeCState->resetTimeoutCounter = 0;
+    timeoutCounter = 0;
+  }
+  
 
   if(activeCState->internalState == STATE_CONFIGURED ||
      activeCState->internalState == STATE_ERROR) {
@@ -1000,6 +1031,9 @@ void SysTickHandler(void) {
   }
 
   if(activeCState->internalState == STATE_CONFIGURED) {
+    //increase timeout
+    timeoutCounter++;
+
     //set pwm
     setNewPWM(currentPwmValue);
 
@@ -1027,6 +1061,9 @@ void SysTickHandler(void) {
       }
     }
   } else {
+    //reset timeoutcounter
+    timeoutCounter = 0;
+    
     setNewPWM(0);   
   }
  
