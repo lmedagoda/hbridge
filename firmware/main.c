@@ -561,7 +561,7 @@ int main(void)
 	    lastActiveCState->kd = data->kd;
 	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
 	    lastActiveCState->newPIDData = 1;
-	    printf("Got PACKET_ID_SET_PI_POS Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+	    //printf("Got PACKET_ID_SET_PI_POS Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
 	  
 	  } else {
 	    print("Error, not configured \n");
@@ -579,7 +579,7 @@ int main(void)
 	    lastActiveCState->kd = data->kd;
 	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
 	    lastActiveCState->newPIDData = 1;
-	    printf("Got PACKET_ID_SET_PID_SET Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+	    //printf("Got PACKET_ID_SET_PID_SET Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
@@ -663,7 +663,7 @@ int main(void)
       //so the are not new any more
       lastActiveCState->newPIDData = 0;
       
-
+      printf("Error is %h \n", error);
       printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
       printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
 
@@ -825,7 +825,7 @@ void SysTickHandler(void) {
   }
 
   //change state to unconfigured if error is set
-  if(error != ERROR_CODE_NONE) {
+  if(error != ERROR_CODE_NONE && activeCState->internalState == STATE_CONFIGURED) {
     activeCState->internalState = STATE_ERROR;
   } else {
     //check for overcurrent
@@ -847,10 +847,6 @@ void SysTickHandler(void) {
     }
   }
   
-  
-  
-
-
   if(activeCState->internalState == STATE_CONFIGURED ||
      activeCState->internalState == STATE_ERROR) {
 
