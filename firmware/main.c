@@ -128,6 +128,8 @@ volatile enum hostIDs ownHostId;
 volatile struct pid_data speedPidData;
 volatile struct pid_data posPidData;
 
+volatile enum errorCodes error = ERROR_CODE_NONE;
+
 struct ControllerState {
   enum controllerModes controllMode;
   enum internalState internalState;
@@ -137,7 +139,6 @@ struct ControllerState {
   u16 minMaxPidOutput;
   enum controllerModes newPidDataType;
   u8 newPIDData;
-  enum errorCodes error;
   u8 useBackInduction;
   u8 useOpenLoop;
   u8 enablePIDDebug;
@@ -258,7 +259,6 @@ int main(void)
   activeCState->controllMode = CONTROLLER_MODE_PWM;
   activeCState->controllMode = CONTROLLER_MODE_POSITION;
   activeCState->internalState = STATE_UNCONFIGURED;
-  activeCState->error = 0;
   activeCState->useBackInduction = 0;
   activeCState->useOpenLoop = 0;
   activeCState->cascadedPositionController = 0;
@@ -275,6 +275,7 @@ int main(void)
   activeCState->kd = 0;
   activeCState->minMaxPidOutput = 0;
   activeCState->newPIDData = 0;
+  activeCState->enablePIDDebug = 0;
   *lastActiveCState = *activeCState;
 
 
@@ -489,7 +490,6 @@ int main(void)
     if((curMsg = CAN_GetNextData()) != 0) {
       //print("Got a Msg \n");
       print("P");
-      
 
       //clear device specific adress bits
       curMsg->StdId &= ~ownHostId;
@@ -521,7 +521,7 @@ int main(void)
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
-	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	    error = ERROR_CODE_BAD_CONFIG;
 	  }
 	  break;
 	}
@@ -547,7 +547,7 @@ int main(void)
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
-	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	    error = ERROR_CODE_BAD_CONFIG;
 	  }
 	  break;
 	}
@@ -561,10 +561,12 @@ int main(void)
 	    lastActiveCState->kd = data->kd;
 	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
 	    lastActiveCState->newPIDData = 1;
+	    printf("Got PACKET_ID_SET_PI_POS Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+	  
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
-	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	    error = ERROR_CODE_BAD_CONFIG;
 	  }
 	  break;
 	}
@@ -577,10 +579,11 @@ int main(void)
 	    lastActiveCState->kd = data->kd;
 	    lastActiveCState->minMaxPidOutput = data->minMaxPidOutput;
 	    lastActiveCState->newPIDData = 1;
+	    printf("Got PACKET_ID_SET_PID_SET Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
 	  } else {
 	    print("Error, not configured \n");
 	    lastActiveCState->internalState = STATE_ERROR;
-	    lastActiveCState->error = ERROR_CODE_BAD_CONFIG;
+	    error = ERROR_CODE_BAD_CONFIG;
 	  }
 	  break;
 	}
@@ -600,6 +603,7 @@ int main(void)
 
 	  if(activeCState->internalState == STATE_CONFIG2_RECEIVED) {
 	    lastActiveCState->internalState = STATE_CONFIGURED;
+	    error = ERROR_CODE_NONE;
 	  } else {
 	    lastActiveCState->internalState = STATE_CONFIG1_RECEIVED;
 	  }
@@ -616,6 +620,7 @@ int main(void)
 
 	  if(activeCState->internalState == STATE_CONFIG1_RECEIVED) {
 	    lastActiveCState->internalState = STATE_CONFIGURED;
+	    error = ERROR_CODE_NONE;
 	  } else {
 	    lastActiveCState->internalState = STATE_CONFIG2_RECEIVED;
 	  }
@@ -635,7 +640,6 @@ int main(void)
       //mark current message als processed
       CAN_MarkNextDataAsRead();
 
-
       //this is concurrency proff, as this code can not run, while
       //systick Handler is active !
       volatile struct ControllerState *tempstate = activeCState;
@@ -645,7 +649,7 @@ int main(void)
 	;
       }
 
-      //we go an new packet, so reset the timout
+      //we go an new packet, so reset the timeout
       lastActiveCState->resetTimeoutCounter = 1;
       
       //this is atomar as only the write is relevant!
@@ -663,25 +667,7 @@ int main(void)
       printf("ActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", activeCState->controllMode, activeCState->internalState, activeCState->targetValue, activeCState->useOpenLoop, activeCState->useBackInduction, activeCState->pwmStepPerMillisecond);
       printf("LastActiveCstate: ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", lastActiveCState->controllMode, lastActiveCState->internalState, lastActiveCState->targetValue, lastActiveCState->useOpenLoop, lastActiveCState->useBackInduction, lastActiveCState->pwmStepPerMillisecond);
 
-    } else {
-      //check for timeout and go into error state
-      if(lastActiveCState->timout && (timeoutCounter > lastActiveCState->timout)) {
-
-	//this is concurrency proff, as this code can not run, while
-	//systick Handler is active !
-	volatile struct ControllerState *tempstate = activeCState;
-
-	lastActiveCState->internalState = STATE_ERROR;
-	lastActiveCState->error = ERROR_CODE_TIMEOUT;
-
-	//this is atomar as only the write is relevant!
-	activeCState = lastActiveCState;
-
-	lastActiveCState = tempstate;
-      
-	*lastActiveCState = *activeCState;
-      }
-    }  
+    } 
   }
 }
 
@@ -715,6 +701,9 @@ void detectTouchdown(const int current) {
 
 
 void SysTickHandler(void) {
+  
+  //TODO FIXME I am a hack
+  //activeCState->enablePIDDebug = 1;
 
   //request switch of adc value struct
   switchAdcValues = 1;
@@ -726,6 +715,8 @@ void SysTickHandler(void) {
   static s32 currentPwmValue = 0;
   static u16 index = 0;
   static u8 wheelHalfTurned = 0;
+  static u16 overCurrentCounter = 0;
+
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
@@ -805,7 +796,7 @@ void SysTickHandler(void) {
   
   //multiply by voltage divider, to get back to voltage at the
   //measuaring chip
-  currentValue = (currentValue * 60) / 33;
+  currentValue = (currentValue * 51) / 33;
   
   //convert from adc to volts
   currentValue = (currentValue * 3300) / 4096;
@@ -832,7 +823,33 @@ void SysTickHandler(void) {
     activeCState->resetTimeoutCounter = 0;
     timeoutCounter = 0;
   }
+
+  //change state to unconfigured if error is set
+  if(error != ERROR_CODE_NONE) {
+    activeCState->internalState = STATE_ERROR;
+  } else {
+    //check for overcurrent
+    if(currentValue > activeCState->maxCurrent) {
+      overCurrentCounter++;
+
+      if(overCurrentCounter > activeCState->maxCurrentCount) {
+	activeCState->internalState = STATE_ERROR;
+	error = ERROR_CODE_OVERCURRENT;
+      }
+    } else {
+      overCurrentCounter = 0;
+    }
+    
+    //check for timeout and go into error state
+    if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
+      activeCState->internalState = STATE_ERROR;
+      error = ERROR_CODE_TIMEOUT;      
+    }
+  }
   
+  
+  
+
 
   if(activeCState->internalState == STATE_CONFIGURED ||
      activeCState->internalState == STATE_ERROR) {
@@ -857,7 +874,7 @@ void SysTickHandler(void) {
     sdata->position = encoderValue;
     sdata->tempHBrigde = 0;
     sdata->tempMotor = 0;
-    sdata->error = activeCState->error;
+    sdata->error = error;
     
     if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
       print("Error Tranmitting status Message : No free TxMailbox \n");
@@ -1439,7 +1456,7 @@ void ADC1_2_IRQHandler(void) {
   //test if Analog Watchdog Flag is set.
   //this means the souce of the IT was AWD
   if(ADC2->SR & ADC_FLAG_AWD) {
-    GPIOA->BSRR |= GPIO_Pin_8;
+    //GPIOA->BSRR |= GPIO_Pin_8;
     ForceHighSideOffAndDisableWatchdog();
     awdWasTriggered = 1;
 
@@ -1447,7 +1464,7 @@ void ADC1_2_IRQHandler(void) {
     ADC2->SR = ~(u32) ADC_FLAG_AWD;
 
     wasinawdit++;
-    GPIOA->BRR |= GPIO_Pin_8;
+    //GPIOA->BRR |= GPIO_Pin_8;
   }
   
 
@@ -2151,12 +2168,12 @@ void assert_failed(u8* file, u32 line)
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
 
-  // Configure PC.12 as output push-pull (LED)
-  GPIO_WriteBit(GPIOC,GPIO_Pin_12,Bit_SET);
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
+  // Configure PA.8 as output push-pull (LED)
+  GPIO_WriteBit(GPIOA,GPIO_Pin_8,Bit_SET);
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
   
   volatile int delay;
   int waittime = 500000;
