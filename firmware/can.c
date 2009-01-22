@@ -84,6 +84,7 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
 
 void USB_LP_CAN_RX0_IRQHandler(void)
 {
+  int received = 0;
   wasincanit++;
   
   vu8 nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;
@@ -91,12 +92,20 @@ void USB_LP_CAN_RX0_IRQHandler(void)
     CAN_Receive(CAN_FIFO0, canRXBuffer + canRxWritePointer);
     canRxWritePointer = nextRxWritePointer;
 
-    nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;    
-  }  
+    nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;
+    received = 1;
+  }
+
+  //discard message to avoid interrupt strom
+  if(!received) {
+    CanRxMsg nirvana;
+    CAN_Receive(CAN_FIFO0, &nirvana);
+  }
 }
 
 void CAN_RX1_IRQHandler(void)
 {
+  int received = 0;
   wasincanit++;
   
   vu8 nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;
@@ -105,6 +114,12 @@ void CAN_RX1_IRQHandler(void)
     canRxWritePointer = nextRxWritePointer;
 
     nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;    
+    received = 1;
+  }
+  //discard message to avoid interrupt strom
+  if(!received) {
+    CanRxMsg nirvana;
+    CAN_Receive(CAN_FIFO1, &nirvana);
   }
 }
 
