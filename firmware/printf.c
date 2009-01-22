@@ -141,9 +141,9 @@ int printf(const char *format, ...) {
   assert_param(pos < 128);
 
   u8 ret = 1;
-  while(ret) {  
+  //  while(ret) {  
     ret = USART1_SendData(msg, pos);
-  }
+    //}
   
   //USB_Send_Data(msg, pos);  
 
