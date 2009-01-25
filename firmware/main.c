@@ -736,7 +736,7 @@ void SysTickHandler(void) {
 
   //wait for adc struct to be switched
   while(switchAdcValues) {
-  ;
+    ;
   }
 
   //sum up all currents measured
@@ -846,6 +846,17 @@ void SysTickHandler(void) {
       error = ERROR_CODE_TIMEOUT;      
     }
   }
+
+  //calculate correct half wheel position
+  if(abs(lastEncoderValue - encoderValue) > HALF_WHEEL_TURN_TICKS / 2) {
+      if(wheelHalfTurned)
+	wheelHalfTurned = 0;
+      else
+	wheelHalfTurned = 1;
+  }
+
+  s32 wheelPos = encoderValue;
+  wheelPos += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
   
   if(activeCState->internalState == STATE_CONFIGURED ||
      activeCState->internalState == STATE_ERROR) {
@@ -866,8 +877,8 @@ void SysTickHandler(void) {
     
     sdata->currentValue = currentValue;
     sdata->index = index;
-    //TODO calculate position,temp, and error
-    sdata->position = encoderValue;
+    sdata->position = wheelPos / 4;
+    //TODO calculate temp
     sdata->tempHBrigde = 0;
     sdata->tempMotor = 0;
     sdata->error = error;
@@ -900,13 +911,6 @@ void SysTickHandler(void) {
     activeCState->newPIDData = 0;
   }
   
-  //calculate correct half wheel position
-  if(abs(lastEncoderValue - encoderValue) > HALF_WHEEL_TURN_TICKS / 2) {
-      if(wheelHalfTurned)
-	wheelHalfTurned = 0;
-      else
-	wheelHalfTurned = 1;
-  }
 
   CanTxMsg pidMessagePos;
   CanTxMsg posDbgMessage;
@@ -919,9 +923,9 @@ void SysTickHandler(void) {
       break;
     
     case CONTROLLER_MODE_POSITION: {
-      s32 curVal = encoderValue;
-      
-      curVal += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
+      s32 curVal = wheelPos;
+
+      //correct wraparounds
       if(abs((activeCState->targetValue *4) - curVal) > HALF_WHEEL_TURN_TICKS) {
 	if(curVal < HALF_WHEEL_TURN_TICKS)
 	  curVal += HALF_WHEEL_TURN_TICKS * 2;
