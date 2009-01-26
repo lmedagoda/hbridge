@@ -68,8 +68,7 @@ struct statusData {
   unsigned currentValue :14;
   unsigned index :10;
   u16 position;
-  u8 tempHBrigde;
-  u8 tempMotor;
+  s16 pwm;
   enum errorCodes error:8;
 } __attribute__ ((packed));
 

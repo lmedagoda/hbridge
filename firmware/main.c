@@ -858,38 +858,6 @@ void SysTickHandler(void) {
   s32 wheelPos = encoderValue;
   wheelPos += wheelHalfTurned * HALF_WHEEL_TURN_TICKS;
   
-  if(activeCState->internalState == STATE_CONFIGURED ||
-     activeCState->internalState == STATE_ERROR) {
-
-    index++;
-    
-    if(index >= (1<<10))
-      index = 0;
-  
-    //send status message over CAN
-    CanTxMsg statusMessage;
-    statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
-    statusMessage.RTR=CAN_RTR_DATA;
-    statusMessage.IDE=CAN_ID_STD;
-    statusMessage.DLC= sizeof(struct statusData);
-    
-    struct statusData *sdata = (struct statusData *) statusMessage.Data;
-    
-    sdata->currentValue = currentValue;
-    sdata->index = index;
-    sdata->position = wheelPos / 4;
-    //TODO calculate temp
-    sdata->tempHBrigde = 0;
-    sdata->tempMotor = 0;
-    sdata->error = error;
-    
-    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-      print("Error Tranmitting status Message : No free TxMailbox \n");
-    } else {
-      //print("Tranmitting status Message : OK \n");  
-    }
-  }
-
   if(activeCState->newPIDData) {
     switch(activeCState->newPidDataType) {
       case CONTROLLER_MODE_SPEED:
@@ -917,6 +885,7 @@ void SysTickHandler(void) {
   CanTxMsg pidMessageSpeed;
   CanTxMsg speedDbgMessage;
 
+  //calculate pwm value
   switch(activeCState->controllMode) {
     case CONTROLLER_MODE_PWM:
       pwmValue = activeCState->targetValue;
@@ -1044,6 +1013,40 @@ void SysTickHandler(void) {
       currentPwmValue += activeCState->pwmStepPerMillisecond;
     } else {
       currentPwmValue -= activeCState->pwmStepPerMillisecond;      
+    }
+  }
+
+  //send out status message
+  if(activeCState->internalState == STATE_CONFIGURED ||
+     activeCState->internalState == STATE_ERROR) {
+
+    index++;
+    
+    if(index >= (1<<10))
+      index = 0;
+  
+    //send status message over CAN
+    CanTxMsg statusMessage;
+    statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
+    statusMessage.RTR=CAN_RTR_DATA;
+    statusMessage.IDE=CAN_ID_STD;
+    statusMessage.DLC= sizeof(struct statusData);
+    
+    struct statusData *sdata = (struct statusData *) statusMessage.Data;
+    
+    sdata->currentValue = currentValue;
+    sdata->index = index;
+    sdata->position = wheelPos / 4;
+    sdata->pwm = currentPwmValue;
+    //TODO calculate temp
+    //sdata->tempHBrigde = 0;
+    //sdata->tempMotor = 0;
+    sdata->error = error;
+    
+    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+      print("Error Tranmitting status Message : No free TxMailbox \n");
+    } else {
+      //print("Tranmitting status Message : OK \n");  
     }
   }
 

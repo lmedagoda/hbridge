@@ -37,8 +37,7 @@ struct Status {
   unsigned short current;
   unsigned short index;
   unsigned short position;
-  unsigned char hbridgeTemp;
-  unsigned char motorTemp;
+  unsigned short pwm;
   unsigned char errors;
   enum HOST_IDS host;
 };

@@ -207,8 +207,7 @@ void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
   
   status.current = data->currentValue;
   status.position = data->position;
-  status.motorTemp = data->tempMotor;
-  status.hbridgeTemp = data->tempHBrigde;
+  status.pwm = data->pwm;
   status.index = data->index;
   status.errors = data->error;
   status.host = (enum HOST_IDS) (msg.id & ~0x1F);  
@@ -262,16 +261,7 @@ bool Interface::getNextStatus(Status &status) {
 	    continue;
 	}
 	
-	struct statusData *data = (struct statusData *) msg.data; 
-	
-	status.current = data->currentValue;
-	status.position = data->position;
-	status.motorTemp = data->tempMotor;
-	status.hbridgeTemp = data->tempHBrigde;
-	status.index = data->index;
-	status.errors = data->error;
-	status.host = (enum HOST_IDS) (msg.id & ~0x1F);
-
+	getStatusFromCanMessage(msg, status);
 	return true;
     }
     return false;

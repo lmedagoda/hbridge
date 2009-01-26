@@ -21,7 +21,9 @@ symbol-file main.out
 
 # Break at beginning of main()
 
-hbreak main
-hb I2C1_EV_IRQHandler
-hb I2C1_ER_IRQHandler
+#hbreak main
+#hb I2C1_EV_IRQHandler
+#hb I2C1_ER_IRQHandler
+hb HardFaultException
+hb _default_handler
 continue
