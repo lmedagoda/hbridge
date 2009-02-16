@@ -1128,7 +1128,7 @@ void setNewPWM(const s16 value2) {
   TIM_UpdateDisableConfig(TIM2, ENABLE);
   TIM_UpdateDisableConfig(TIM3, ENABLE);
 
-  static u8 lastDesiredDirection = 0;
+  static u8 lastDesiredDirection = 2;
   if(value == 0) {
     desieredDirection = lastDesiredDirection;
   } else {
