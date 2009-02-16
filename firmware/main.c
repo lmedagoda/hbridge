@@ -588,7 +588,7 @@ int main(void)
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
-	  //print("Got PACKET_ID_SET_CONFIGURE Msg \n");
+	  print("Got PACKET_ID_SET_CONFIGURE Msg \n");
 	  struct configure1Data *data = (struct configure1Data *) curMsg->Data;
 	  lastActiveCState->useBackInduction = data->activeFieldCollapse;
 	  lastActiveCState->useOpenLoop = data->openCircuit;
@@ -612,7 +612,7 @@ int main(void)
 	}
 	  
         case PACKET_ID_SET_CONFIGURE2: {
-	  //print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
+	  print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
 	  struct configure2Data *data = (struct configure2Data *) curMsg->Data;
 	  lastActiveCState->maxCurrent = data->maxCurrent;
 	  lastActiveCState->maxCurrentCount = data->maxCurrentCount;
@@ -634,7 +634,6 @@ int main(void)
 	  printf("Got unknown packet id : %hu ! \n", id);
 	  break;
 	}
-	
       }
     
       //mark current message als processed
