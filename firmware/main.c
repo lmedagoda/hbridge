@@ -1005,7 +1005,7 @@ void SysTickHandler(void) {
   if(pwmValue < MIN_S16)
     pwmValue = MIN_S16;
 
-  if(abs(currentPwmValue - pwmValue) < activeCState-> pwmStepPerMillisecond) {
+  if(abs(currentPwmValue - pwmValue) < activeCState->pwmStepPerMillisecond) {
     currentPwmValue = pwmValue;
   } else {
     if(currentPwmValue - pwmValue < 0) {
@@ -1127,8 +1127,15 @@ void setNewPWM(const s16 value2) {
   TIM_UpdateDisableConfig(TIM1, ENABLE);
   TIM_UpdateDisableConfig(TIM2, ENABLE);
   TIM_UpdateDisableConfig(TIM3, ENABLE);
+
+  static u8 lastDesiredDirection = 0;
+  if(value == 0) {
+    desieredDirection = lastDesiredDirection;
+  } else {
+    desieredDirection = value >= 0;
+  }
   
-  desieredDirection = value >= 0;
+  lastDesiredDirection = desieredDirection;
 
   /* Modified active field-collapse drive
    *
