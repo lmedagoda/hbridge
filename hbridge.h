@@ -47,6 +47,7 @@ struct Configuration {
   uint8_t activeFieldCollapse;
   uint8_t externalTempSensor;
   uint8_t cascadedPositionController;
+  uint8_t pidDebugActive;
   unsigned char maxMotorTemp;
   unsigned char maxMotorTempCount;
   unsigned char maxBoardTemp;

@@ -1,0 +1,429 @@
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
+
+\documentclass{article}
+
+
+\begin{document}
+
+\section{Protokoll}
+\subsection{Packet}
+
+Identifier layout.\\
+\begin{tabular} { c c c c c c c c c c c}
+  10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{3}{|c|}{free} & 
+  \multicolumn{3}{c|}{HBridge ID[7:5]} &
+  \multicolumn{5}{c|}{Command ID[4:0]} \\
+  \hline
+\end{tabular}\\
+
+Table of H-BridgeIDs\\
+\begin{tabular} {|l|l|}
+  \hline
+  Host & Value\\
+  \hline
+  \hline
+  Broadcast & 0\\
+  \hline
+  H-Bridge1 & 1\\
+  \hline
+  H-Bridge2 & 2\\
+  \hline
+  H-Bridge3 & 3\\
+  \hline
+  H-Bridge4 & 4\\
+  \hline
+\end{tabular}\\
+
+
+Table of all command ids.\\
+\begin{tabular} {|l|l|l|}
+  \hline
+  Command name & ID & Type\\
+  \hline
+  \hline
+  PACKET\_ID\_EMERGENCY\_STOP & 0 & Broadcast\\
+  \hline
+  PACKET\_ID\_STATUS & 1 & P2P\\
+  \hline
+  PACKET\_ID\_SET\_NEW\_VALUE & 2 & Broadcast\\
+  \hline
+  PACKET\_ID\_SET\_MODE & 3 & Broadcast\\
+  \hline
+  PACKET\_ID\_SET\_PID\_POS & 4 & P2P\\
+  \hline
+  PACKET\_ID\_SET\_PID\_SPEDD & 5 & P2P\\
+  \hline
+  PACKET\_ID\_CONFIGURE & 6 & P2P\\
+  \hline
+  PACKET\_ID\_CONFIGURE2 & 7 & P2P\\
+  \hline
+\end{tabular}\\
+
+
+\subsection{PACKET\_ID\_EMERGENCY\_STOP}
+Brodcast message, that shuts down all H-Bridges instantly. No payload
+{\em Note: After an emergency stop, all H-Bridges need to be reconfigured.}
+
+\subsection{PACKET\_ID\_STATUS}
+Status message, send by every H-Bridge every ms.\\
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{14}{|c|}{Current[63:50]} & 
+  \multicolumn{2}{c|}{Index[49:40]}\\
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{8}{|c|}{Index[49:40]} &
+  \multicolumn{8}{c|}{Position[39:32]}  \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{8}{|c|}{Position[31:24]} &
+  \multicolumn{8}{c|}{Temp HBridge[23:16]} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{8}{|c|}{Temp Motor[15:8]} &
+  \multicolumn{8}{c|}{Error[7:0]} \\
+  \hline
+\end{tabular}
+\begin{itemize}
+  \item[Current: ] {\it current consumption of the motor}\\
+    Current consumption of the motor in mA.
+
+  \item[Index: ] {\it packet index}\\
+    Packt index, for detecting lost packets. This value will be
+    increased per send packet / ms by one and wrap around to 0.
+
+  \item[Position: ] {\it position of wheel }\\
+    Position of the wheel in encoder ticks. 0 is 0 degrees and
+    (512*729/16) is 360 dregees.
+
+  \item[Temp HBridge: ] {\it temperature of H-Bridge}\\
+    Temperature mesaured by the temperature sensor on the H-Bridge.
+
+  \item[Temp Motor: ] {\it temperature of Motor}\\
+    Temperature measured by the temperature sensor attached to the
+    motor.
+
+  \item[Error: ] {\it occured errors}\\
+    If this field is not zero, an error occured. Error codes are:
+    \begin{itemize}
+      \item[0: ] Motor Overheated
+      \item[1: ] H-Bridge Overheated
+      \item[2: ] Overcurrent Error
+      \item[3: ] Timeout Error
+      \item[4: ] Bad Configuration Error
+    \end{itemize}
+\end{itemize}
+
+\subsection{PACKET\_ID\_SET\_NEW\_VALUE}
+Broadcast packet, that sets new target values for all four H-Bridges.\\
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{16}{|c|}{Value Board 1 [63:48]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{16}{|c|}{Value Board 2 [47:32]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{16}{|c|}{Value Board 3 [31:16]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{Value Board 4 [15:0]} \\ 
+  \hline
+\end{tabular}
+\begin{itemize}
+  \item[Value Board 1: ] {\it target value for drive mode of h-bridge 1}\\
+    This is the target value for the current drive mode, this can
+    either be:
+    \begin{itemize}
+      \item[PWM]
+        Value is interpreted as pwm-value with range from -1800 to
+        1800.
+      \item[Speed]
+        Value is interpreted as speed value in {\em UNIT ?} with range
+        {\em RANGE?} .
+      \item[Position]
+        Value is interpreted as wheel position in ticks with range
+        from 0 to (512*729/16) where (512*729/16) is a full wheel
+        turn. The first bit of the value is interpreded as turning
+        direction where '1' is forward and '0' is reverse.
+    \end{itemize}
+
+  \item[Value Board 2: ] {\it target value for drive mode of h-bridge 2}\\
+    See {\em Value Board 1}
+    
+  \item[Value Board 3: ] {\it target value for drive mode of h-bridge 3}\\
+    See {\em Value Board 1}
+    
+  \item[Value Board 4: ] {\it target value for drive mode of h-bridge 4}\\
+    See {\em Value Board 1}
+
+\end{itemize}
+
+\subsection{PACKET\_ID\_SET\_MODE}
+Packet send to H-Bridge for setting the drive mode.
+{\em Note if not sended to H-Bridge prior to Value-Packet the H-Bridge
+  will report an error and shut down}\\
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{8}{|c|}{ drive Mode Board 1[63:56]} & 
+  \multicolumn{8}{|c|}{ drive Mode Board 2[55:48]} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{8}{|c|}{ drive Mode Board 3[47:40]} & 
+  \multicolumn{8}{|c|}{ drive Mode Board 4[39:32]} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{16}{|c|}{free} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{free} \\ 
+  \hline
+\end{tabular}
+\begin{itemize}
+  \item[drive Mode Board 1 : ] {\it drive mode of H-Bridge}\\
+    Sets the desired drive mode of the H-Bridge, this is either
+    \begin{itemize}
+      \item[PWM]
+        Simple pwm mode with internal ramp.
+      \item[Speed]
+        Speed control mode with internal pid controller.
+      \item[Position]
+        Position control mode with internal pid controller.
+    \end{itemize}
+  \item[drive Mode Board 2 : ] {\it drive mode of H-Bridge}\\
+    see drive Mode Board 1\\
+  \item[drive Mode Board 3 : ] {\it drive mode of H-Bridge}\\
+    see drive Mode Board 1\\
+  \item[drive Mode Board 4 : ] {\it drive mode of H-Bridge}\\
+    see drive Mode Board 1\\
+
+\end{itemize}
+
+\subsection{PACKET\_ID\_SET\_PID\_POS}
+Packet send to H-Bridge for setting the PID values for the position controller.
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{16}{|c|}{Kp [47:32]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{16}{|c|}{Ki [31:16]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{16}{|c|}{Kd [15:0]} \\ 
+  \hline
+  \hline
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{ minMaxPidOutput[63:48]}\\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+\end{tabular}
+\begin{itemize}
+  \item[Kp: ] {\it Kp value of PID controller}\\
+    Kp value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+
+  \item[Ki: ] {\it Ki value of PID controller}\\
+    Ki value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+
+  \item[Kd: ] {\it Kd value of PID controller}\\
+    Kd value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+  \item[minMaxPidOutput: ] {\it Minimum Maximum Output of PID controller}\\
+    Sets the value to which the PID output is clamped.
+\end{itemize}
+
+\subsection{PACKET\_ID\_SET\_PID\_SPEED}
+Packet send to H-Bridge for setting the PID values for the speed controller.
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{16}{|c|}{Kp [47:32]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{16}{|c|}{Ki [31:16]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{16}{|c|}{Kd [15:0]} \\ 
+  \hline
+  \hline
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{ minMaxPidOutput[63:48]}\\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+\end{tabular}
+\begin{itemize}
+  \item[Kp: ] {\it Kp value of PID controller}\\
+    Kp value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+
+  \item[Ki: ] {\it Ki value of PID controller}\\
+    Ki value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+
+  \item[Kd: ] {\it Kd value of PID controller}\\
+    Kd value of PID controller. This value is a fixed point where 1000
+    is equal to 1.0.
+  \item[minMaxPidOutput: ] {\it Minimum Maximum Output of PID controller}\\
+    Sets the value to which the PID output is clamped.
+\end{itemize}
+
+\subsection{PACKET\_ID\_CONFIGURE}
+Packet sent to H-Bridge, for configuring internal values.
+{\em Note if not sended to H-Bridge prior to Value-Packet the H-Bridge
+  will report an error and shut down}\\
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{1}{|c|}{OC}& 
+  \multicolumn{1}{|c|}{AFC}& 
+  \multicolumn{1}{|c|}{ET}& 
+  \multicolumn{13}{|c|}{further extensions[61:48]} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{8}{|c}{max Motor Temp[47:40]} &
+  \multicolumn{8}{|c|}{max Motor Temp Count [39:32]}\\
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{8}{|c|}{max Board Temp [31:24]} & 
+  \multicolumn{8}{c|}{max Board Temp Count [23:16]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{Timeout [15:0]} \\
+  \hline
+\end{tabular}
+\begin{itemize}
+  \item[OC: ] {\it Open Circuit}\\
+    Wheather to use Open Circuit H-Bridge drive mode.
+    \begin{itemize}
+      \item[0: ] Closed Circuit
+      \item[1: ] Open Circuit
+    \end{itemize}
+
+  \item[AFC: ] {\it Active Field Collapse}\\
+    Wheather to use Active Filed Collape H-Bridge drive mode.
+    \begin{itemize}
+      \item[0: ] Sign Magnitude
+      \item[1: ] Active Filed Collape
+    \end{itemize}
+
+  \item[ET: ] {\it Use External Temperature Sensor}\\
+    Wheather an external Temperature sensor is attached to the motor
+    an should be used.
+    \begin{itemize}
+      \item[0: ] Internal motor temperature estimation is used
+      \item[1: ] External motor temperature sensor is used
+    \end{itemize}
+
+  \item[max Motor Temp: ] {\it maximum Motor Temperature}\\
+    This value specifies, at which motor temperature or estimated
+    motor temperature the H-Bridge
+    automatically shuts down, due to overheating.
+    If the temperature is {\em max Motor Temp Count} times in a row
+    higher than {\em max Motor Temp} the H-Bridge will shut down.
+
+  \item[max Motor Temp Count: ] {\it maximum Motor Temperature Counter}\\
+    Maximum times, the motor temperature may be over the limit in a row.
+
+  \item[max Board Temp: ] {\it maximum H-Bridge Temperature}\\
+    This value specifies, at which H-Bridge temperature the H-Bridge
+    automatically shuts down, due to overheating.
+    If the temperature is {\em max Board Temp Count} times in a row
+    higher than {\em max Board Temp} the H-Bridge will shut down.
+    
+  \item[max Board Temp Count: ] {\it maximum H-Bridge Temperature Counter}\\
+    Maximum times, the H-Bridge temperature may be over the limit in a row.
+
+  \item[Timeout: ] {\it timeout}\\
+    If the H-Bridge does not receive any commands for timeout * ms it
+    will automatically shut down.
+\end{itemize}
+
+\subsection{PACKET\_ID\_CONFIGURE2}
+Packet sent to H-Bridge, for configuring internal values.
+{\em Note if not sended to H-Bridge prior to Value-Packet the H-Bridge
+  will report an error and shut down}\\
+\begin{tabular} { c c c c c c c c c c c c c c c c}
+  63&62&61&60&59&58&57&56&55&54&53&52&51&50&49&48\\
+  \hline
+  \multicolumn{16}{|c|}{max Current [63:48]} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  47&46&45&44&43&42&41&40&39&38&37&36&35&34&33&32\\
+  \hline
+  \multicolumn{8}{|c|}{max Current Count [47:40]} &
+  \multicolumn{8}{|c|}{pwm Steps Per ms [39:25]} \\ 
+  \hline
+  \multicolumn{16}{c}{} \\
+  31&30&29&28&27&26&25&24&23&22&21&20&19&18&17&16\\
+  \hline
+  \multicolumn{8}{|c|}{pwm Steps Per ms [39:25]} & 
+  \multicolumn{8}{|c|}{free} \\
+  \hline
+  \multicolumn{16}{c}{} \\
+  15&14&13&12&11&10&9&8&7&6&5&4&3&2&1&0\\
+  \hline
+  \multicolumn{16}{|c|}{free} \\
+  \hline
+\end{tabular}
+\begin{itemize}
+  \item[max Current] {\it maximum Current} \\
+    If the current consumption is {\em max Current Count} times
+    in a row over this value, the H-Bridge will automatically 
+    shut down. The value is in mA.
+    
+  \item[max Current Count] {\it maximum Current Counter} \\
+    Maximum times, the current may be over the limit in a row.
+    
+  \item[pwm Steps Per ms] {\it pwm value increase per ms} \\
+    This value is used for internal ramping of pwm values. 
+    Values from 0 to 1800 are valid.
+
+
+\end{itemize}
+
+
+\end{document}
