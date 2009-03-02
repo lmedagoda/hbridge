@@ -202,6 +202,10 @@ bool Interface::isPIDPositionDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG_POS;
 }
 
+bool Interface::isPiezoPacket(can_msg &msg) {
+  return (msg.id & 0x1F) == PACKET_ID_PIEZO;
+}
+
 void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
   struct statusData *data = (struct statusData *) msg.data; 
   
@@ -242,6 +246,13 @@ void Interface::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
   dbg.host = (enum HOST_IDS) (msg.id & ~0x1F);
 }
 
+void Interface::getPizeoFromCanMessage(can_msg &msg, PiezoStatus &status) {
+  struct piezoData *data = (struct piezoData *) msg.data;
+  status.piezo[0] = data->value1;
+  status.piezo[1] = data->value2;
+  status.piezo[2] = data->value3;
+  status.piezo[3] = data->value4;
+}
 
 bool Interface::getNextStatus(Status &status) {
     if(!initalized)

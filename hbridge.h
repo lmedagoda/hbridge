@@ -95,6 +95,10 @@ struct Configuration {
 
 };
 
+struct PiezoStatus {
+  uint16_t piezo[4];
+};
+
 struct SpeedDebug {
   int16_t targetVal;
   int16_t pwmVal;
@@ -157,6 +161,7 @@ public:
     void getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg);
     void getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg);
     void getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg);
+    void getPizeoFromCanMessage(can_msg &msg, PiezoStatus &status);
     
     bool getNextCanMessage(can_msg &msg);
     bool isStatusPacket(can_msg &msg);
@@ -164,6 +169,7 @@ public:
     bool isPIDSpeedDebugPacket(can_msg &msg);
     bool isPIDPositionDebugPacket(can_msg &msg);
     bool isPosDebugPacket(can_msg &msg);
+    bool isPiezoPacket(can_msg &msg);
     
     int getFileDescriptor() const;
     

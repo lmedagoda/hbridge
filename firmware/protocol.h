@@ -33,6 +33,7 @@ enum packetIDs {
   PACKET_ID_POS_DEBUG = 9,
   PACKET_ID_PID_DEBUG_SPEED = 10,
   PACKET_ID_SPEED_DEBUG = 11,
+  PACKET_ID_PIEZO = 12,
 };
 
 enum hostIDs {
@@ -63,6 +64,12 @@ struct pidDebugData {
   u16 minMaxPidOutput;
 } __attribute__ ((packed));
 
+struct piezoData {
+  u16 value1;
+  u16 value2;
+  u16 value3;
+  u16 value4;
+} __attribute__ ((packed));
 
 struct statusData {
   unsigned currentValue :14;
