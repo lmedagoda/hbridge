@@ -96,7 +96,7 @@ struct Configuration {
 };
 
 struct PiezoStatus {
-  uint16_t piezo[4];
+  int piezo[4];
 };
 
 struct SpeedDebug {
