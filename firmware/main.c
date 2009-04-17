@@ -685,14 +685,14 @@ void detectTouchdown(const int current) {
       if(highTimeCounter > 20) {
 	state = LIFTOFF;
 	highTimeCounter = 0;
-	GPIO_SetBits(GPIOB, GPIO_Pin_10);
+	GPIO_SetBits(GPIOB, GPIO_Pin_8);
       }
       break;
       
     case LIFTOFF:
       if(current > 200) {
 	state = TOUCHDOWN_DETECTED;
-	GPIO_ResetBits(GPIOB, GPIO_Pin_10);
+	GPIO_ResetBits(GPIOB, GPIO_Pin_8);
       }
       break;
   }
@@ -715,7 +715,6 @@ void SysTickHandler(void) {
   static u16 index = 0;
   static u8 wheelHalfTurned = 0;
   static u16 overCurrentCounter = 0;
-
 
   s32 curSpeed = 0;
   s32 pwmValue = 0;
@@ -815,7 +814,7 @@ void SysTickHandler(void) {
   inActiveAdcValues->currentValueCount = 0;
 
   //try to detect touchdown and switch on led
-  detectTouchdown(currentValue);
+  //detectTouchdown(currentValue);
 
   //reset timeout, if "userspace" requested it
   if(activeCState->resetTimeoutCounter) {
@@ -826,7 +825,10 @@ void SysTickHandler(void) {
   //change state to unconfigured if error is set
   if(error != ERROR_CODE_NONE && activeCState->internalState == STATE_CONFIGURED) {
     activeCState->internalState = STATE_ERROR;
-  } else {
+  }
+
+  //only check for overcurrent if configured
+  if(activeCState->internalState == STATE_CONFIGURED) {
     //check for overcurrent
     if(currentValue > activeCState->maxCurrent) {
       overCurrentCounter++;
@@ -844,6 +846,10 @@ void SysTickHandler(void) {
       activeCState->internalState = STATE_ERROR;
       error = ERROR_CODE_TIMEOUT;      
     }
+  } else {
+    //reset to zero values
+    overCurrentCounter = 0;
+    timeoutCounter = 0;
   }
 
   //calculate correct half wheel position
@@ -951,8 +957,6 @@ void SysTickHandler(void) {
 	}
       }
 
-      //TODO FIXME convert to a real value like m/s
-      
       if(activeCState->enablePIDDebug) {
 	speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
 	speedDbgMessage.RTR=CAN_RTR_DATA;
@@ -1082,8 +1086,12 @@ void SysTickHandler(void) {
   } else {
     //reset timeoutcounter
     timeoutCounter = 0;
-    
-    setNewPWM(0);   
+    setNewPWM(0);
+
+    //reset PID struct, to avoid bad controller 
+    //behavior an reactivation due to big I part
+    resetPIDStruct(&(speedPidData));
+    resetPIDStruct(&(posPidData));
   }
  
   lastEncoderValue = encoderValue;
@@ -2048,7 +2056,7 @@ void GPIO_Configuration(void)
 
   /** DEBUG**/
   // Configure I2C2 pins: SCL and SDA as push pull for testLED
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8 | GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_Init(GPIOB, &GPIO_InitStructure);

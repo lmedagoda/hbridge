@@ -93,6 +93,13 @@ s32 pid(struct pid_data *data, s32 cur_val) {
   return result;
 }
 
+void resetPIDStruct(struct pid_data *data) {
+  data->target_val = 0;
+  data->last_error = 0;
+  data->error_sum = 0;
+}
+
+
 void initPIDStruct(struct pid_data *data) {
   data->target_val = 0;
   data->last_error = 0;

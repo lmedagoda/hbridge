@@ -43,6 +43,13 @@ void setKi(struct pid_data *data, s32 ki);
  */
 void setKd(struct pid_data *data, s32 kd);
 
+/**
+ * This function clears internal values for
+ * I and D part but not kp, ki, kd, min and 
+ * maxval.
+ */
+void resetPIDStruct(struct pid_data *data);
+
 void setTargetValue(struct pid_data *data, s32 target_val);
 
 s32 pid(struct pid_data *data, s32 cur_val);
