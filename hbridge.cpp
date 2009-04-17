@@ -1,5 +1,5 @@
 //
-// C++ Implementation: interface
+// C++ Implementation: Driver
 //
 // Description: 
 //
@@ -32,28 +32,28 @@ typedef int16_t s16;
 	 
 namespace hbridge {
 
-Interface *Interface::instance;
+Driver *Driver::instance;
 
-  Interface::Interface() : initalized(false)
+  Driver::Driver() : initalized(false)
 {
 }
 
-Interface &Interface::getInstance() {
+Driver &Driver::getInstance() {
   if(!instance)
-    instance = new Interface();
+    instance = new Driver();
 
   return *instance;
 };
   
 
-Interface::~Interface()
+Driver::~Driver()
 {
 }
 
 /*!
-    \fn Hbridge::Interface::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
+    \fn Hbridge::Driver::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
  */
-int Interface::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
+int Driver::setNewTargetValues(const short int board1, const short int board2, const short int board3, const short int board4)
 {
     if(!initalized)
 	return -1;
@@ -70,7 +70,7 @@ int Interface::setNewTargetValues(const short int board1, const short int board2
 }
 
 
-int Interface::setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, enum DRIVE_MODES board3, enum DRIVE_MODES board4) {
+int Driver::setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, enum DRIVE_MODES board3, enum DRIVE_MODES board4) {
     if(!initalized)
 	return -1;
 
@@ -86,7 +86,7 @@ int Interface::setDriveMode(enum DRIVE_MODES board1, enum DRIVE_MODES board2, en
 }
 
 
-int Interface::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
+int Driver::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
     if(!initalized)
 	return -1;
 
@@ -100,7 +100,7 @@ int Interface::setSpeedPIDValues(const enum HOST_IDS host, const double kp,const
     return sendCanMessage(&msg, sizeof(struct setPidData), host | PACKET_ID_SET_PID_SPEED);
 }
 
-int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
+int Driver::setPositionPIDValues(const enum HOST_IDS host, const double kp,const double ki, const double kd, unsigned int minMaxValue) {
     if(!initalized)
 	return -1;
     
@@ -114,7 +114,7 @@ int Interface::setPositionPIDValues(const enum HOST_IDS host, const double kp,co
     return sendCanMessage(&msg, sizeof(struct setPidData), host | PACKET_ID_SET_PID_POS);
 }
 
-int Interface::emergencyShutdown() {
+int Driver::emergencyShutdown() {
     struct can_msg msg;
     if(sendCanMessage(&msg, 0, PACKET_ID_EMERGENCY_STOP) < 0 ) {
 	return -1;
@@ -122,18 +122,18 @@ int Interface::emergencyShutdown() {
     return 0;
 }
 
-int Interface::getFileDescriptor() const {
+int Driver::getFileDescriptor() const {
   if(!initalized)
     return -1;
   return canFd;
 }
 
-bool Interface::canInitalized() {
+bool Driver::canInitalized() {
   return initalized;
 }
 
 
-int Interface::setConfiguration(const enum HOST_IDS host, const Configuration newConfig) {
+int Driver::setConfiguration(const enum HOST_IDS host, const Configuration newConfig) {
     if(!initalized)
 	return -1;
 
@@ -170,7 +170,7 @@ int Interface::setConfiguration(const enum HOST_IDS host, const Configuration ne
     return 0;
 }
 
-bool Interface::getNextCanMessage(can_msg &msg) {
+bool Driver::getNextCanMessage(can_msg &msg) {
   if(!initalized)
     return false;
 
@@ -182,31 +182,31 @@ bool Interface::getNextCanMessage(can_msg &msg) {
 }
 
 
-bool Interface::isStatusPacket(can_msg &msg) {
+bool Driver::isStatusPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_STATUS;
 }
 
-bool Interface::isSpeedDebugPacket(can_msg &msg) {
+bool Driver::isSpeedDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_SPEED_DEBUG;
 }
 
-bool Interface::isPosDebugPacket(can_msg &msg) {
+bool Driver::isPosDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_POS_DEBUG;
 }
 
-bool Interface::isPIDSpeedDebugPacket(can_msg &msg) {
+bool Driver::isPIDSpeedDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG_SPEED;
 }
 
-bool Interface::isPIDPositionDebugPacket(can_msg &msg) {
+bool Driver::isPIDPositionDebugPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_PID_DEBUG_POS;
 }
 
-bool Interface::isPiezoPacket(can_msg &msg) {
+bool Driver::isPiezoPacket(can_msg &msg) {
   return (msg.id & 0x1F) == PACKET_ID_PIEZO;
 }
 
-void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
+void Driver::getStatusFromCanMessage(can_msg &msg, Status &status) {
   struct statusData *data = (struct statusData *) msg.data; 
   
   status.current = data->currentValue;
@@ -217,7 +217,7 @@ void Interface::getStatusFromCanMessage(can_msg &msg, Status &status) {
   status.host = (enum HOST_IDS) (msg.id & ~0x1F);  
 }
 
-void Interface::getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg) {
+void Driver::getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg) {
   struct speedDebugData *data = (struct speedDebugData *) msg.data;
 
   sdbg.targetVal = data->targetVal;
@@ -227,7 +227,7 @@ void Interface::getSpeedDebugFromCanMessage(can_msg &msg, SpeedDebug &sdbg) {
   sdbg.host = (enum HOST_IDS) (msg.id & ~0x1F);  
 }
 
-void Interface::getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg) {
+void Driver::getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg) {
   struct posDebugData *data = (struct posDebugData *) msg.data;
 
   sdbg.targetVal = data->targetVal;
@@ -238,7 +238,7 @@ void Interface::getPosDebugFromCanMessage(can_msg &msg, PosDebug &sdbg) {
 }
 
 
-void Interface::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
+void Driver::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
   struct pidDebugData *data = (struct pidDebugData *) msg.data;
   dbg.pPart = data->pPart;
   dbg.iPart = data->iPart;
@@ -246,7 +246,7 @@ void Interface::getPIDDebugFromCanMessage(can_msg &msg, PIDDebug &dbg) {
   dbg.host = (enum HOST_IDS) (msg.id & ~0x1F);
 }
 
-void Interface::getPizeoFromCanMessage(can_msg &msg, PiezoStatus &status) {
+void Driver::getPizeoFromCanMessage(can_msg &msg, PiezoStatus &status) {
   struct piezoData *data = (struct piezoData *) msg.data;
   status.piezo[0] = data->value1;
   status.piezo[1] = data->value2;
@@ -254,7 +254,7 @@ void Interface::getPizeoFromCanMessage(can_msg &msg, PiezoStatus &status) {
   status.piezo[3] = data->value4;
 }
 
-bool Interface::getNextStatus(Status &status) {
+bool Driver::getNextStatus(Status &status) {
     if(!initalized)
 	return false;
 
@@ -278,7 +278,7 @@ bool Interface::getNextStatus(Status &status) {
     return false;
 }
 
-int Interface::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
+int Driver::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
   int ret;
   unsigned int readCount = 0;
   while(readCount < sizeof(struct can_msg)) { 
@@ -296,7 +296,7 @@ int Interface::receiveCanMessage(struct can_msg *msg, unsigned int timeout) {
   return 1;
 }
 
-int Interface::sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id) {
+int Driver::sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id) {
   msg->ff = 0;
   msg->rtr = 0;
   msg->id = id;
@@ -317,9 +317,9 @@ int Interface::sendCanMessage(struct can_msg *msg, const unsigned char dlc, cons
 }
 
 /*!
-    \fn Hbridge::Interface::openCanDevice(char *path)
+    \fn Hbridge::Driver::openCanDevice(char *path)
  */
-int Interface::openCanDevice(std::string &path)
+int Driver::openCanDevice(std::string &path)
 {
     if(initalized)
       return true;

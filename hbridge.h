@@ -136,13 +136,13 @@ struct SpeedAndPIDDebug {
 /**
 	@author 
 */
-class Interface{
+class Driver {
 public:
 
-  static Interface &getInstance();
+  static Driver &getInstance();
   
 
-    ~Interface();
+    ~Driver();
 
     int emergencyShutdown();
 
@@ -174,10 +174,10 @@ public:
     int getFileDescriptor() const;
     
 private:
-    Interface();
+    Driver();
     int canFd;
     bool initalized;
-    static Interface *instance;
+    static Driver *instance;
 
 
     int sendCanMessage(struct can_msg *msg, const unsigned char dlc, const unsigned short id);
