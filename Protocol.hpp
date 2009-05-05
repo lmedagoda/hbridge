@@ -29,114 +29,6 @@ namespace hbridge
     const int TICKS_PER_TURN = 512 * 729 / 16;
 #endif /* __orogen */
 
-    struct AbsolutePosition
-    {
-        int turns;
-        int ticks;
-
-#ifndef __orogen
-        /**
-         * Only initialises the member variables to 0
-         */
-        AbsolutePosition() :
-            turns(0), ticks(0)
-        {}
-      
-        /**
-         * Addition operator adds a given number of ticks to the current position.
-         *
-         * @param val Ticks to be added
-         *
-         * @return An updated AbsolutePosition structure instance
-         */
-        AbsolutePosition operator +(const int &val) const
-        {
-            AbsolutePosition ret = *this;
-            ret.ticks += val;
-            ret.canonize();
-            return ret;
-        }
-
-        /**
-         * Subtraction operator subtracts a given number of ticks to the
-         * current position.
-         *
-         * @param val Ticks to be subtracted
-         *
-         * @return An updated AbsolutePosition structure instance
-         */
-        AbsolutePosition operator -(const int &val) const
-        {
-            AbsolutePosition ret = *this;
-            ret.ticks -= val;
-            ret.canonize();
-            return ret;
-        }
-      
-        /**
-         * Comparison operator to compare two AbsolutePosition structures
-         *
-         * @param pos Another AbsolutePosition structure
-         *
-         * @return Returns true if the current instance is smaller, false
-         * otherwise.
-         */
-        bool operator <(const AbsolutePosition &pos) const
-        {
-            return ((turns < pos.turns) ||
-                    ((turns == pos.turns) && (ticks < pos.ticks)));
-        }
-
-        /**
-         * Comparison operator to compare two AbsolutePosition structures
-         *
-         * @param pos Another AbsolutePosition structure
-         *
-         * @return Returns true if the current instance is greater, false
-         * otherwise.
-         */
-        bool operator >(const AbsolutePosition &pos) const
-        {
-            return ((turns > pos.turns) ||
-                    ((turns == pos.turns) && (ticks > pos.ticks)));
-        }
-
-        /**
-         * Equality operator to compare two AbsolutePosition structures
-         *
-         * @param pos Another AbsolutePosition structure
-         *
-         * @return Returns true if both structures are equals, false otherwise.
-         */
-        bool operator ==(const AbsolutePosition &pos) const
-        {
-            return ((turns == pos.turns) && (ticks == pos.turns));
-        }
-
-        /**
-         * Returns the number of ticks instead of turns and ticks
-         *
-         * @return The absolute number of ticks
-         */
-        uint64_t getTicks() const
-        {
-            return ((uint64_t) this->turns) * TICKS_PER_TURN + this->ticks;
-        }
-
-        /**
-         * Fixes the ticks and turns values if required (Ticks >! 0).
-         */
-        inline void canonize()
-        {
-            int offset = (ticks < 0 ?
-                          ticks / TICKS_PER_TURN - 1 :
-                          ticks / TICKS_PER_TURN);
-            ticks -= (offset * TICKS_PER_TURN);
-            turns += offset;
-        }
-#endif /* __orogen */
-    };
-
     struct Configuration {
         unsigned char openCircuit;
         unsigned char activeFieldCollapse;
@@ -230,16 +122,15 @@ namespace hbridge
         firmware::errorCodes error;
     };
 
+    typedef std::pair<can::Message, can::Message> MessagePair;
+
 #ifndef __orogen
     class Protocol
     {
     protected:
         static const int BOARD_COUNT = 4;
 
-        int                  current[BOARD_COUNT];
-        int                  oldPosition[BOARD_COUNT];
-        AbsolutePosition     absPosition[BOARD_COUNT];
-        firmware::errorCodes error[BOARD_COUNT];
+        BoardState states[BOARD_COUNT];
 
     public:
         Protocol();
@@ -255,31 +146,13 @@ namespace hbridge
         bool updateFromCAN(can::Message &msg);
 
         /**
-         * Query the current [mA] for the given board (hbridge)
+         * Query the board state (current [mA], position [ticks], errors) for the given board (hbridge)
          *
          * @param board hbridge identifier
          *
-         * @return The current in [mA] for the given board
+         * @return The current state for the given board
          */
-        int getCurrent(BOARDID board);
-
-        /**
-         * Query the absolute position [turns,ticks] for the given board (hbridge)
-         *
-         * @param board hbridge identifier
-         *
-         * @return The absolute position [turns,ticks] for the given board
-         */
-        const AbsolutePosition &getAbsolutePosition(BOARDID board);
-
-        /**
-         * Query the error code for the given board (hbridge)
-         *
-         * @param board hbridge identifier
-         *
-         * @return The error code for the given board
-         */
-        firmware::errorCodes getErrorCode(BOARDID board);
+        const BoardState &getState(BOARDID board) const;
 
         /**
          * Generate a CAN message for emergency shutdown
@@ -370,7 +243,6 @@ namespace hbridge
                                double kp, double ki, double kd,
                                double minMaxValue) const;
 
-        typedef std::pair<can::Message, can::Message> MessagePair;
         /**
          * Generate a CAN message for setting the configuration of a given hbridge.
          *

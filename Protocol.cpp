@@ -6,11 +6,9 @@ namespace hbridge
 {
 
     Protocol::Protocol() :
-        current(), oldPosition(), absPosition(), error()
+        states()
     {
-        bzero(&this->current, BOARD_COUNT * sizeof(int));
-        bzero(&this->oldPosition, BOARD_COUNT * sizeof(int));
-        bzero(&this->error, BOARD_COUNT * sizeof(firmware::errorCodes));
+        bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
     }
 
     Protocol::~Protocol()
@@ -22,49 +20,69 @@ namespace hbridge
         firmware::statusData *data =
             reinterpret_cast<firmware::statusData *>(msg.data);
 
-        int index = ((msg.can_id & ~0x1f) >> 5) - 1;
-
-        if ((index < 0) || (index > (BOARD_COUNT - 1)))
+        if (data == NULL)
         {
-            // Invalid id specified in packet
+            // Unable to cast data
             return false;
         }
 
-        this->current[index] = data->currentValue; // Current in [mA]
-
-        int diff = (data->position - this->oldPosition[index]);
-
-        // We assume that a motor rotates less than half a turn per [ms]
-        // (a status packet is sent every [ms])
-        if (abs(diff) > TICKS_PER_TURN / 2)
+        switch (msg.can_id & 0x1f)
         {
-            diff += (diff < 0 ? 1 : -1) * TICKS_PER_TURN;
+            case firmware::PACKET_ID_STATUS:
+            {
+                int index = ((msg.can_id & ~0x1f) >> 5) - 1;
+        
+                if ((index < 0) || (index > (BOARD_COUNT - 1)))
+                {
+                    // Invalid id specified in packet
+                    return false;
+                }
+
+                this->states[index].current = data->currentValue; // Current in [mA]
+                
+                int diff = (data->position - this->states[index].positionOld);
+        
+                // We assume that a motor rotates less than half a turn per [ms]
+                // (a status packet is sent every [ms])
+                if (abs(diff) > TICKS_PER_TURN / 2)
+                {
+                    diff += (diff < 0 ? 1 : -1) * TICKS_PER_TURN;
+                }
+
+                // Track the position
+                this->states[index].position += diff;
+
+                // Don't know what to do with the PWM value
+                // this->pwm[index] = data->pwm;
+
+                this->states[index].error = data->error;
+    
+                break;
+            }
+
+            case firmware::PACKET_ID_SPEED_DEBUG:
+                // To be implemented
+                break;
+
+            case firmware::PACKET_ID_POS_DEBUG:
+                // To be implemented
+                break;
+
+            case firmware::PACKET_ID_PID_DEBUG_SPEED:
+                // To be implemented
+                break;
+
+            case firmware::PACKET_ID_PID_DEBUG_POS:
+                // To be implemented
+                break;
         }
-
-        // Track the position
-        this->absPosition[index] = this->absPosition[index] + diff;
-
-        // Don't know what to do with the PWM value
-        // this->pwm[index] = data->pwm;
-
-        this->error[index] = data->error;
 
         return true;
     }
 
-    int Protocol::getCurrent(BOARDID board)
+    const BoardState &Protocol::getState(BOARDID board) const
     {
-        return this->current[(int)board >> 5];
-    }
-
-    const AbsolutePosition &Protocol::getAbsolutePosition(BOARDID board)
-    {
-        return this->absPosition[(int)board >> 5];
-    }
-
-    firmware::errorCodes Protocol::getErrorCode(BOARDID board)
-    {
-        return this->error[(int)board >> 5];
+        return this->states[(int)board >> 5];
     }
 
     can::Message Protocol::emergencyShutdown() const
@@ -156,7 +174,7 @@ namespace hbridge
         return msg;
     }
 
-    Protocol::MessagePair Protocol::setConfiguration(BOARDID board,
+    MessagePair Protocol::setConfiguration(BOARDID board,
                                                      const Configuration &cfg) const
     {
         MessagePair msgs;
