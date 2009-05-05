@@ -139,6 +139,8 @@ struct SpeedAndPIDDebug {
 class Driver {
 public:
 
+    // TODO: Is there any read advantage over using a simple
+    // pointer here?
   static Driver &getInstance();
   
 
