@@ -17,7 +17,7 @@ pkg_check_modules(DFKI_TYPES REQUIRED "dfki-types")
 INCLUDE_DIRECTORIES(${DFKI_TYPES_INCLUDE_DIRS})
 LINK_DIRECTORIES(${DFKI_TYPES_LIBRARY_DIRS})
 
-ADD_LIBRARY(hbridge SHARED Protocol.cpp)
+ADD_LIBRARY(hbridge SHARED HBridgeDriver.cpp)
 TARGET_LINK_LIBRARIES(hbridge ${DFKI_TYPES_LIBS})
 
 #need to link to some other libraries ? just add them here
@@ -28,7 +28,7 @@ ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
 INSTALL(TARGETS hbridge
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib)
-INSTALL(FILES Protocol.hpp DESTINATION include)
+INSTALL(FILES HBridgeDriver.hpp DESTINATION include)
 INSTALL(FILES firmware/protocol.h DESTINATION include/firmware)
 
 CONFIGURE_FILE(hbridge.pc.in hbridge.pc @ONLY)
