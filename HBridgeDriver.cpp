@@ -1,21 +1,22 @@
-#include "Protocol.hpp"
+#include "HBridgeDriver.hpp"
 #include <strings.h>
 #include <stdlib.h>
 
 namespace hbridge
 {
 
-    Protocol::Protocol() :
-        states()
+    Driver::Driver() :
+        states(), positionOld()
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
+        bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
     }
 
-    Protocol::~Protocol()
+    Driver::~Driver()
     {
     }
 
-    bool Protocol::updateFromCAN(can::Message &msg)
+    bool Driver::updateFromCAN(can::Message &msg)
     {
         firmware::statusData *data =
             reinterpret_cast<firmware::statusData *>(msg.data);
@@ -39,8 +40,8 @@ namespace hbridge
                 }
 
                 this->states[index].current = data->currentValue; // Current in [mA]
-                
-                int diff = (data->position - this->states[index].positionOld);
+
+                int diff = (data->position - this->positionOld[index]);
         
                 // We assume that a motor rotates less than half a turn per [ms]
                 // (a status packet is sent every [ms])
@@ -50,7 +51,8 @@ namespace hbridge
                 }
 
                 // Track the position
-                this->states[index].position += diff;
+                this->states[index].position.ticks += diff;
+                this->states[index].delta = diff;
 
                 // Don't know what to do with the PWM value
                 // this->pwm[index] = data->pwm;
@@ -80,12 +82,12 @@ namespace hbridge
         return true;
     }
 
-    const BoardState &Protocol::getState(BOARDID board) const
+    const BoardState &Driver::getState(BOARDID board) const
     {
         return this->states[(int)board >> 5];
     }
 
-    can::Message Protocol::emergencyShutdown() const
+    can::Message Driver::emergencyShutdown() const
     {
         can::Message msg;
 
@@ -97,13 +99,13 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Protocol::setDriveMode(DRIVE_MODE mode) const
+    can::Message Driver::setDriveMode(DRIVE_MODE mode) const
     {
         return setDriveMode(mode, mode, mode, mode);
     }
 
-    can::Message Protocol::setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
-                                        DRIVE_MODE board3, DRIVE_MODE board4) const
+    can::Message Driver::setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
+                                      DRIVE_MODE board3, DRIVE_MODE board4) const
     {
         can::Message msg;
 
@@ -123,8 +125,8 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Protocol::setTargetValues(short int value1, short int value2,
-                                           short int value3, short int value4) const
+    can::Message Driver::setTargetValues(short int value1, short int value2,
+                                         short int value3, short int value4) const
     {
         can::Message msg;
 
@@ -144,9 +146,9 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Protocol::setSpeedPID(BOARDID board,
-                                       double kp, double ki, double kd,
-                                       double minMaxValue) const
+    can::Message Driver::setSpeedPID(BOARDID board,
+                                     double kp, double ki, double kd,
+                                     double minMaxValue) const
     {
         can::Message msg;
 
@@ -159,9 +161,9 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Protocol::setPositionPID(BOARDID board,
-                                          double kp, double ki, double kd,
-                                          double minMaxValue) const
+    can::Message Driver::setPositionPID(BOARDID board,
+                                        double kp, double ki, double kd,
+                                        double minMaxValue) const
     {
         can::Message msg;
 
@@ -174,8 +176,8 @@ namespace hbridge
         return msg;
     }
 
-    MessagePair Protocol::setConfiguration(BOARDID board,
-                                                     const Configuration &cfg) const
+    MessagePair Driver::setConfiguration(BOARDID board,
+                                         const Configuration &cfg) const
     {
         MessagePair msgs;
     

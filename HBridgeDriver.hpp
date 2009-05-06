@@ -1,5 +1,5 @@
-#ifndef HBRIDGE_PROTOCOL_H
-#define HBRIDGE_PROTOCOL_H
+#ifndef HBRIDGE_DRIVER_HPP
+#define HBRIDGE_DRIVER_HPP
 
 #ifndef __orogen
 
@@ -29,7 +29,21 @@ namespace hbridge
     const int TICKS_PER_TURN = 512 * 729 / 16;
 #endif /* __orogen */
 
-    struct Configuration {
+    struct Ticks
+    {
+#ifndef __orogen
+        union
+        {
+#endif /* __orogen */
+            char ticksByte[8]; // Only this is visible to orogen
+#ifndef __orogen
+            unsigned long long ticks;
+        };
+#endif /* __orogen */
+    };
+
+    struct Configuration
+    {
         unsigned char openCircuit;
         unsigned char activeFieldCollapse;
         unsigned char externalTempSensor;
@@ -93,6 +107,8 @@ namespace hbridge
 #endif
     };
 
+#define HBRIDGE_BOARD_ID(x) ((hbridge::BOARDID)(x << 5))
+
     /**
      * Board (hbridge) id constants
      */
@@ -117,24 +133,26 @@ namespace hbridge
     struct BoardState
     {
         int current;
-        int position;
-        int positionOld;
-        firmware::errorCodes error;
+        Ticks position;
+        int delta;
+        int error;
     };
 
+#ifndef __orogen
     typedef std::pair<can::Message, can::Message> MessagePair;
 
-#ifndef __orogen
-    class Protocol
+    const int BOARD_COUNT = 4;
+
+    class Driver
     {
     protected:
-        static const int BOARD_COUNT = 4;
 
         BoardState states[BOARD_COUNT];
+        firmware::s16 positionOld[BOARD_COUNT];
 
     public:
-        Protocol();
-        ~Protocol();
+        Driver();
+        ~Driver();
 
         /**
          * Updates the internal state from a CAN message
@@ -282,5 +300,5 @@ namespace hbridge
 
 }
 
-#endif /* HBRIDGE_PROTOCOL_H */
+#endif /* HBRIDGE_DRIVER_HPP */
 
