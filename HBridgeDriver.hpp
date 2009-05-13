@@ -60,11 +60,11 @@ namespace hbridge
         
 #ifndef __orogen
         /**
-         * Initialise all firlds of the configuration structure with 0
+         * Initialise all fields of the configuration structure with 0
          */
         Configuration() :
             openCircuit(0), activeFieldCollapse(0), externalTempSensor(0),
-            cascadedPositionController(0), maxMotorTemp(0),
+            cascadedPositionController(0), pidDebugActive(0), maxMotorTemp(0),
             maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
             timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0)
         {}
@@ -114,6 +114,7 @@ namespace hbridge
      */
     enum BOARDID
     {
+        H_BROADCAST = 0,
         H_BRIDGE1 = (1 << 5),
         H_BRIDGE2 = (2 << 5),
         H_BRIDGE3 = (3 << 5),
