@@ -33,3 +33,7 @@ INSTALL(FILES firmware/protocol.h DESTINATION include/firmware)
 
 CONFIGURE_FILE(hbridge.pc.in hbridge.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/hbridge.pc DESTINATION lib/pkgconfig)
+
+add_subdirectory(test)
+
+

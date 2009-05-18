@@ -2,25 +2,10 @@
 #define HBRIDGE_DRIVER_HPP
 
 #ifndef __orogen
-
 #include <utility>
-
 #include <canmessage.hh>
 #include <stdint.h>
-
 // Move all the firmware stuff to its own namespace
-namespace firmware
-{
-#define __NO_STM32
-
-    //define types similar to STM32 firmeware lib,
-    //so we can use same protocoll.h
-    typedef uint8_t u8;
-    typedef uint16_t u16;
-    typedef int16_t s16;
-
-#include "firmware/protocol.h"
-}
 #endif /* __orogen */
 
 namespace hbridge
@@ -29,18 +14,7 @@ namespace hbridge
     const int TICKS_PER_TURN = 512 * 729 / 16;
 #endif /* __orogen */
 
-    struct Ticks
-    {
-#ifndef __orogen
-        union
-        {
-#endif /* __orogen */
-            char ticksByte[8]; // Only this is visible to orogen
-#ifndef __orogen
-            unsigned long long ticks;
-        };
-#endif /* __orogen */
-    };
+    typedef int64_t Ticks;
 
     struct Configuration
     {
@@ -121,6 +95,15 @@ namespace hbridge
         H_BRIDGE4 = (4 << 5)
     };
 
+    enum ERROR_CODES {
+        ERROR_CODE_NONE = 0,
+        ERROR_CODE_OVERHEATMOTOR = 1,
+        ERROR_CODE_OVERHEATBOARD = 2,
+        ERROR_CODE_OVERCURRENT = 3,
+        ERROR_CODE_TIMEOUT = 4,
+        ERROR_CODE_BAD_CONFIG = 5
+    };
+
     /**
      * Drive mode constants for the hbridges
      */
@@ -128,15 +111,18 @@ namespace hbridge
     {
         DM_PWM = 0,
         DM_SPEED = 1,
-        DM_POSITION = 2
+        DM_POSITION = 2,
+        DM_UNINITIALIZED = 3
     };
 
     struct BoardState
     {
+        int index;
         int current;
         Ticks position;
         int delta;
         int error;
+        float pwm;
     };
 
 #ifndef __orogen
@@ -149,7 +135,7 @@ namespace hbridge
     protected:
 
         BoardState states[BOARD_COUNT];
-        firmware::s16 positionOld[BOARD_COUNT];
+        int16_t positionOld[BOARD_COUNT];
 
     public:
         Driver();

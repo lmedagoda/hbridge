@@ -2,6 +2,7 @@
 #include <strings.h>
 #include <stdlib.h>
 
+#include "protocol.hpp"
 namespace hbridge
 {
 

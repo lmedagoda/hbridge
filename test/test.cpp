@@ -12,6 +12,7 @@
 
 #include <canbus.hh>
 #include <HBridgeDriver.hpp>
+#include "../protocol.hpp"
 
 can::Driver driver;
 hbridge::Driver hbd;
