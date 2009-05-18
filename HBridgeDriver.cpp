@@ -21,12 +21,6 @@ namespace hbridge
         firmware::statusData *data =
             reinterpret_cast<firmware::statusData *>(msg.data);
 
-        if (data == NULL)
-        {
-            // Unable to cast data
-            return false;
-        }
-
         switch (msg.can_id & 0x1f)
         {
             case firmware::PACKET_ID_STATUS:
