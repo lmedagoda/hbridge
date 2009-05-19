@@ -4,7 +4,7 @@ PROJECT(hbridge)
 cmake_minimum_required(VERSION 2.6)
 
 #add definitions, compiler switches, etc.
-ADD_DEFINITIONS(-Wall -O2)
+ADD_DEFINITIONS(-Wall)
 
 #list all source files here
 #ADD_EXECUTABLE(driver main.cpp interface.cpp)
