@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 
 #include <canbus.hh>
-#include <HBridgeDriver.hpp>
+#include "../HBridgeDriver.hpp"
 #include "../protocol.hpp"
 
 can::Driver driver;
@@ -30,19 +30,19 @@ unsigned char dmData[] = { 1, 1, 1, 1, 0, 0, 0, 0}; // 4 byte
 size_t dmDataSize = 4;
 // Set value data
 size_t valueDataSize = 8;
-unsigned char value1Data[] = { 20, 0, 0, 0, 0, 0, 0, 0 }; // 8 byte
+unsigned char value1Data[] = { 0xec, 0xff, 0, 0, 0, 0, 0, 0 }; // 8 byte
 unsigned char value2Data[] = { 0, 0, 20, 0, 0, 0, 0, 0 }; // 8 byte
 unsigned char value3Data[] = { 0, 0, 0, 0, 20, 0, 0, 0 }; // 8 byte
 unsigned char value4Data[] = { 0, 0, 0, 0, 0, 0, 20, 0 }; // 8 byte
 
 bool checkMessage(
-        hbridge::BOARDID     board,
+        int     board_index,
         firmware::packetIDs  pid,
         const unsigned char *testData,
         size_t               testDataSize,
         can::Message        &msg)
 {
-    unsigned int reqID = board | pid;
+    unsigned int reqID = (board_index << 5) | pid;
 
      if (msg.can_id != reqID)
      {
@@ -107,51 +107,33 @@ BOOST_AUTO_TEST_CASE(test_case)
     config.pwmStepPerMs = 200;
 
     std::cout << "Configuring hbridges" << std::endl;
-    hbridge::MessagePair config1 = hbd.setConfiguration(hbridge::H_BRIDGE1, config);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE1, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config1.first));
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE1, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config1.second));
-    driver.write(config1.first);
-    driver.write(config1.second);
-    hbridge::MessagePair config2 = hbd.setConfiguration(hbridge::H_BRIDGE2, config);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE2, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config2.first));
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE2, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config2.second));
-    driver.write(config2.first);
-    driver.write(config2.second);
-    hbridge::MessagePair config3 = hbd.setConfiguration(hbridge::H_BRIDGE3, config);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE3, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config3.first));
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE3, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config3.second));
-    driver.write(config3.first);
-    driver.write(config3.second);
-    hbridge::MessagePair config4 = hbd.setConfiguration(hbridge::H_BRIDGE4, config);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE4, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config4.first));
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE4, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config4.second));
-    driver.write(config4.first);
-    driver.write(config4.second);
+    for (int i = 0; i < 4; ++i)
+    {
+        hbridge::MessagePair config_msgs = hbd.setConfiguration(i, config);
+        BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config_msgs.first));
+        BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config_msgs.second));
+        driver.write(config_msgs.first);
+        driver.write(config_msgs.second);
+    }
 
     std::cout << "Set PID configuration" << std::endl;
-    can::Message pidmsg1 = hbd.setSpeedPID(hbridge::H_BRIDGE1, 400.0, 5.0, 0.0, 1800.0);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg1));
-    driver.write(pidmsg1);
-    can::Message pidmsg2 = hbd.setSpeedPID(hbridge::H_BRIDGE2, 400.0, 5.0, 0.0, 1800.0);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE2, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg2));
-    driver.write(pidmsg2);
-    can::Message pidmsg3 = hbd.setSpeedPID(hbridge::H_BRIDGE3, 400.0, 5.0, 0.0, 1800.0);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE3, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg3));
-    driver.write(pidmsg3);
-    can::Message pidmsg4 = hbd.setSpeedPID(hbridge::H_BRIDGE4, 400.0, 5.0, 0.0, 1800.0);
-    BOOST_CHECK(checkMessage(hbridge::H_BRIDGE4, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg4));
-    driver.write(pidmsg4);
+    for (int i = 0; i < 4; ++i)
+    {
+        can::Message pidmsg = hbd.setSpeedPID(i, 400.0, 5.0, 0.0, 1800.0);
+        BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
+        driver.write(pidmsg);
+    }
 
     std::cout << "Set drive modes" << std::endl;
     can::Message dmmsg = hbd.setDriveMode(hbridge::DM_SPEED);
-    BOOST_CHECK(checkMessage(hbridge::H_BROADCAST, firmware::PACKET_ID_SET_MODE, dmData, dmDataSize, dmmsg));
+    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE, dmData, dmDataSize, dmmsg));
     driver.write(dmmsg);
 
     std::cout << "Rotate wheel 1 for one second" << std::endl;
     for (int i = 0; i < 100; i++)
     {
     	can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
-        BOOST_CHECK(checkMessage(hbridge::H_BROADCAST, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
+        BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
         driver.write(msg);
         usleep(10000);
     }
