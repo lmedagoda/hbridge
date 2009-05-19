@@ -1,16 +1,28 @@
 #include "HBridgeDriver.hpp"
 #include <strings.h>
 #include <stdlib.h>
+#include <iostream>
 
 #include "protocol.hpp"
+#include <stdexcept>
+
+#define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
+
+using namespace std;
 namespace hbridge
 {
-
     Driver::Driver() :
         states(), positionOld()
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
         bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
+
+        directions[MOTOR_REAR_LEFT]   = -1;
+        directions[MOTOR_FRONT_LEFT]  = -1;
+        directions[MOTOR_REAR_RIGHT]  = 1;
+        directions[MOTOR_FRONT_RIGHT] = 1;
+        for (int i = 0; i < 4; ++i)
+            current_modes[i] = DM_UNINITIALIZED;
     }
 
     Driver::~Driver()
@@ -34,24 +46,21 @@ namespace hbridge
                     return false;
                 }
 
+                this->states[index].index   = data->index;
                 this->states[index].current = data->currentValue; // Current in [mA]
+                this->states[index].pwm     = directions[index] * static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
 
-                int diff = (data->position - this->positionOld[index]);
+                int diff = directions[index] * (data->position - this->positionOld[index]);
+                positionOld[index] = data->position;
         
                 // We assume that a motor rotates less than half a turn per [ms]
                 // (a status packet is sent every [ms])
                 if (abs(diff) > TICKS_PER_TURN / 2)
-                {
                     diff += (diff < 0 ? 1 : -1) * TICKS_PER_TURN;
-                }
 
                 // Track the position
-                this->states[index].position.ticks += diff;
+                this->states[index].position += diff;
                 this->states[index].delta = diff;
-
-                // Don't know what to do with the PWM value
-                // this->pwm[index] = data->pwm;
-
                 this->states[index].error = data->error;
     
                 break;
@@ -77,9 +86,9 @@ namespace hbridge
         return true;
     }
 
-    const BoardState &Driver::getState(BOARDID board) const
+    const BoardState &Driver::getState(int board) const
     {
-        return this->states[(int)board >> 5];
+        return this->states[board];
     }
 
     can::Message Driver::emergencyShutdown() const
@@ -94,13 +103,13 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Driver::setDriveMode(DRIVE_MODE mode) const
+    can::Message Driver::setDriveMode(DRIVE_MODE mode)
     {
         return setDriveMode(mode, mode, mode, mode);
     }
 
     can::Message Driver::setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
-                                      DRIVE_MODE board3, DRIVE_MODE board4) const
+                                      DRIVE_MODE board3, DRIVE_MODE board4)
     {
         can::Message msg;
 
@@ -113,6 +122,10 @@ namespace hbridge
         data->board2Mode = (firmware::controllerModes)board2;
         data->board3Mode = (firmware::controllerModes)board3;
         data->board4Mode = (firmware::controllerModes)board4;
+        current_modes[0] = board1;
+        current_modes[1] = board2;
+        current_modes[2] = board3;
+        current_modes[3] = board4;
 
         msg.can_id = firmware::PACKET_ID_SET_MODE;
         msg.size = sizeof(firmware::setModeData);
@@ -123,6 +136,11 @@ namespace hbridge
     can::Message Driver::setTargetValues(short int value1, short int value2,
                                          short int value3, short int value4) const
     {
+        short int value_array[4] = { value1, value2, value3, value4 };
+        return setTargetValues(value_array);
+    }
+    can::Message Driver::setTargetValues(short int* targets) const
+    {
         can::Message msg;
 
         bzero(&msg, sizeof(can::Message));
@@ -130,10 +148,24 @@ namespace hbridge
         firmware::setValueData *data =
             reinterpret_cast<firmware::setValueData *>(msg.data);
 
-        data->board1Value = value1;
-        data->board2Value = value2;
-        data->board3Value = value3;
-        data->board4Value = value4;
+        short int* values = &(data->board1Value);
+        for (int i = 0; i < 4; ++i)
+        {
+            switch(current_modes[i])
+            {
+            case DM_SPEED:
+            case DM_PWM:
+                values[i] = directions[i] * targets[i];
+                break;
+            case DM_POSITION:
+                values[i] = targets[i];
+                if (directions[i] < 0)
+                    values[i] = TICKS_PER_TURN - values[i];
+                break;
+            default:
+                throw std::runtime_error("setTargetValues called before setDriveMode");
+            }
+        }
 
         msg.can_id = firmware::PACKET_ID_SET_VALUE;
         msg.size = sizeof(firmware::setValueData);
@@ -141,37 +173,29 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Driver::setSpeedPID(BOARDID board,
+    can::Message Driver::setSpeedPID(int board,
                                      double kp, double ki, double kd,
                                      double minMaxValue) const
     {
         can::Message msg;
-
         bzero(&msg, sizeof(can::Message));
-
         setPID(msg, kp, ki, kd, minMaxValue);
-
-        msg.can_id = board | firmware::PACKET_ID_SET_PID_SPEED;
-
+        msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_PID_SPEED;
         return msg;
     }
 
-    can::Message Driver::setPositionPID(BOARDID board,
+    can::Message Driver::setPositionPID(int board,
                                         double kp, double ki, double kd,
                                         double minMaxValue) const
     {
         can::Message msg;
-
         bzero(&msg, sizeof(can::Message));
-
         setPID(msg, kp, ki, kd, minMaxValue);
-
-        msg.can_id = board | firmware::PACKET_ID_SET_PID_POS;
-
+        msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_PID_POS;
         return msg;
     }
 
-    MessagePair Driver::setConfiguration(BOARDID board,
+    MessagePair Driver::setConfiguration(int board,
                                          const Configuration &cfg) const
     {
         MessagePair msgs;
@@ -197,14 +221,26 @@ namespace hbridge
         cfg2->maxCurrentCount            = cfg.maxCurrentCount;
         cfg2->pwmStepPerMs               = cfg.pwmStepPerMs;
 
-        msgs.first.can_id = board | firmware::PACKET_ID_SET_CONFIGURE;
+        msgs.first.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_CONFIGURE;
         msgs.first.size = sizeof(firmware::configure1Data);
 
-        msgs.second.can_id = board | firmware::PACKET_ID_SET_CONFIGURE2;
+        msgs.second.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_CONFIGURE2;
         msgs.second.size = sizeof(firmware::configure2Data);
 
         return msgs;
     }
 
+    void Driver::setPID(can::Message &msg,
+                       double kp, double ki, double kd,
+                       double minMaxValue) const
+    {
+        firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data);
+        data->kp = kp;
+        data->ki = ki;
+        data->kd = kd;
+        data->minMaxPidOutput = minMaxValue;
+        
+        msg.size = sizeof(firmware::setPidData);
+    }
 }
 

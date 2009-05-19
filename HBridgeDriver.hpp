@@ -1,131 +1,14 @@
 #ifndef HBRIDGE_DRIVER_HPP
 #define HBRIDGE_DRIVER_HPP
 
-#ifndef __orogen
 #include <utility>
 #include <canmessage.hh>
 #include <stdint.h>
-// Move all the firmware stuff to its own namespace
-#endif /* __orogen */
+
+#include "HBridge.hpp"
 
 namespace hbridge
 {
-#ifndef __orogen
-    const int TICKS_PER_TURN = 512 * 729 / 16;
-#endif /* __orogen */
-
-    typedef int64_t Ticks;
-
-    struct Configuration
-    {
-        unsigned char openCircuit;
-        unsigned char activeFieldCollapse;
-        unsigned char externalTempSensor;
-        unsigned char cascadedPositionController;
-        unsigned char pidDebugActive;
-        unsigned char maxMotorTemp;
-        unsigned char maxMotorTempCount;
-        unsigned char maxBoardTemp;
-        unsigned char maxBoardTempCount;
-        unsigned short timeout;
-        unsigned short maxCurrent;
-        unsigned char maxCurrentCount;
-        unsigned short pwmStepPerMs;
-        
-#ifndef __orogen
-        /**
-         * Initialise all fields of the configuration structure with 0
-         */
-        Configuration() :
-            openCircuit(0), activeFieldCollapse(0), externalTempSensor(0),
-            cascadedPositionController(0), pidDebugActive(0), maxMotorTemp(0),
-            maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
-            timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0)
-        {}
-  
-        /**
-         * Equality operator.
-         *
-         * @param val Another configuration structure
-         *
-         * @return Returns true if the fields of both structures are equal,
-         * false otherwise.
-         */
-        bool operator ==(const Configuration &val) const
-        {
-            return ((openCircuit == val.openCircuit) &&
-                    (activeFieldCollapse == val.activeFieldCollapse) &&
-                    (externalTempSensor == val.externalTempSensor) &&
-                    (cascadedPositionController == val.cascadedPositionController) &&
-                    (maxMotorTemp == val.maxMotorTemp) &&
-                    (maxMotorTempCount == val.maxMotorTempCount) &&
-                    (maxBoardTemp == val.maxBoardTemp) &&
-                    (maxBoardTempCount == val.maxBoardTempCount) &&
-                    (timeout == val.timeout) &&
-                    (maxCurrent == val.maxCurrent) &&
-                    (maxCurrentCount == val.maxCurrentCount) &&
-                    (pwmStepPerMs == val.pwmStepPerMs));
-        }
-
-        /**
-         * Inequality operator.
-         *
-         * @param val Another configuration structure
-         *
-         * @return Returns the opposite of the equality operator.
-         */
-        bool operator !=(const Configuration &val) const
-        {
-            return !(*this == val);
-        }
-#endif
-    };
-
-#define HBRIDGE_BOARD_ID(x) ((hbridge::BOARDID)(x << 5))
-
-    /**
-     * Board (hbridge) id constants
-     */
-    enum BOARDID
-    {
-        H_BROADCAST = 0,
-        H_BRIDGE1 = (1 << 5),
-        H_BRIDGE2 = (2 << 5),
-        H_BRIDGE3 = (3 << 5),
-        H_BRIDGE4 = (4 << 5)
-    };
-
-    enum ERROR_CODES {
-        ERROR_CODE_NONE = 0,
-        ERROR_CODE_OVERHEATMOTOR = 1,
-        ERROR_CODE_OVERHEATBOARD = 2,
-        ERROR_CODE_OVERCURRENT = 3,
-        ERROR_CODE_TIMEOUT = 4,
-        ERROR_CODE_BAD_CONFIG = 5
-    };
-
-    /**
-     * Drive mode constants for the hbridges
-     */
-    enum DRIVE_MODE
-    {
-        DM_PWM = 0,
-        DM_SPEED = 1,
-        DM_POSITION = 2,
-        DM_UNINITIALIZED = 3
-    };
-
-    struct BoardState
-    {
-        int index;
-        int current;
-        Ticks position;
-        int delta;
-        int error;
-        float pwm;
-    };
-
-#ifndef __orogen
     typedef std::pair<can::Message, can::Message> MessagePair;
 
     const int BOARD_COUNT = 4;
@@ -135,6 +18,8 @@ namespace hbridge
     protected:
 
         BoardState states[BOARD_COUNT];
+        int directions[4];
+        hbridge::DRIVE_MODE current_modes[4];
         int16_t positionOld[BOARD_COUNT];
 
     public:
@@ -157,7 +42,7 @@ namespace hbridge
          *
          * @return The current state for the given board
          */
-        const BoardState &getState(BOARDID board) const;
+        const BoardState &getState(int board) const;
 
         /**
          * Generate a CAN message for emergency shutdown
@@ -174,7 +59,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
-        can::Message setDriveMode(DRIVE_MODE mode) const;
+        can::Message setDriveMode(DRIVE_MODE mode);
 
         /**
          * Generate a CAN message for setting the drive mode fpr every
@@ -188,7 +73,7 @@ namespace hbridge
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
         can::Message setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
-                             DRIVE_MODE board3, DRIVE_MODE board4) const;
+                             DRIVE_MODE board3, DRIVE_MODE board4);
 
         /**
          * Generate a CAN message for setting new motor values. Interpretation
@@ -199,8 +84,8 @@ namespace hbridge
          * - Physical Unit: %
          *
          * Speed
-         * - Value Range:   ??
-         * - Physical Unit: ticks/ms
+         * - Value Range:   limited by the motor. On 12V Faulhaber motors, it is [-400, 400].
+         * - Physical Unit: (quarter of a tick)/ms
          *
          * Position
          * - Value Range:   [0, 23328] (23328 = 512 * 729 / 16)
@@ -212,6 +97,11 @@ namespace hbridge
          * @param value4 [PWM,Speed,Position] value of motor 4
          *
          * @return A new CAN message (PACKET_ID_SET_NEW_VALUE)
+         */
+        can::Message setTargetValues(short int* targets) const;
+
+        /**
+         * \overloaded
          */
         can::Message setTargetValues(short int value1, short int value2,
                                      short int value3, short int value4) const;
@@ -228,7 +118,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_PID_POS)
          */
-        can::Message setSpeedPID(BOARDID board,
+        can::Message setSpeedPID(int board,
                             double kp, double ki, double kd,
                             double minMaxValue) const;
 
@@ -244,7 +134,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_PID_SPEED)
          */
-        can::Message setPositionPID(BOARDID board,
+        can::Message setPositionPID(int board,
                                double kp, double ki, double kd,
                                double minMaxValue) const;
 
@@ -256,7 +146,7 @@ namespace hbridge
          *
          * @return Two new CAN messages (PACKET_ID_CONFIGURE, PACKET_ID_CONFIGURE2)
          */
-        MessagePair setConfiguration(BOARDID board,
+        MessagePair setConfiguration(int board,
                                      const Configuration &cfg) const;
 
     protected:
@@ -269,22 +159,11 @@ namespace hbridge
          * @param kd Differential term parameter
          * @param minMaxValue Min-Max value
          */
-        inline void setPID(can::Message &msg,
+        void setPID(can::Message &msg,
                            double kp, double ki, double kd,
-                           double minMaxValue) const
-        {
-            firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data);
-            data->kp = kp;
-            data->ki = ki;
-            data->kd = kd;
-            data->minMaxPidOutput = minMaxValue;
-            
-            msg.size = sizeof(firmware::setPidData);
-        }
+                           double minMaxValue) const;
 
     };
-#endif /* __orogen */
-
 }
 
 #endif /* HBRIDGE_DRIVER_HPP */

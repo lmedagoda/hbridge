@@ -28,7 +28,7 @@ ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
 INSTALL(TARGETS hbridge
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib)
-INSTALL(FILES HBridgeDriver.hpp DESTINATION include)
+INSTALL(FILES HBridge.hpp HBridgeDriver.hpp DESTINATION include)
 INSTALL(FILES firmware/protocol.h DESTINATION include/firmware)
 
 CONFIGURE_FILE(hbridge.pc.in hbridge.pc @ONLY)
