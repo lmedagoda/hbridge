@@ -29,6 +29,12 @@ namespace hbridge
     {
     }
 
+    void Driver::reset()
+    {
+        bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
+        bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
+    }
+
     bool Driver::updateFromCAN(can::Message &msg)
     {
         firmware::statusData *data =

@@ -27,6 +27,12 @@ namespace hbridge
         ~Driver();
 
         /**
+         * Resets the internal state of the driver. This has to be called upon
+         * reconfiguration of the h-bridges
+         */
+        void reset();
+
+        /**
          * Updates the internal state from a CAN message
          *
          * @param msg A newly received CAN message
