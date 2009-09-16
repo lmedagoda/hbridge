@@ -25,12 +25,12 @@ struct I2C_Data {
   u32 I2CErrorReason;
 };
 
-#define dbgBufferSize 256
+//#define dbgBufferSize 200
 
-extern volatile u16 dbgWrite;
+/*extern volatile u16 dbgWrite;
 extern volatile u16 dbgRead;
 extern volatile u32 dbgBuffer[dbgBufferSize];
-
+*/
 extern volatile struct I2C_Data I2C1_Data;
 extern volatile struct I2C_Data I2C2_Data;
 
@@ -39,17 +39,17 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
 
 u8 I2C1OperationFinished();
 
-void I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
-void I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
-void I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
 
-void I2C1SendBytes(u8 *data, u8 size, u8 addr);
-void I2C1ReadBytes(u8 size, u8 addr);
-void I2C1WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
+u8 I2C1SendBytes(u8 *data, u8 size, u8 addr);
+u8 I2C1ReadBytes(u8 size, u8 addr);
+u8 I2C1WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
 
-void I2C2SendBytes(u8 *data, u8 size, u8 addr);
-void I2C2ReadBytes(u8 size, u8 addr);
-void I2C2WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
+u8 I2C2SendBytes(u8 *data, u8 size, u8 addr);
+u8 I2C2ReadBytes(u8 size, u8 addr);
+u8 I2C2WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
 
 
 #endif

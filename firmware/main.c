@@ -644,7 +644,7 @@ int main(void)
       volatile struct ControllerState *tempstate = activeCState;
 
       //wait till pid data is taken up by controll loop,
-      if(activeCState->newPIDData) {
+      while(activeCState->newPIDData) {
 	;
       }
 
@@ -751,10 +751,7 @@ void SysTickHandler(void) {
     }
     
     dbgValue[31] = adcValueCount;
-  }
-  
-  
-  /**END DEBUG**/
+  }/**END DEBUG**/
 
 
   //batValueSum and currentValueSum are increased at the 

@@ -40,10 +40,10 @@ bin: main.out
 	$(OD) $(ODFLAGS) main.out > main.list
 
 main.out: $(LIB_OUT) main.o stm32f10x_vector.o stm32f10x_it.o stm_h103_rom.ld \
-	i2c.o cortexm3_macro.o spi.o pid.o adc.o usart.o printf.o can.o
+	i2c.o cortexm3_macro.o spi.o pid.o adc.o usart.o printf.o can.o lm73cimk.o
 	@ echo "..linking"
 	$(LD) $(LFLAGS) -o main.out main.o stm32f10x_it.o stm32f10x_vector.o \
-	i2c.o adc.o pid.o usart.o printf.o can.o \
+	i2c.o adc.o pid.o usart.o printf.o can.o lm73cimk.o \
 	spi.o cortexm3_macro.o -lstm32fw
 
 stm32f10x_vector.o: stm32f10x_vector.c
@@ -57,6 +57,9 @@ printf.o: printf.c
 
 i2c.o: i2c.c
 	$(CC) $(CFLAGS) i2c.c
+
+lm73cimk.o: lm73cimk.c
+	$(CC) $(CFLAGS) lm73cimk.c
 
 adc.o: adc.c
 	$(CC) $(CFLAGS) adc.c
