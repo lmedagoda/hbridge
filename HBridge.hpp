@@ -1,6 +1,10 @@
 #ifndef HBRIDGE_HPP
 #define HBRIDGE_HPP
 
+#ifndef __orogen
+#include <stdint.h>
+#endif
+
 namespace hbridge
 {
 #ifndef __orogen
