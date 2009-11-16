@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #define _GNU_SOURCE
 #include <getopt.h>
+#include <poll.h>
 
 int fd;
 #define HAVE_RX 0
@@ -117,7 +118,7 @@ int readc(int timeout)
 	int loop = 0;
 	do {
 		res = read(fd,&c,1);
-		if(res != 1 && errno != EAGAIN) {
+		if(res != 1) {
 			fprintf(stderr,"%s: read failed: result == %d, errno: %s(%d)\n",
 				__FUNCTION__, res, strerror(errno),errno);
 			exit(1);
@@ -375,7 +376,7 @@ int main(int argc, char **argv)
 {
 	parseArgs(argc,argv);
 
-	fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open(device, O_RDWR | O_NOCTTY);
 	
 	if (fd == -1)
 	{
@@ -403,11 +404,23 @@ int main(int argc, char **argv)
 		options.c_lflag &= ~(ICANON | ECHO | ISIG);
 		
 		/* Set the new options for the port */
-		tcsetattr(fd, TCSANOW, &options);
+		tcsetattr(fd, TCSAFLUSH, &options);
+		tcflush(fd, TCIOFLUSH);
 	}
 
 	if (rx_avail != HAVE_RX)
 		usleep(1000000);
+	else {
+		char b;
+		struct pollfd pfd;
+		pfd.fd = fd;
+		pfd.events = POLLIN;
+		while(poll(&pfd,1,0) >= 0) {
+			if (pfd.revents != POLLIN)
+				break;
+			read(fd, &b, 1);
+		}//tcflush seems to be not reliable
+	}
 
 	writec(0x7f);
 	check_ack(15);
