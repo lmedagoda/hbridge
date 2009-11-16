@@ -13,6 +13,7 @@
 #include <canbus.hh>
 #include "../HBridgeDriver.hpp"
 #include "../protocol.hpp"
+#include "../HBridge.hpp"
 
 can::Driver driver;
 hbridge::Driver hbd;
@@ -85,8 +86,11 @@ BOOST_AUTO_TEST_CASE(test_case)
 {
     ::boost::execution_monitor ex_mon;
 
-    std::cout << "Trying to open CAN device /dev/can0" << std::endl;
-    BOOST_CHECK(driver.open("/dev/can0"));
+    const char *can_device = "/dev/can0";
+    int hbridge_id = 0;
+
+    std::cout << "Trying to open CAN device " << can_device << std::endl;
+    BOOST_CHECK(driver.open(can_device));
 
     // Initialise hbridge hbridge instance
 
@@ -95,6 +99,8 @@ BOOST_AUTO_TEST_CASE(test_case)
     hbridge::Configuration config;
 
     bzero(&config, sizeof(hbridge::Configuration));
+
+    std::cout << "Testing packet building" << std::endl;
 
     config.openCircuit = 1;
     config.maxMotorTemp = 60;
@@ -106,58 +112,159 @@ BOOST_AUTO_TEST_CASE(test_case)
     config.maxCurrentCount = 250;
     config.pwmStepPerMs = 200;
 
-    std::cout << "Configuring hbridges" << std::endl;
     for (int i = 0; i < 4; ++i)
     {
         hbridge::MessagePair config_msgs = hbd.setConfiguration(i, config);
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config_msgs.first));
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config_msgs.second));
-        driver.write(config_msgs.first);
-        driver.write(config_msgs.second);
+
     }
 
-    std::cout << "Set PID configuration" << std::endl;
     for (int i = 0; i < 4; ++i)
     {
         can::Message pidmsg = hbd.setSpeedPID(i, 400.0, 5.0, 0.0, 1800.0);
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
-        driver.write(pidmsg);
     }
 
-    std::cout << "Set drive modes" << std::endl;
     can::Message dmmsg = hbd.setDriveMode(hbridge::DM_SPEED);
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE, dmData, dmDataSize, dmmsg));
+
+    can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
+    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
+
+
+    std::cout << "Testing hardware" << std::endl;
+
+    config.openCircuit = 1;
+    config.maxMotorTemp = 60;
+    config.maxMotorTempCount = 200;
+    config.maxBoardTemp = 60;
+    config.maxBoardTempCount = 200;
+    config.timeout = 50;
+    config.maxCurrent = 5000;
+    config.maxCurrentCount = 250;
+    config.pwmStepPerMs = 200;
+
+    std::cout << "Configuring hbridge " << (hbridge_id+1) << std::endl;
+    hbridge::MessagePair config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver.write(config_msgs.first);
+    driver.write(config_msgs.second);
+
+    std::cout << "Set PID configuration" << std::endl;
+    can::Message pidmsg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 1800.0);
+    driver.write(pidmsg);
+
+    std::cout << "Set drive modes" << std::endl;
+    dmmsg = hbd.setDriveMode(hbridge::DM_PWM);
     driver.write(dmmsg);
 
-    std::cout << "Rotate wheel 1 for one second" << std::endl;
-    for (int i = 0; i < 100; i++)
+    int i;
+    msg = driver.read() ;	
+    hbd.updateFromCAN(msg);
+
+    std::cout << "Testing encoders and current carrying electronics"
+	      << std::endl;
+    hbridge::Ticks initial_position = hbd.getState(hbridge_id).position;
+    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forwards)"
+	      << std::endl;
+    for (i = 0; i < 500; i++)
     {
-    	can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
-        BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
+    	can::Message msg = hbd.setTargetValues(200, 0, 0, 0);
         driver.write(msg);
         usleep(10000);
+
+	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if (state.position - initial_position > hbridge::TICKS_PER_TURN/2 )
+	    break;
     }
-/*
-    std::cout << "Rotate wheel 2 for one second" << std::endl;
-    for (int i = 0; i < 100; i++)
+    BOOST_CHECK(i < 500);
+
+    initial_position = hbd.getState(hbridge_id).position;
+    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(backwards)" << std::endl;
+    for (i = 0; i < 500; i++)
     {
-        driver.write(hbd.setTargetValues(0, hbridge::TICKS_PER_TURN / 1000.0, 0, 0));
+    	can::Message msg = hbd.setTargetValues(-200, 0, 0, 0);
+        driver.write(msg);
         usleep(10000);
+
+	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/2 )
+	    break;
+    }
+    BOOST_CHECK(i < 500);
+
+    std::cout << "Testing overcurrent protection" << std::endl;
+    std::cout << "Please block wheel and press return" << std::endl;
+    std::cout << "(The wheel will go forwards then backwards)" << std::endl;
+    std::string dummy;
+    std::getline(std::cin,dummy);
+
+    while(driver.getPendingMessagesCount() > 0) {//flush messages
+      msg = driver.read() ;
+      
+      hbd.updateFromCAN(msg);
     }
 
-    std::cout << "Rotate wheel 3 for one second" << std::endl;
-    for (int i = 0; i < 100; i++)
-    {
-        driver.write(hbd.setTargetValues(0, 0, hbridge::TICKS_PER_TURN / 1000.0, 0));
-        usleep(10000);
-    }
+    config.maxCurrent = 500;
+    config.maxCurrentCount = 250;
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver.write(config_msgs.first);
+    driver.write(config_msgs.second);
 
-    std::cout << "Rotate wheel 4 for one second" << std::endl;
-    for (int i = 0; i < 100; i++)
+    dmmsg = hbd.setDriveMode(hbridge::DM_SPEED);
+    driver.write(dmmsg);
+
+    for (i = 0; i < 500; i++)
     {
-        driver.write(hbd.setTargetValues(0, 0, 0, hbridge::TICKS_PER_TURN / 1000.0));
+    	can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
+        driver.write(msg);
         usleep(10000);
-    }*/
+
+	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if (state.error == hbridge::ERROR_CODE_OVERCURRENT )
+	    break;
+    }
+    BOOST_CHECK(i < 500);
+
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver.write(config_msgs.first);
+    driver.write(config_msgs.second);
+
+    for (i = 0; i < 500; i++)
+    {
+    	can::Message msg = hbd.setTargetValues(-20, 0, 0, 0);
+        driver.write(msg);
+        usleep(10000);
+
+	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if (state.error == hbridge::ERROR_CODE_OVERCURRENT )
+	    break;
+    }
+    BOOST_CHECK(i < 500);
 
     can::Message reset = hbd.emergencyShutdown();
     driver.write(reset);
