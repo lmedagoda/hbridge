@@ -1,25 +1,17 @@
-
 PROJECT(hbridge)
 
 cmake_minimum_required(VERSION 2.6)
-
-#add definitions, compiler switches, etc.
 ADD_DEFINITIONS(-Wall)
 
-#list all source files here
-#ADD_EXECUTABLE(driver main.cpp interface.cpp)
 find_package(PkgConfig)
 
-pkg_check_modules(DFKI_TYPES REQUIRED "dfki-types")
-INCLUDE_DIRECTORIES(${DFKI_TYPES_INCLUDE_DIRS})
-LINK_DIRECTORIES(${DFKI_TYPES_LIBRARY_DIRS})
+pkg_check_modules(CANBUS_DRIVER REQUIRED "canbus")
+INCLUDE_DIRECTORIES(${CANBUS_DRIVER_INCLUDE_DIRS})
+LINK_DIRECTORIES(${CANBUS_DRIVER_LIBRARY_DIRS})
 
 ADD_LIBRARY(hbridge SHARED HBridgeDriver.cpp)
-TARGET_LINK_LIBRARIES(hbridge ${DFKI_TYPES_LIBS})
+TARGET_LINK_LIBRARIES(hbridge ${CANBUS_DRIVER_LIBRARIES})
 
-#need to link to some other libraries ? just add them here
-#TARGET_LINK_LIBRARIES(driver png jpeg)
- 
 CONFIGURE_FILE(Doxyfile.in Doxyfile @ONLY)
 ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
 INSTALL(TARGETS hbridge
@@ -32,5 +24,4 @@ CONFIGURE_FILE(hbridge.pc.in hbridge.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/hbridge.pc DESTINATION lib/pkgconfig)
 
 add_subdirectory(test)
-
 
