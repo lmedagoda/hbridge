@@ -1,15 +1,16 @@
-#include "stm32f10x_type.h"
-#include "stm32f10x_adc.h"
-#include "stm32f10x_dma.h"
-#include "stm32f10x_rcc.h"
-#include "stm32f10x_tim.h"
-#include "adc.h"
+#include "inc/stm32f10x_type.h"
+#include "inc/stm32f10x_adc.h"
+#include "inc/stm32f10x_dma.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_tim.h"
+#include "printf.h"
+#include "current_measurement.h"
+#include <stdlib.h>
 
 #define ADC1_DR_Address    ((u32)0x4001244C)
 
 vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
 
-static ADC_InitTypeDef ADC_InitWatchdog;
 static ADC_InitTypeDef ADC_InitSingleShot;
 static DMA_InitTypeDef DMA_InitStructure;
 
@@ -19,6 +20,169 @@ u32 SQR3Forward = 0;
 u32 SQR1Reverse = 0;
 u32 SQR2Reverse = 0;
 u32 SQR3Reverse = 0;
+
+vu32 acs712BaseVoltage = 0;
+vu32 currentValue = 0;
+vu32 batValue = 0;
+
+struct adcValues{
+  u32 currentValues[32];
+  u32 currentValueCount;
+  u32 batValueSum;
+  u32 batValueCount;
+};
+
+vu8 switchAdcValues = 0;
+
+struct adcValues avs1;
+struct adcValues avs2;
+
+volatile struct adcValues *activeAdcValues = &avs1;
+volatile struct adcValues *inActiveAdcValues = &avs2;
+extern vu8 actualDirection;
+
+void requestNewADCValues() {
+    switchAdcValues = 1;
+};
+
+void waitForNewADCValues() {
+    while(switchAdcValues) {
+	;
+    }
+};
+
+u32 getBatteryVoltage()
+{
+    return batValue;
+}
+
+
+void measureACS712BaseVoltage()
+{
+  int k, i;
+  u32 meanacs712base = 0;
+  meanacs712base = 0;
+  for(k = 0; k < 40; k++) {
+    acs712BaseVoltage = 0;
+    
+    //disable pwm output, so that ADC is not triggered any more
+    TIM_CtrlPWMOutputs(TIM1, DISABLE);
+    
+    //configure ADC for calibration acs712 base voltage
+    configureCurrentMeasurement(1);
+  
+    //reset adc values
+    for( i = 0; i < USED_REGULAR_ADC_CHANNELS*2; i++) {
+      activeAdcValues->currentValues[i] = 0;
+    }
+    activeAdcValues->currentValueCount = 0;
+    
+    //trigger adc
+    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    
+    //wait for adc conversation to start
+    while(!(activeAdcValues->currentValues[0])) {
+      ;
+    }
+    
+    //disable further triggering
+    TIM_CtrlPWMOutputs(TIM1, DISABLE);
+    
+    //Wait for conversation to be finished
+    while(!activeAdcValues->currentValueCount) {
+      ;
+    }
+
+    //sum up values
+    for( i = 0; i < (USED_REGULAR_ADC_CHANNELS-1)*2; i++) {
+      //printf("Calibration value %d  was %d \n",i, activeAdcValues->currentValues[i]);
+      acs712BaseVoltage += activeAdcValues->currentValues[i];
+    }
+    
+    //average filter, to reduce noise
+    acs712BaseVoltage /= (USED_REGULAR_ADC_CHANNELS-1)*2;
+    printf("ACS712 base Voltage is %lu \n", acs712BaseVoltage);
+    meanacs712base += acs712BaseVoltage;
+    
+  }
+  meanacs712base /= 40;
+  acs712BaseVoltage = meanacs712base;
+  printf("\nMENAN ACS712 base Voltage is %lu \n\n", meanacs712base);
+  
+  //reenable pwm output again for normal usage
+  TIM_CtrlPWMOutputs(TIM1, ENABLE);
+
+}
+
+
+u32 calculateCurrent(s32 currentPwmValue) {
+    //sum up all currents measured
+    u32 currentValue = 0;
+
+    u32 adcValueCount =  inActiveAdcValues->currentValueCount;
+    vu32 *currentValues = inActiveAdcValues->currentValues;
+
+    int i, usableCurrentValues = 0;
+    //length of 13Cycle Sample time is 722nsecs 
+    //during 21660nsecs samples are taken, this 
+    //is equal to a pwm value of 1559.52
+    if(abs(currentPwmValue) < 1559) {
+	usableCurrentValues = abs(currentPwmValue) / 52;
+    } else {
+	usableCurrentValues = 30;
+    }
+    
+    //batValueSum and currentValueSum are increased at the 
+    //same time therefore adcValueCount is valid for both
+    //TODO FIXME bat value is only valid if PWM is on
+    batValue = inActiveAdcValues->batValueSum / (2 * inActiveAdcValues->batValueCount);
+    inActiveAdcValues->batValueSum = 0;
+    inActiveAdcValues->batValueCount = 0;
+    
+    //base voltage of ACS712 this is measured at startup, as
+    //it is related to 5V rail. We asume the 5V rail ist stable
+    //since startup
+    u32 baseVoltage = acs712BaseVoltage*adcValueCount;
+
+    for(i = 0; i < usableCurrentValues; i++) {
+	if(currentValues[i] > baseVoltage) {
+	currentValues[i] -= baseVoltage;
+	if(i == 0 || i == 15) {
+	    //multiply with 722nsec + 388.88 nsec (battery value conversation) to get integral
+	    currentValue += (currentValues[i] * 1111) / (adcValueCount);
+	} else {     
+	    //multiply with 722nsec to get integral
+	    currentValue += (currentValues[i] * 722) / (adcValueCount);
+	}
+	//(adcValue[30])++;
+	}
+	currentValues[i] = 0;
+    }
+    
+
+    //divide by complete time, to get aritmetic middle value
+    currentValue /= 2500;
+
+    //as 1000mA is 100mV multiply by 10
+    //is included in the divide by 25000 step 
+    //currentValue *= 10;
+    
+    //multiply by voltage divider, to get back to voltage at the
+    //measuaring chip
+    currentValue = (currentValue * 51) / 33;
+    
+    //convert from adc to volts
+    currentValue = (currentValue * 3300) / 4096;
+
+    //set rest to zero
+    for(i = usableCurrentValues; i < (USED_REGULAR_ADC_CHANNELS -1) *2; i++) {
+	currentValues[i] = 0;
+    }
+
+    inActiveAdcValues->currentValueCount = 0;  
+    
+    return currentValue;
+}
 
 
 /**
@@ -30,7 +194,7 @@ u32 SQR3Reverse = 0;
  * ADC2 is configured to be Triggered by Timer Ch3
  * and to start an ADC Watchdog in response. 
  */
-void ADC_Configuration(void)
+void currentMeasurementInit()
 {
   // Enable ADC1 clock
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
@@ -158,98 +322,138 @@ void ADC_Configuration(void)
   // Check the end of ADC1 calibration
   while(ADC_GetCalibrationStatus(ADC1));
 
-
-  // Enable ADC2 clock
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
-
-  //ADC2 configuration
-  ADC_InitWatchdog.ADC_Mode = ADC_Mode_Independent;
-  ADC_InitWatchdog.ADC_ScanConvMode = DISABLE;
-  ADC_InitWatchdog.ADC_ContinuousConvMode = ENABLE;
-  ADC_InitWatchdog.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC3;
-  //ADC_InitWatchdog.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-  ADC_InitWatchdog.ADC_DataAlign = ADC_DataAlign_Right;
-  ADC_InitWatchdog.ADC_NbrOfChannel = 1;
-  ADC_Init(ADC2, &ADC_InitWatchdog);
-
-  // ADC2 regular channel14 configuration 
-  ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
-  //ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 2, ADC_SampleTime_1Cycles5);
-
-  // Configure high and low analog watchdog thresholds
-  ADC_AnalogWatchdogThresholdsConfig(ADC2, 4095, 0);
-  //ADC_AnalogWatchdogThresholdsConfig(ADC2, 470, 0);
-
-  // Configure channel4 as the single analog watchdog guarded channel 
-  ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);
-
-  // Enable analog watchdog on one regular channel 
-  ADC_AnalogWatchdogCmd(ADC2, ADC_AnalogWatchdog_SingleRegEnable);
-
-  /*
-  // Set injected sequencer length
-  ADC_InjectedSequencerLengthConfig(ADC2, 1);
-
-  // ADC2 injected channel Configuration  
-  ADC_InjectedChannelConfig(ADC2, ADC_Channel_8, 1, ADC_SampleTime_1Cycles5);
-
-  // ADC2 injected external trigger configuration 
-  ADC_ExternalTrigInjectedConvConfig(ADC2, ADC_ExternalTrigInjecConv_None);
-  */
-  // Disable automatic injected conversion start after regular one 
-  ADC_AutoInjectedConvCmd(ADC2, DISABLE);
-
-  // Disable EOC interupt
-  ADC_ITConfig(ADC2, ADC_IT_EOC, DISABLE);
-
-  // Enable ADC1 external trigger
-  ADC_ExternalTrigConvCmd(ADC2, ENABLE);
-
-  // Enable ADC2
-  ADC_Cmd(ADC2, ENABLE);
-
-  // Enable ADC2 reset calibaration register  
-  ADC_ResetCalibration(ADC2);
-  // Check the end of ADC2 reset calibration register
-  while(ADC_GetResetCalibrationStatus(ADC2));
-
-  // Start ADC2 calibaration
-  ADC_StartCalibration(ADC2);
-  // Check the end of ADC2 calibration
-  while(ADC_GetCalibrationStatus(ADC2));
-
 }
 
-/**
- * This function programms the watchdog.
- * It selects the  channel to be guarded in respect 
- * to the direction the motor turns.
- */
-void configureWatchdog(vu8 dir) {
-  // Disable ADC for Configuration
-  ADC_Cmd(ADC2, DISABLE);
 
-  if(dir) {
-    //in forward case we want to detect voltage drop on the A-Side
-    //so we use VUB
-    ADC_RegularChannelConfig(ADC2, ADC_Channel_4, 1, ADC_SampleTime_1Cycles5);
-    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_4);
-  } else {
-    //in reverse case we want to detect voltage drop on the B-Side
-    //so we use VUA
-    // Configure channel4 as the single analog watchdog guarded channel 
-    ADC_RegularChannelConfig(ADC2, ADC_Channel_5, 1, ADC_SampleTime_1Cycles5);
-    ADC_AnalogWatchdogSingleChannelConfig(ADC2, ADC_Channel_5);
+
+void DMA1_Channel1_IRQHandler(void) {
+  //GPIOA->BSRR |= GPIO_Pin_8;
+  static u8 secondInterrupt = 0;
+  int i;
+
+  vu32 *cvp = activeAdcValues->currentValues;
+  vu16 *avp = adc_values;
+
+  /**DEBUG**/
+  //u16 *dbgp = dbgValue + dbgCount;
+
+  /**END DEBUG**/
+
+
+  if(DMA1->ISR & DMA1_IT_HT1) {
+    activeAdcValues->batValueSum += adc_values[0];
+    (activeAdcValues->batValueCount)++;
+    cvp += (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1));
+    avp++;
+
+
+    /**DEBUG**/
+//    wasinhtit++;
+    /*if(dbgCount < dbgSize -9) {
+      for(i = 1; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+	*dbgp = *avp;
+	avp++;
+	dbgp++;
+      }
+      avp -= (USED_REGULAR_ADC_CHANNELS / 2)-1;
+      dbgCount += (USED_REGULAR_ADC_CHANNELS / 2)-1;
+      }*/
+    
+    /** END DEBUG **/
+
+    for(i = 1; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+      *cvp += *avp;
+      cvp++;
+      avp++;
+    }
+
+    /*for( i = 1; i < USED_REGULAR_ADC_CHANNELS / 2; i++) {
+      currentValues[i-1 + (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1))] += adc_values[i];
+      
+      }*/
+    //clear DMA interrupt pending bit
+    DMA1->IFCR = DMA1_FLAG_HT1;
   }
 
-  // Enable analog watchdog on one regular channel 
-  ADC_AnalogWatchdogCmd(ADC2, ADC_AnalogWatchdog_SingleRegEnable);
 
-  // Enable ADC2
-  ADC_Cmd(ADC2, ENABLE);
+  if(DMA1->ISR & DMA1_IT_TC1) {
+    cvp = activeAdcValues->currentValues;
+    avp = adc_values;
 
-  //Enable Watchdog interupt
-  ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
+  //  wasinadcit++;
+
+    if(secondInterrupt) {
+      cvp += (USED_REGULAR_ADC_CHANNELS - 1);
+
+      //GPIOA->BRR |= GPIO_Pin_8;
+        //disable continous mode
+      configureCurrentMeasurement(actualDirection);
+      //clear half transfer finished interrupt pending bit
+      //DMA1->IFCR = DMA1_FLAG_HT1;
+      //DMA1->IFCR = DMA1_FLAG_GL1;
+      //GPIOA->BSRR |= GPIO_Pin_8;
+    
+      secondInterrupt = 0;
+    
+      //only increase every second iteration
+      (activeAdcValues->currentValueCount)++;
+    } else {
+      secondInterrupt= 1;
+    }
+
+    cvp += (USED_REGULAR_ADC_CHANNELS / 2) -1;
+    avp += (USED_REGULAR_ADC_CHANNELS / 2);
+    /**DEBUG**/
+    /*
+    if(dbgCount < dbgSize - 9) {
+      for(i = 0; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+	*dbgp = *avp;
+	avp++;
+	dbgp++;
+      }
+      avp -= (USED_REGULAR_ADC_CHANNELS / 2);
+      dbgCount += (USED_REGULAR_ADC_CHANNELS / 2);
+      }*/
+    /** END DEBUG **/
+    
+    
+    for(i = 0; i < (USED_REGULAR_ADC_CHANNELS / 2); i++) {
+      *cvp += *avp;
+      cvp++;
+      avp++;
+    }
+
+    /*for( i = USED_REGULAR_ADC_CHANNELS / 2; i < USED_REGULAR_ADC_CHANNELS; i++) {
+      currentValues[i-1 + (secondInterrupt * (USED_REGULAR_ADC_CHANNELS - 1))] += adc_values[i];
+      }*/
+
+    //there was a request to switch the adc values
+    //this has to be done here, to garantie, the
+    //valid state of the values
+    if(switchAdcValues && !secondInterrupt) {
+      volatile struct adcValues *tempAdcValues;
+
+      tempAdcValues = activeAdcValues;
+      activeAdcValues = inActiveAdcValues;
+      inActiveAdcValues = tempAdcValues;
+      switchAdcValues = 0;
+    }
+    
+
+    /**DEBUG**/
+    /*if(resetdbgCount && !secondInterrupt) {
+	dbgCount = 40;
+	resetdbgCount = 0;
+	}*/
+    /** END DEBUG**/
+    
+    //DMA interrupt pending bit
+    DMA1->IFCR = DMA1_FLAG_TC1;
+  }
+
+  //wasineocit++;  
+
+  //GPIOA->BRR |= GPIO_Pin_8;
 }
 
 /**

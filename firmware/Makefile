@@ -40,11 +40,12 @@ bin: main.out
 	$(OD) $(ODFLAGS) main.out > main.list
 
 main.out: $(LIB_OUT) main.o stm32f10x_vector.o stm32f10x_it.o stm_h103_rom.ld \
-	i2c.o cortexm3_macro.o spi.o pid.o adc.o usart.o printf.o can.o lm73cimk.o
+	i2c.o cortexm3_macro.o spi.o pid.o current_measurement.o usart.o printf.o can.o \
+	controllers.o protocol.o state.o hbridge.o encoder.o
 	@ echo "..linking"
 	$(LD) $(LFLAGS) -o main.out main.o stm32f10x_it.o stm32f10x_vector.o \
-	i2c.o adc.o pid.o usart.o printf.o can.o lm73cimk.o \
-	spi.o cortexm3_macro.o -lstm32fw
+	i2c.o current_measurement.o pid.o usart.o printf.o can.o controllers.o protocol.o \
+	spi.o cortexm3_macro.o state.o hbridge.o encoder.o -lstm32fw
 
 stm32f10x_vector.o: stm32f10x_vector.c
 	$(CC) $(CFLAGS) stm32f10x_vector.c
@@ -58,11 +59,17 @@ printf.o: printf.c
 i2c.o: i2c.c
 	$(CC) $(CFLAGS) i2c.c
 
-lm73cimk.o: lm73cimk.c
-	$(CC) $(CFLAGS) lm73cimk.c
+state.o: state.c
+	$(CC) $(CFLAGS) state.c
 
-adc.o: adc.c
-	$(CC) $(CFLAGS) adc.c
+encoder.o: encoder.c
+	$(CC) $(CFLAGS) encoder.c
+
+hbridge.o: hbridge.c
+	$(CC) $(CFLAGS) hbridge.c
+
+current_measurement.o: current_measurement.c
+	$(CC) $(CFLAGS) current_measurement.c
 
 spi.o: spi.c spi.h
 	$(CC) $(CFLAGS) spi.c
@@ -76,8 +83,14 @@ usart.o: usart.c
 can.o: can.c
 	$(CC) $(CFLAGS) can.c
 
+protocol.o: protocol.c
+	$(CC) $(CFLAGS) protocol.c
+
 main.o: main.c
 	$(CC) $(CFLAGS) main.c
+
+controllers.o: controllers.c
+	$(CC) $(CFLAGS) controllers.c
 
 cortexm3_macro.o: cortexm3_macro.s
 	$(CC) $(CFLAGS) cortexm3_macro.s

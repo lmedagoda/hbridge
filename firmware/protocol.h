@@ -2,8 +2,16 @@
 #define __PROTOCOL_H
 
 #ifndef __NO_STM32
-#include "stm32f10x_type.h"
+#include "inc/stm32f10x_type.h"
+#include "inc/stm32f10x_can.h"
 #endif
+
+enum hostIDs {
+  RECEIVER_ID_H_BRIDGE_1 = (1<<5),
+  RECEIVER_ID_H_BRIDGE_2 = (2<<5),
+  RECEIVER_ID_H_BRIDGE_3 = (3<<5),
+  RECEIVER_ID_H_BRIDGE_4 = (4<<5),
+};
 
 enum controllerModes {
   CONTROLLER_MODE_PWM = 0,
@@ -13,11 +21,11 @@ enum controllerModes {
 
 enum errorCodes {
   ERROR_CODE_NONE = 0,
-  ERROR_CODE_OVERHEATMOTOR = 1,
-  ERROR_CODE_OVERHEATBOARD = 2,
-  ERROR_CODE_OVERCURRENT = 3,
-  ERROR_CODE_TIMEOUT = 4,
-  ERROR_CODE_BAD_CONFIG = 5,
+  ERROR_CODE_OVERHEATMOTOR = (1<<1),
+  ERROR_CODE_OVERHEATBOARD = (1<<2),
+  ERROR_CODE_OVERCURRENT = (1<<3),
+  ERROR_CODE_TIMEOUT = (1<<4),
+  ERROR_CODE_BAD_CONFIG = (1<<5),
 };
 
 enum packetIDs {
@@ -34,13 +42,6 @@ enum packetIDs {
   PACKET_ID_PID_DEBUG_SPEED = 10,
   PACKET_ID_SPEED_DEBUG = 11,
   PACKET_ID_PIEZO = 12,
-};
-
-enum hostIDs {
-  RECEIVER_ID_H_BRIDGE_1 = (1<<5),
-  RECEIVER_ID_H_BRIDGE_2 = (2<<5),
-  RECEIVER_ID_H_BRIDGE_3 = (3<<5),
-  RECEIVER_ID_H_BRIDGE_4 = (4<<5),
 };
 
 struct speedDebugData {
@@ -79,6 +80,14 @@ struct statusData {
   enum errorCodes error:8;
 } __attribute__ ((packed));
 
+struct statusDataExternalEncoder {
+  unsigned currentValue :14;
+  unsigned index :10;
+  u16 position;
+  u16 externalPosition;
+  enum errorCodes error:8;
+} __attribute__ ((packed));
+
 struct setValueData {
   s16 board1Value;
   s16 board2Value;
@@ -106,7 +115,8 @@ struct configure1Data {
   unsigned externalTempSensor :1;
   unsigned cascadedPositionController :1;
   unsigned enablePIDDebug :1;
-  unsigned unused : 11;
+  unsigned externalEncoder : 1;
+  unsigned unused : 10;
   u8 maxMotorTemp;
   u8 maxMotorTempCount;
   u8 maxBoardTemp;
@@ -121,6 +131,11 @@ struct configure2Data {
   //  unsigned unused :24;
 } __attribute__ ((packed));
 
+#ifndef __NO_STM32
+struct ControllerState;
+void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId);
+enum hostIDs getOwnHostId();
+#endif
 
 
 #endif

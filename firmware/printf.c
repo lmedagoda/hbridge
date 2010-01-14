@@ -12,8 +12,11 @@ int print(const unsigned char *format) {
     len++;
   }
 
-  USART1_SendData(format, len);
+  int ret = 1;
   
+//  while(ret)
+    ret = USART1_SendData(format, len);
+
   //USB_Send_Data(format, len);
 
   return len;
@@ -141,9 +144,8 @@ int printf(const char *format, ...) {
   assert_param(pos < 128);
 
   u8 ret = 1;
-  //  while(ret) {  
+//    while(ret) 
     ret = USART1_SendData(msg, pos);
-    //}
   
   //USB_Send_Data(msg, pos);  
 

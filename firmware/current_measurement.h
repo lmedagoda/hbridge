@@ -1,5 +1,7 @@
-#ifndef __ADC_H
-#define __ADC_H
+#ifndef __CURRENT_MEASUREMENT_H
+#define __CURRENT_MEASUREMENT_H
+#include "inc/stm32f10x_type.h"
+#include "inc/stm32f10x_adc.h"
 
 #define USED_REGULAR_ADC_CHANNELS 16
 
@@ -12,14 +14,17 @@ extern u32 SQR1Reverse;
 extern u32 SQR2Reverse;
 extern u32 SQR3Reverse;
 
+void requestNewADCValues();
+void waitForNewADCValues();
+u32 getBatteryVoltage();
 
-/**
- * This function programms the watchdog to be
- * triggered by TI CH3. It also selects the 
- * channel to be guarded in respect to the
- * direction the motor turns.
- */
-void configureWatchdog(vu8 dir);
+void currentMeasurementInit();
+
+u32 calculateCurrent(s32 currentPwmValue);
+
+void measureACS712BaseVoltage();
+
+
 
 /**
  * This function configures the channel from which
