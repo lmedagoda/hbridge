@@ -9,4 +9,8 @@ void setTicksPerTurn(u32 ticks);
 
 u32 getTicks();
 
+void externalEncoderInit();
+void setTicksPerTurnExtern(u32 ticks);
+u32 getExternalEncoderTicks();
+
 #endif
