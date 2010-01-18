@@ -1,6 +1,10 @@
 #include "lm73cimk.h"
 #include "i2c.h"
 #include "printf.h"
+#include "inc/stm32f10x_i2c.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_nvic.h"
+#include "inc/stm32f10x_gpio.h"
 
 enum lm73cimkStates lm73cimkState = LM73_IDLE;
 
@@ -29,7 +33,9 @@ void moveLM73CIMKStateMachine(u8 addr) {
     statistic_nr = 0;
     statistic_gt = 0;
     statistic_r = 0;
+    print("move state machine\n");
   }
+  
   
   //handle I2C errors
   if(I2C1_Data.I2CError) {
@@ -115,6 +121,7 @@ void moveLM73CIMKStateMachine(u8 addr) {
     }
     break;
   default:
+      print("Error, lm73 polling statemachine in unknown state\n");
     break;
   }
 }
@@ -169,6 +176,24 @@ u8 getTemperature(u8 addr, u32 *val) {
 
 
 void setupI2CForLM73CIMK() {
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_StructInit(&NVIC_InitStructure);
+  
+  /* Configure and enable I2C1 interrupt ------------------------------------*/
+  NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQChannel;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1 | RCC_APB1Periph_I2C2, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+  
+  GPIO_PinRemapConfig(GPIO_Remap_I2C1, ENABLE);
+    
   I2C_InitTypeDef  I2C_InitStructure;
 
   /* I2C1 configuration ----------------------------------------------------*/
@@ -181,7 +206,7 @@ void setupI2CForLM73CIMK() {
   I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
   //I2C_InitStructure.I2C_ClockSpeed = 50000;
-  I2C_InitStructure.I2C_ClockSpeed = 350000;
+  I2C_InitStructure.I2C_ClockSpeed = 400000;
   //I2C_InitStructure.I2C_ClockSpeed = 400000;
 
   /* Enable I2C1 and I2C2 --------------------------------------------------*/
@@ -205,6 +230,8 @@ void setupI2CForLM73CIMK() {
 
   I2C1_Data.I2CMode = I2C_FINISHED;
   lm73cimkState = LM73_IDLE;
+  
+  //print("lmk init\n");
 }
 
 

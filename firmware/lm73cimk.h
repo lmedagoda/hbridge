@@ -1,7 +1,7 @@
 #ifndef __LM73CIMK_H
 #define __LM73CIMK_H
 
-#include "stm32f10x_type.h"
+#include "inc/stm32f10x_type.h"
 
 enum lm73cimkStates {
   LM73_IDLE,

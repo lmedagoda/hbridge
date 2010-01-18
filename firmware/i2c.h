@@ -1,8 +1,8 @@
 #ifndef __I2C_H
 #define __I2C_H
 
-#include "stm32f10x_type.h"
-#include "stm32f10x_i2c.h"
+#include "inc/stm32f10x_type.h"
+#include "inc/stm32f10x_i2c.h"
 
 enum I2CModes {
   I2C_READ,
@@ -11,8 +11,16 @@ enum I2CModes {
   I2C_FINISHED,
 };
 
+enum I2CState {
+    START_WRITTEN,
+    ADDRESS_WRITTEN,
+    HANDLING_DATA,
+    STOP_WRITTEN,
+};
+
 
 struct I2C_Data {
+  enum I2CState state;
   u8 I2C_Buffer_Tx[4];
   u8 I2C_Buffer_Rx[4];
   u8 I2C_Tx_Idx;
@@ -25,8 +33,6 @@ struct I2C_Data {
   u32 I2CErrorReason;
 };
 
-//#define dbgBufferSize 200
-
 /*extern volatile u16 dbgWrite;
 extern volatile u16 dbgRead;
 extern volatile u32 dbgBuffer[dbgBufferSize];
@@ -34,6 +40,7 @@ extern volatile u32 dbgBuffer[dbgBufferSize];
 extern volatile struct I2C_Data I2C1_Data;
 extern volatile struct I2C_Data I2C2_Data;
 
+void printfI2CDbg();
 void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
 void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
 
