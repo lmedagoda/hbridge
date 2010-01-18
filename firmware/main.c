@@ -34,6 +34,7 @@
 #include "hbridge.h"
 #include "encoder.h"
 #include "current_measurement.h"
+#include "lm73cimk.h"
 #include <stdlib.h>
 
 /* Private typedef --------------------------------------------------------*/
@@ -61,6 +62,8 @@ void SysTick_Configuration(void);
 
 volatile enum hostIDs ownHostId;
 
+vu32 wasini2cit = 0;
+
 
 /*******************************************************************************
 * Function Name  : main
@@ -84,8 +87,7 @@ int main(void)
   GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
 
   USART_Configuration();
-  //setupI2C();
-
+    
   //turn of red led
   GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
@@ -98,6 +100,13 @@ int main(void)
   currentMeasurementInit();
 
   encoderInit();
+  
+  externalEncoderInit();
+  
+  setTicksPerTurnExtern(4096);
+  
+  //init i2c to read out temperature sensor
+  setupI2CForLM73CIMK();
   
   print("Loop start 1\n");
 
@@ -138,21 +147,33 @@ int main(void)
   //ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
     
   print("Loop start 3\n");
+  u32 temp = 0;
+  u32 gotTmpCnt = 0;
+  u8 lmk72addr = (0x4E<<1);
 
   /** END DEBUG **/
  
   while(1) {
 
     /** START DEBUG **/
+    if(!getTemperature(lmk72addr, &temp)) {
+	gotTmpCnt++;
+	    //printf("got temp %lu\n", temp);
+    }
 
+    //printfI2CDbg();
     if(counter > 10000) {  
+	printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
+	gotTmpCnt = 0;
       counter = 0;
       print(".");
-      printf("Error is %h \n", error);
+      u32 eet = getExternalEncoderTicks();
+      printf("externalEncoderTicks are %lu \n", eet);
+      /*printf("Error is %h \n", error);
       print("ActiveCstate: ");
       printStateDebug(activeCState);
       print("LastActiveCstate: ");
-      printStateDebug(lastActiveCState);
+      printStateDebug(lastActiveCState);*/
     }
     /** END DEBUG **/
     
@@ -190,11 +211,11 @@ int main(void)
       
       *lastActiveCState = *activeCState;      
       
-      printf("Error is %h \n", error);
+      /*printf("Error is %h \n", error);
       print("ActiveCstate: ");
       printStateDebug(activeCState);
       print("LastActiveCstate: ");
-      printStateDebug(lastActiveCState);
+      printStateDebug(lastActiveCState);*/
     } 
   }
 }
@@ -511,10 +532,10 @@ void GPIO_Configuration(void)
 
   /** DEBUG**/
   // Configure I2C2 pins: SCL and SDA as push pull for testLED
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8 | GPIO_Pin_9;
+/*  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8 | GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  GPIO_Init(GPIOB, &GPIO_InitStructure);*/
   /** END DEBUG**/
   
   
@@ -539,16 +560,6 @@ void NVIC_Configuration(void)
 
   /* 2 bit for pre-emption priority, 2 bits for subpriority */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-   
-  /* Configure and enable I2C1 interrupt ------------------------------------*/
-  /*NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-
-  NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQChannel;
-  NVIC_Init(&NVIC_InitStructure);*/
 
   /* Configure and enable I2C2 interrupt ------------------------------------*/
   /*NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQChannel;
