@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include "state.h"
+#include "encoder.h"
 #include "inc/stm32f10x_can.h"
 #include "inc/stm32f10x_gpio.h"
 #include "printf.h"
@@ -71,7 +72,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  } else {
 	    print("Error, not configured \n");
 	    state->internalState = STATE_ERROR;
-	    error |= ERROR_CODE_BAD_CONFIG;
+	    getErrorState()->badConfig = 1;
 	  }
 	  break;
 	}
@@ -97,7 +98,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  } else {
 	    print("Error, not configured \n");
 	    state->internalState = STATE_ERROR;
-	    error |= ERROR_CODE_BAD_CONFIG;
+	    getErrorState()->badConfig = 1;
 	  }
 	  break;
 	}
@@ -114,7 +115,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  } else {
 	    print("Error, not configured \n");
 	    state->internalState = STATE_ERROR;
-	    error |= ERROR_CODE_BAD_CONFIG;
+	    getErrorState()->badConfig = 1;
 	  }
 	  break;
 	}
@@ -129,7 +130,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  } else {
 	    print("Error, not configured \n");
 	    state->internalState = STATE_ERROR;
-	    error |= ERROR_CODE_BAD_CONFIG;
+	    getErrorState()->badConfig = 1;
 	  }
 	  break;
 	}
@@ -149,7 +150,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 
 	  if(state->internalState == STATE_CONFIG2_RECEIVED) {
 	    state->internalState = STATE_CONFIGURED;
-	    error = ERROR_CODE_NONE;
+	    clearErrors();
 	  } else {
 	    state->internalState = STATE_CONFIG1_RECEIVED;
 	  }
@@ -166,13 +167,24 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 
 	  if(state->internalState == STATE_CONFIG1_RECEIVED) {
 	    state->internalState = STATE_CONFIGURED;
-	    error = ERROR_CODE_NONE;
+	    clearErrors();
 	  } else {
 	    state->internalState = STATE_CONFIG2_RECEIVED;
 	  }
 	  break;
 	}
-
+	case PACKET_ID_ENCODER_CONFIG: {
+	    if(state->internalState == STATE_CONFIGURED) {
+		//do not allow to configure encoders while PID might be active
+		getErrorState()->badConfig = 1;
+		getErrorState()->encodersNotInitalized = 1;
+	    } else {
+		struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
+		encoderInit(encData->ticksPerTurnIntern, encData->tickDividerIntern);
+		encoderInitExtern(encData->ticksPerTurnExtern, encData->tickDividerExtern);
+	    }
+	}
+	break;
       default: 
 	{
 	  u16 id = curMsg->StdId;

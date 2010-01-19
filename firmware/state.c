@@ -6,7 +6,8 @@ volatile struct ControllerState state2;
 
 volatile struct ControllerState *activeCState = &state1;
 volatile struct ControllerState *lastActiveCState = &state2;
-volatile enum errorCodes error = ERROR_CODE_NONE;
+
+volatile u8 errorState = 0;
 
 //motorticks * gear reduction
 //512 * 729 / 16
@@ -37,11 +38,25 @@ void initStateStruct(volatile struct ControllerState *cs) {
     cs->positionPIDValues.minMaxPidOutput = 0;
     cs->enablePIDDebug = 0;
     cs->ticksPerTurn = HALF_WHEEL_TURN_TICKS * 2;
+    
+    errorState = 0;
 };
 
 void printStateDebug(volatile struct ControllerState* cs)
 {
     printf("ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", cs->controllMode, cs->internalState, cs->targetValue, cs->useOpenLoop, cs->useBackInduction, cs->pwmStepPerMillisecond);
+}
+
+u8 inErrorState() {
+    return errorState;
+}
+
+struct errorState *getErrorState() {
+    return (struct errorState *) (&errorState);
+}
+
+void clearErrors() {
+    errorState = 0;
 }
 
 

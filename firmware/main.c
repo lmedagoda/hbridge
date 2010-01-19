@@ -245,7 +245,7 @@ void SysTickHandler(void) {
   }
 
   //change state to unconfigured if error is set
-  if(error != ERROR_CODE_NONE && activeCState->internalState == STATE_CONFIGURED) {
+  if(inErrorState() && activeCState->internalState == STATE_CONFIGURED) {
     activeCState->internalState = STATE_ERROR;
   }
 
@@ -257,7 +257,7 @@ void SysTickHandler(void) {
 
       if(overCurrentCounter > activeCState->maxCurrentCount) {
 	activeCState->internalState = STATE_ERROR;
-	error |= ERROR_CODE_OVERCURRENT;
+	getErrorState()->overCurrent = 1;
       }
     } else {
       overCurrentCounter = 0;
@@ -265,8 +265,8 @@ void SysTickHandler(void) {
     
     //check for timeout and go into error state
     if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
-      activeCState->internalState = STATE_ERROR;
-      error |= ERROR_CODE_TIMEOUT;      
+	activeCState->internalState = STATE_ERROR;
+	getErrorState()->timeout = 1;
     }
   } else {
     //reset to zero values
@@ -314,14 +314,14 @@ void SysTickHandler(void) {
     }
   }
 
-  //send out status message
-  if(activeCState->internalState == STATE_CONFIGURED ||
-     activeCState->internalState == STATE_ERROR) {
-
     index++;
-    
+
     if(index >= (1<<10))
-      index = 0;
+	index = 0;
+
+  //send out status message
+  if(activeCState->internalState == STATE_CONFIGURED) {
+
   
     //send status message over CAN
     CanTxMsg statusMessage;
@@ -332,30 +332,55 @@ void SysTickHandler(void) {
     
     struct statusData *sdata = (struct statusData *) statusMessage.Data;
     
+    sdata->pwm = currentPwmValue;
+    sdata->externalPosition = getDividedTicksExtern();
+    sdata->position = getDividedTicks();    
     sdata->currentValue = currentValue;
     sdata->index = index;
-    sdata->position = wheelPos / 4;
-    sdata->pwm = currentPwmValue;
-    //TODO calculate temp
-    //sdata->tempHBrigde = 0;
-    //sdata->tempMotor = 0;
-    sdata->error = error;
     
     if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
       print("Error Tranmitting status Message : No free TxMailbox \n");
     } else {
       //print("Tranmitting status Message : OK \n");  
     }
-  }
-
-  if(activeCState->internalState == STATE_CONFIGURED) {
-    //increase timeout
+    
+        //increase timeout
     timeoutCounter++;
 
     //set pwm
     setNewPWM(currentPwmValue, activeCState->useOpenLoop, activeCState->useBackInduction);
+
   } else {
-    //reset timeoutcounter
+    //send error message
+    if(activeCState->internalState == STATE_ERROR) {      
+	//send status message over CAN
+	CanTxMsg errorMessage;
+	errorMessage.StdId= PACKET_ID_STATUS + ownHostId;
+	errorMessage.RTR=CAN_RTR_DATA;
+	errorMessage.IDE=CAN_ID_STD;
+	errorMessage.DLC= sizeof(struct errorData);
+	
+	struct errorData *edata = (struct errorData *) errorMessage.Data;
+
+	edata->temperature = 0;
+	edata->position = getDividedTicks();
+	edata->index = index;
+	edata->externalPosition = getDividedTicksExtern();
+	edata->motorOverheated = 0;
+	edata->boardOverheated = 0;
+	edata->overCurrent = 0;
+	edata->timeout = 0;
+	edata->badConfig = 0;
+	edata->encodersNotInitalized = encodersConfigured();
+
+	if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
+	    print("Error Tranmitting status Message : No free TxMailbox \n");
+	} else {
+	//print("Tranmitting status Message : OK \n");  
+	}
+    }
+  
+      //reset timeoutcounter
     timeoutCounter = 0;
     setNewPWM(0, activeCState->useOpenLoop, activeCState->useBackInduction);
 
@@ -364,7 +389,6 @@ void SysTickHandler(void) {
     resetControllers();
   }
  
-
   //  GPIOA->BRR |= GPIO_Pin_8;
 
 }

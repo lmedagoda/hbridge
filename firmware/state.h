@@ -12,6 +12,16 @@ enum internalState {
   STATE_ERROR,
 };
 
+struct errorState {
+    unsigned motorOverheated:1;
+    unsigned boardOverheated:1;
+    unsigned overCurrent:1;
+    unsigned timeout:1;
+    unsigned badConfig:1;
+    unsigned encodersNotInitalized:1;
+    unsigned unused:3;
+} __attribute__ ((packed));
+
 struct PIDValues {
   s16 kp;
   s16 ki;
@@ -44,9 +54,12 @@ struct ControllerState {
 
 extern volatile struct ControllerState *activeCState;
 extern volatile struct ControllerState *lastActiveCState;
-extern volatile enum errorCodes error;
 
 void initStateStruct(volatile struct ControllerState *cs);
 void printStateDebug(volatile struct ControllerState *cs);
+
+u8 inErrorState();
+struct errorState *getErrorState();
+void clearErrors();
 
 #endif

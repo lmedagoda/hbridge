@@ -19,29 +19,22 @@ enum controllerModes {
   CONTROLLER_MODE_POSITION = 2,
 };
 
-enum errorCodes {
-  ERROR_CODE_NONE = 0,
-  ERROR_CODE_OVERHEATMOTOR = (1<<1),
-  ERROR_CODE_OVERHEATBOARD = (1<<2),
-  ERROR_CODE_OVERCURRENT = (1<<3),
-  ERROR_CODE_TIMEOUT = (1<<4),
-  ERROR_CODE_BAD_CONFIG = (1<<5),
-};
-
 enum packetIDs {
   PACKET_ID_EMERGENCY_STOP = 0,
-  PACKET_ID_STATUS = 1,
-  PACKET_ID_SET_VALUE = 2,
-  PACKET_ID_SET_MODE = 3,
-  PACKET_ID_SET_PID_POS = 4,
-  PACKET_ID_SET_PID_SPEED = 5,
-  PACKET_ID_SET_CONFIGURE = 6,
-  PACKET_ID_SET_CONFIGURE2 = 7,
-  PACKET_ID_PID_DEBUG_POS = 8,
-  PACKET_ID_POS_DEBUG = 9,
-  PACKET_ID_PID_DEBUG_SPEED = 10,
-  PACKET_ID_SPEED_DEBUG = 11,
-  PACKET_ID_PIEZO = 12,
+  PACKET_ID_ERROR = 1,
+  PACKET_ID_STATUS = 2,
+  PACKET_ID_SET_VALUE = 3,
+  PACKET_ID_SET_MODE = 4,
+  PACKET_ID_SET_PID_POS = 5,
+  PACKET_ID_SET_PID_SPEED = 6,
+  PACKET_ID_SET_CONFIGURE = 7,
+  PACKET_ID_SET_CONFIGURE2 = 8,
+  PACKET_ID_ENCODER_CONFIG = 9,
+  PACKET_ID_PID_DEBUG_POS = 10,
+  PACKET_ID_POS_DEBUG = 11,
+  PACKET_ID_PID_DEBUG_SPEED = 12,
+  PACKET_ID_SPEED_DEBUG = 13,
+  PACKET_ID_PIEZO = 14,
 };
 
 struct speedDebugData {
@@ -72,20 +65,26 @@ struct piezoData {
   u16 value4;
 } __attribute__ ((packed));
 
-struct statusData {
-  unsigned currentValue :14;
-  unsigned index :10;
-  u16 position;
-  s16 pwm;
-  enum errorCodes error:8;
+struct errorData {
+    u8 temperature;
+    u16 position;
+    unsigned index :10;
+    unsigned externalPosition:12;
+    unsigned motorOverheated:1;
+    unsigned boardOverheated:1;
+    unsigned overCurrent:1;
+    unsigned timeout:1;
+    unsigned badConfig:1;
+    unsigned encodersNotInitalized:1;
+    unsigned unused:4;
 } __attribute__ ((packed));
 
-struct statusDataExternalEncoder {
+struct statusData {
+  signed pwm :12;
+  unsigned externalPosition:12;
+  u16 position;
   unsigned currentValue :14;
   unsigned index :10;
-  u16 position;
-  u16 externalPosition;
-  enum errorCodes error:8;
 } __attribute__ ((packed));
 
 struct setValueData {
@@ -107,6 +106,13 @@ struct setPidData {
   s16 ki;
   s16 kd;
   u16 minMaxPidOutput;
+} __attribute__ ((packed));
+
+struct encoderConfiguration {
+    u16 ticksPerTurnIntern;
+    u8 tickDividerIntern;
+    u16 ticksPerTurnExtern;
+    u8 tickDividerExtern;
 } __attribute__ ((packed));
 
 struct configure1Data {
