@@ -11,6 +11,8 @@ enum hostIDs {
   RECEIVER_ID_H_BRIDGE_2 = (2<<5),
   RECEIVER_ID_H_BRIDGE_3 = (3<<5),
   RECEIVER_ID_H_BRIDGE_4 = (4<<5),
+  RECEIVER_ID_H_BRIDGE_5 = (5<<5),
+  RECEIVER_ID_H_BRIDGE_6 = (6<<5),
 };
 
 enum controllerModes {
@@ -109,9 +111,9 @@ struct setPidData {
 } __attribute__ ((packed));
 
 struct encoderConfiguration {
-    u16 ticksPerTurnIntern;
+    unsigned ticksPerTurnIntern:24;
     u8 tickDividerIntern;
-    u16 ticksPerTurnExtern;
+    unsigned ticksPerTurnExtern:24;
     u8 tickDividerExtern;
 } __attribute__ ((packed));
 
