@@ -127,8 +127,8 @@ vu32 binIT = 0;
 vu32 zeroIT = 0;
 
 u32 getTicksExtern() {
-    printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
-    printf("Enc : %l \n", externalEncoderValue);
+    //printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
+    //printf("Enc : %l \n", externalEncoderValue);
     return externalEncoderValue;
 }
 

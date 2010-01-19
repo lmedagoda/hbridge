@@ -101,9 +101,7 @@ int main(void)
 
   encoderInit();
   
-  externalEncoderInit();
-  
-  setTicksPerTurnExtern(4096);
+  encoderInitExtern();  
   
   //init i2c to read out temperature sensor
   setupI2CForLM73CIMK();
@@ -156,19 +154,20 @@ int main(void)
   while(1) {
 
     /** START DEBUG **/
-    if(!getTemperature(lmk72addr, &temp)) {
+    /*if(!getTemperature(lmk72addr, &temp)) {
 	gotTmpCnt++;
 	    //printf("got temp %lu\n", temp);
-    }
+    }*/
 
     //printfI2CDbg();
     if(counter > 10000) {  
-	printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
+	/*printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
 	gotTmpCnt = 0;
       counter = 0;
       print(".");
-      u32 eet = getExternalEncoderTicks();
-      printf("externalEncoderTicks are %lu \n", eet);
+      u32 eet = getTicksExtern();
+      u32 iet = getTicks();
+      printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);*/
       /*printf("Error is %h \n", error);
       print("ActiveCstate: ");
       printStateDebug(activeCState);
@@ -211,11 +210,12 @@ int main(void)
       
       *lastActiveCState = *activeCState;      
       
-      /*printf("Error is %h \n", error);
+      u16 errorDbg = inErrorState();
+      printf("Error is %h \n", errorDbg);
       print("ActiveCstate: ");
       printStateDebug(activeCState);
       print("LastActiveCstate: ");
-      printStateDebug(lastActiveCState);*/
+      printStateDebug(lastActiveCState);
     } 
   }
 }
@@ -352,26 +352,29 @@ void SysTickHandler(void) {
 
   } else {
     //send error message
-    if(activeCState->internalState == STATE_ERROR) {      
+    if(activeCState->internalState == STATE_ERROR) {  
 	//send status message over CAN
 	CanTxMsg errorMessage;
-	errorMessage.StdId= PACKET_ID_STATUS + ownHostId;
+	errorMessage.StdId= PACKET_ID_ERROR + ownHostId;
 	errorMessage.RTR=CAN_RTR_DATA;
 	errorMessage.IDE=CAN_ID_STD;
 	errorMessage.DLC= sizeof(struct errorData);
 	
 	struct errorData *edata = (struct errorData *) errorMessage.Data;
 
+	struct ErrorState *es = getErrorState();
+	
+	//TODO value from lm73cimk
 	edata->temperature = 0;
 	edata->position = getDividedTicks();
 	edata->index = index;
 	edata->externalPosition = getDividedTicksExtern();
-	edata->motorOverheated = 0;
-	edata->boardOverheated = 0;
-	edata->overCurrent = 0;
-	edata->timeout = 0;
-	edata->badConfig = 0;
-	edata->encodersNotInitalized = encodersConfigured();
+	edata->motorOverheated = es->motorOverheated;
+	edata->boardOverheated = es->boardOverheated;
+	edata->overCurrent = es->overCurrent;
+	edata->timeout = es->timeout;
+	edata->badConfig = es->badConfig;
+	edata->encodersNotInitalized = es->encodersNotInitalized;
 
 	if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
 	    print("Error Tranmitting status Message : No free TxMailbox \n");

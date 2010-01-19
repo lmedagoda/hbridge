@@ -135,53 +135,67 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
-	  print("Got PACKET_ID_SET_CONFIGURE Msg \n");
-	  struct configure1Data *data = (struct configure1Data *) curMsg->Data;
-	  state->useBackInduction = data->activeFieldCollapse;
-	  state->useOpenLoop = data->openCircuit;
-	  state->cascadedPositionController = data->cascadedPositionController;
-	  state->enablePIDDebug = data->enablePIDDebug;
+	    print("Got PACKET_ID_SET_CONFIGURE Msg \n");
+	    struct configure1Data *data = (struct configure1Data *) curMsg->Data;
+	    state->useBackInduction = data->activeFieldCollapse;
+	    state->useOpenLoop = data->openCircuit;
+	    state->cascadedPositionController = data->cascadedPositionController;
+	    state->enablePIDDebug = data->enablePIDDebug;
 
-	  state->maxMotorTemp = data->maxMotorTemp;
-	  state->maxMotorTempCount = data->maxMotorTempCount;
-	  state->maxBoardTemp = data->maxBoardTemp;
-	  state->maxBoardTempCount = data->maxBoardTempCount;
-	  state->timeout = data->timeout;
+	    state->maxMotorTemp = data->maxMotorTemp;
+	    state->maxMotorTempCount = data->maxMotorTempCount;
+	    state->maxBoardTemp = data->maxBoardTemp;
+	    state->maxBoardTempCount = data->maxBoardTempCount;
+	    state->timeout = data->timeout;
 
-	  if(state->internalState == STATE_CONFIG2_RECEIVED) {
-	    state->internalState = STATE_CONFIGURED;
-	    clearErrors();
-	  } else {
-	    state->internalState = STATE_CONFIG1_RECEIVED;
-	  }
-	  
-	  break;
+	    if(state->internalState == STATE_CONFIG2_RECEIVED) {
+		if(!encodersConfigured()) {
+			state->internalState = STATE_ERROR;
+			getErrorState()->encodersNotInitalized = 1;
+		    } else {
+			state->internalState = STATE_CONFIGURED;
+			clearErrors();
+		    }
+	    } else {
+		state->internalState = STATE_CONFIG1_RECEIVED;
+	    }
+	    
+	    break;
 	}
 	  
         case PACKET_ID_SET_CONFIGURE2: {
-	  print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
-	  struct configure2Data *data = (struct configure2Data *) curMsg->Data;
-	  state->maxCurrent = data->maxCurrent;
-	  state->maxCurrentCount = data->maxCurrentCount;
-	  state->pwmStepPerMillisecond = data->pwmStepPerMs;
+	    print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
+	    struct configure2Data *data = (struct configure2Data *) curMsg->Data;
+	    state->maxCurrent = data->maxCurrent;
+	    state->maxCurrentCount = data->maxCurrentCount;
+	    state->pwmStepPerMillisecond = data->pwmStepPerMs;
 
-	  if(state->internalState == STATE_CONFIG1_RECEIVED) {
-	    state->internalState = STATE_CONFIGURED;
-	    clearErrors();
-	  } else {
-	    state->internalState = STATE_CONFIG2_RECEIVED;
-	  }
-	  break;
+	    if(state->internalState == STATE_CONFIG1_RECEIVED) {
+		if(!encodersConfigured()) {
+		    state->internalState = STATE_ERROR;
+		    getErrorState()->encodersNotInitalized = 1;
+		} else {
+		    state->internalState = STATE_CONFIGURED;
+		    clearErrors();
+		}
+	    } else {
+		state->internalState = STATE_CONFIG2_RECEIVED;
+	    }
+	    break;
 	}
 	case PACKET_ID_ENCODER_CONFIG: {
+	    print("Got PACKET_ID_ENCODER_CONFIG Msg \n");
 	    if(state->internalState == STATE_CONFIGURED) {
+		print("Bad, state is configured \n");
 		//do not allow to configure encoders while PID might be active
 		getErrorState()->badConfig = 1;
-		getErrorState()->encodersNotInitalized = 1;
 	    } else {
+		print("configuring encoders \n");
 		struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
-		encoderInit(encData->ticksPerTurnIntern, encData->tickDividerIntern);
-		encoderInitExtern(encData->ticksPerTurnExtern, encData->tickDividerExtern);
+		setTicksPerTurn(encData->ticksPerTurnIntern, encData->tickDividerIntern);
+		setTicksPerTurnExtern(encData->ticksPerTurnExtern, encData->tickDividerExtern);
+		clearErrors();
+		state->internalState = STATE_UNCONFIGURED;
 	    }
 	}
 	break;

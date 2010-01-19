@@ -12,7 +12,7 @@ enum internalState {
   STATE_ERROR,
 };
 
-struct errorState {
+struct ErrorState {
     unsigned motorOverheated:1;
     unsigned boardOverheated:1;
     unsigned overCurrent:1;
@@ -59,7 +59,7 @@ void initStateStruct(volatile struct ControllerState *cs);
 void printStateDebug(volatile struct ControllerState *cs);
 
 u8 inErrorState();
-struct errorState *getErrorState();
+struct ErrorState *getErrorState();
 void clearErrors();
 
 #endif

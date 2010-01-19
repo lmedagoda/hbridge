@@ -51,7 +51,7 @@ u8 inErrorState() {
     return errorState;
 }
 
-struct errorState *getErrorState() {
+struct ErrorState *getErrorState() {
     return (struct errorState *) (&errorState);
 }
 
