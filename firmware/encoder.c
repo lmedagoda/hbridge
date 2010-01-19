@@ -3,17 +3,24 @@
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_exti.h"
 #include "inc/stm32f10x_nvic.h"
-
+#include <stdlib.h>
+#include "printf.h"
 
 struct encoderData {
     u16 ticksPerTurn;
-    u8 ticksBiggerThanU16;
+    u8 tickDivider;
 };
 
 vs32 externalEncoderValue = 0;
-vu32 ticksPerTurnExtern; 
 
-struct encoderData internalEncoder;
+static u8 configured = 0;
+
+struct encoderData internalEncoderConfig;
+struct encoderData externalEncoderConfig;
+
+u8 encodersConfigured() {
+    return configured;
+}
 
 void encoderInit() {
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
@@ -42,61 +49,93 @@ void encoderInit() {
 
     // TIM enable counter
     TIM_Cmd(TIM4, ENABLE);    
+    
+    internalEncoderConfig.tickDivider = 1;
+    internalEncoderConfig.ticksPerTurn = 0;    
 }
 
-void setTicksPerTurn(u32 ticks) {
-    if(ticks > (1<<15)) {
-	assert_param(ticks / 2 < (1<<15));
-	internalEncoder.ticksBiggerThanU16 = 1;
-	//configure value to reload after wrap around
-	TIM_SetAutoreload(TIM4, ticks / 2);
-    } else {
-	//configure value to reload after wrap around
-	TIM_SetAutoreload(TIM4, ticks);
-    }
-    internalEncoder.ticksPerTurn = ticks;
+void setTicksPerTurn(u16 ticks, u8 tickDivider) {
+    internalEncoderConfig.tickDivider = tickDivider;
+    internalEncoderConfig.ticksPerTurn = ticks;
+    TIM_Cmd(TIM4, DISABLE);    
+ 
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+
+    // Time base configuration 
+    TIM_TimeBaseStructure.TIM_Period = ticks;
+    TIM_TimeBaseStructure.TIM_Prescaler = 0;
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+    
+    //configure value to reload after wrap around
+    TIM_SetAutoreload(TIM4, ticks);
+    
+    TIM_SetCounter(TIM4, 0);
+    
+    TIM_Cmd(TIM4, ENABLE);
+    configured = 1;
 }
 
-void setTicksPerTurnExtern(u32 ticks) {
-    ticksPerTurnExtern = ticks;
+u32 getTicks()
+{
+  static s32 lastEncoderValue = 0;
+  static s16 wrapCounter = 0;
+
+  //get encoder
+  s32 encoderValue = TIM_GetCounter(TIM4);
+  
+  u32 wheelPos = encoderValue;
+  s32 diff = encoderValue - lastEncoderValue;
+  //we got an wraparound
+  if(abs(diff) > internalEncoderConfig.ticksPerTurn / 2) {
+      //test if we wrapped "forward" or "backwards"
+      if(diff < 0)  {
+	  //forward
+	  wrapCounter++;
+	  if(wrapCounter >= internalEncoderConfig.tickDivider)
+	      wrapCounter -= internalEncoderConfig.tickDivider;
+      } else {
+	  //backward
+	  wrapCounter--;
+	  if(wrapCounter < 0)
+	      wrapCounter += internalEncoderConfig.tickDivider;
+      }
+  }
+
+  wheelPos += wrapCounter * internalEncoderConfig.ticksPerTurn;
+
+  lastEncoderValue = encoderValue;
+
+  return wheelPos;
+}
+
+u16 getDividedTicks() {
+    u32 ticks = getTicks();
+    return ticks / internalEncoderConfig.tickDivider;
+}
+
+void setTicksPerTurnExtern(u32 ticks, u8 tickDivider) {
+    externalEncoderConfig.tickDivider = tickDivider;
+    externalEncoderConfig.ticksPerTurn = ticks;
+    configured = 1;
 }
 
 vu32 ainIT = 0;
 vu32 binIT = 0;
 vu32 zeroIT = 0;
 
-u32 getExternalEncoderTicks() {
+u32 getTicksExtern() {
     printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
     printf("Enc : %l \n", externalEncoderValue);
     return externalEncoderValue;
 }
 
-u32 getTicks()
-{
-  static u16 lastEncoderValue = 0;
-  static u8 wheelHalfTurned = 0;
-
-  //get encoder
-  u16 encoderValue = TIM_GetCounter(TIM4);
-  
-  u32 wheelPos = encoderValue;
-  
-  if(internalEncoder.ticksBiggerThanU16) {
-    //calculate correct half wheel position
-    if(abs( ((s32) lastEncoderValue) - encoderValue) > internalEncoder.ticksPerTurn / 2) {
-	if(wheelHalfTurned)
-	    wheelHalfTurned = 0;
-	else
-	    wheelHalfTurned = 1;
-    }
-
-    wheelPos += wheelHalfTurned * internalEncoder.ticksPerTurn / 2;
-  }
-  
-  lastEncoderValue = encoderValue;
-
-  return wheelPos;
+u16 getDividedTicksExtern() {
+    return externalEncoderValue / externalEncoderConfig.tickDivider;
 }
+
 
 void EXTI15_10_IRQHandler(void)
 {
@@ -139,10 +178,10 @@ void EXTI15_10_IRQHandler(void)
 
 
     if(externalEncoderValue < 0)
-	externalEncoderValue += ticksPerTurnExtern;
+	externalEncoderValue += externalEncoderConfig.ticksPerTurn;
 
-    if(externalEncoderValue > ticksPerTurnExtern)
-	externalEncoderValue -= ticksPerTurnExtern;
+    if(externalEncoderValue > externalEncoderConfig.ticksPerTurn)
+	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
 	zeroIT = externalEncoderValue;
@@ -153,7 +192,7 @@ void EXTI15_10_IRQHandler(void)
 }
 
 
-void externalEncoderInit() {
+void encoderInitExtern() {
     GPIO_InitTypeDef GPIO_InitStructure;
 
     //get default GPIO config
@@ -191,5 +230,6 @@ void externalEncoderInit() {
     NVIC_Init(&NVIC_InitStructure);
 
     externalEncoderValue = 0;
-    
+    externalEncoderConfig.ticksPerTurn = 0;
+    externalEncoderConfig.tickDivider = 1;
 }
