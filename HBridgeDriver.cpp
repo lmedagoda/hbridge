@@ -49,7 +49,7 @@ namespace hbridge
         switch (msg.can_id & 0x1f)
         {
 	    case firmware::PACKET_ID_ERROR: {
-                
+
 		firmware::errorData *edata =
 		    reinterpret_cast<firmware::errorData *>(msg.data);
                 
@@ -135,6 +135,10 @@ namespace hbridge
             case firmware::PACKET_ID_PID_DEBUG_POS:
                 // To be implemented
                 break;
+	    default:
+	        std::cout << "Got message with unknown id:" << msg.can_id << std::endl;
+
+	      break;
         }
 
         return true;
