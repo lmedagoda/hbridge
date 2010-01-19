@@ -16,6 +16,7 @@ namespace hbridge
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
         bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
+        bzero(&this->positionOldExtern, BOARD_COUNT * sizeof(firmware::s16));
 
         directions[MOTOR_REAR_LEFT]   = -1;
         directions[MOTOR_FRONT_LEFT]  = -1;
@@ -37,20 +38,53 @@ namespace hbridge
 
     bool Driver::updateFromCAN(can::Message &msg)
     {
-        firmware::statusData *data =
-            reinterpret_cast<firmware::statusData *>(msg.data);
+	int index = ((msg.can_id & ~0x1f) >> 5) - 1;
+
+	if ((index < 0) || (index > (BOARD_COUNT - 1)))
+	{
+	    // Invalid id specified in packet
+	    return false;
+	}
 
         switch (msg.can_id & 0x1f)
         {
+	    case firmware::PACKET_ID_ERROR: {
+                
+		firmware::errorData *edata =
+		    reinterpret_cast<firmware::errorData *>(msg.data);
+                
+		states[index].error.badConfig = edata->badConfig;
+		states[index].error.boardOverheated = edata->boardOverheated;
+		states[index].error.encodersNotInitalized = edata->encodersNotInitalized;
+		states[index].error.motorOverheated = edata->motorOverheated;
+		states[index].error.overCurrent = edata->overCurrent;
+		states[index].error.timeout = edata->timeout;
+		states[index].temperature = edata->temperature;
+		
+		int diff = directions[index] * (edata->position - this->positionOld[index]);
+                positionOld[index] = edata->position;
+
+		int diffExtern = directions[index] * (edata->externalPosition - this->positionOldExtern[index]);
+                positionOldExtern[index] = edata->externalPosition;
+
+                // We assume that a motor rotates less than half a turn per [ms]
+                // (a error packet is sent every [ms])
+                if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
+                    diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided ;
+
+		if (abs(diffExtern) > encoderConfigurations[index].ticksPerTurnExternDivided / 2)
+                    diffExtern += (diffExtern < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnExternDivided;
+
+                // Track the position
+                this->states[index].position += diff;
+		this->states[index].positionExtern += diff;
+
+	    }
+	    break;
             case firmware::PACKET_ID_STATUS:
             {
-                int index = ((msg.can_id & ~0x1f) >> 5) - 1;
-        
-                if ((index < 0) || (index > (BOARD_COUNT - 1)))
-                {
-                    // Invalid id specified in packet
-                    return false;
-                }
+		firmware::statusData *data =
+		    reinterpret_cast<firmware::statusData *>(msg.data);
 
                 this->states[index].index   = data->index;
                 this->states[index].current = data->currentValue; // Current in [mA]
@@ -58,17 +92,31 @@ namespace hbridge
 
                 int diff = directions[index] * (data->position - this->positionOld[index]);
                 positionOld[index] = data->position;
-        
+
+		int diffExtern = directions[index] * (data->externalPosition - this->positionOldExtern[index]);
+                positionOldExtern[index] = data->externalPosition;
+
                 // We assume that a motor rotates less than half a turn per [ms]
                 // (a status packet is sent every [ms])
-                if (abs(diff) > TICKS_PER_TURN / 2)
-                    diff += (diff < 0 ? 1 : -1) * TICKS_PER_TURN;
+                if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
+                    diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided;
+
+		if (abs(diffExtern) > encoderConfigurations[index].ticksPerTurnExternDivided / 2)
+                    diffExtern += (diffExtern < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnExternDivided;
 
                 // Track the position
                 this->states[index].position += diff;
+		this->states[index].positionExtern += diff;
                 this->states[index].delta = diff;
-                this->states[index].error = data->error;
-    
+
+		//getting an status package is an implicit cleaner for all error states
+		states[index].error.badConfig = false;
+		states[index].error.boardOverheated = false;
+		states[index].error.encodersNotInitalized = false;
+		states[index].error.motorOverheated = false;
+		states[index].error.overCurrent = false;
+		states[index].error.timeout = false;
+
                 break;
             }
 
@@ -234,6 +282,26 @@ namespace hbridge
         msgs.second.size = sizeof(firmware::configure2Data);
 
         return msgs;
+    }
+
+    can::Message Driver::setEncoderConfiguration(int board, EncoderConfiguration& cfg)
+    {
+	can::Message msg;
+        bzero(&msg, sizeof(can::Message));
+	
+	encoderConfigurations[board] = cfg;
+	encoderConfigurations[board].ticksPerTurnDivided = encoderConfigurations[board].ticksPerTurn / encoderConfigurations[board].tickDivider;
+	encoderConfigurations[board].ticksPerTurnExternDivided = encoderConfigurations[board].ticksPerTurnExtern / encoderConfigurations[board].tickDividerExtern;
+
+        firmware::encoderConfiguration *data =
+            reinterpret_cast<firmware::encoderConfiguration *>(msg.data);
+
+	data->ticksPerTurnIntern = cfg.ticksPerTurn;
+	data->tickDividerIntern = cfg.tickDivider;
+	data->ticksPerTurnExtern = cfg.ticksPerTurnExtern;
+	data->tickDividerExtern = cfg.tickDividerExtern;
+	    
+	return msg;
     }
 
     void Driver::setPID(can::Message &msg,

@@ -18,9 +18,11 @@ namespace hbridge
     protected:
 
         BoardState states[BOARD_COUNT];
+	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
         int directions[4];
         hbridge::DRIVE_MODE current_modes[4];
-        int16_t positionOld[BOARD_COUNT];
+        int32_t positionOld[BOARD_COUNT];
+        int32_t positionOldExtern[BOARD_COUNT];
 
     public:
         Driver();
@@ -155,6 +157,17 @@ namespace hbridge
         MessagePair setConfiguration(int board,
                                      const Configuration &cfg) const;
 
+	/**
+	* Generates a CAN message for configuraing encoder parameters.
+	* This need to be done only once and in an UNCONFIGURED state.
+	*
+	* @param board hbridge identifier
+	* @param cfg encoder configuration for the given hbridge
+	*
+	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
+	**/
+	can::Message setEncoderConfiguration(int board, EncoderConfiguration &cfg);
+				     
     protected:
         /**
          * Generate a CAN message for PID values but with no id set.

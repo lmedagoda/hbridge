@@ -144,12 +144,64 @@ BOOST_AUTO_TEST_CASE(test_case)
     config.maxCurrent = 5000;
     config.maxCurrentCount = 250;
     config.pwmStepPerMs = 200;
+    hbridge::MessagePair config_msgs = hbd.setConfiguration(hbridge_id, config);
+
+    int i;
+    std::cout << "Testing if HBridge goes into error state if encoders not initalized " << (hbridge_id+1) << std::endl;
+    driver.write(config_msgs.first);
+    driver.write(config_msgs.second);
+    for (i = 0; i < 500; i++)
+    {
+	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if(state.error.encodersNotInitalized)
+	    break;	
+    }    
+    BOOST_CHECK(i < 500);
+    
+    std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
+    hbridge::EncoderConfiguration encConf;
+    encConf.tickDivider = 4;
+    encConf.ticksPerTurn = hbridge::TICKS_PER_TURN * 4;
+
+    encConf.tickDividerExtern = 1;
+    encConf.ticksPerTurnExtern = 4096;
+    
+    can::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConf);
+    driver.write(encConfMsg);
+    
 
     std::cout << "Configuring hbridge " << (hbridge_id+1) << std::endl;
-    hbridge::MessagePair config_msgs = hbd.setConfiguration(hbridge_id, config);
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver.write(config_msgs.first);
     driver.write(config_msgs.second);
 
+    //wait two ms, so that HB can process config
+    usleep(2000);
+    std::cout << "Checking if hbridge cleared errors" << std::endl;
+    for(i = 0; i < 500; i++) {
+    	while(driver.getPendingMessagesCount() > 0) {
+	  msg = driver.read() ;
+	
+	  hbd.updateFromCAN(msg);
+	}
+	
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if(!state.error.encodersNotInitalized &&
+	    !state.error.badConfig &&
+	    !state.error.boardOverheated &&
+	    !state.error.motorOverheated &&
+	    !state.error.overCurrent &&
+	    !state.error.timeout)
+	    break;	
+    }
+    BOOST_CHECK(i < 500);
+    
     std::cout << "Set PID configuration" << std::endl;
     can::Message pidmsg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 1800.0);
     driver.write(pidmsg);
@@ -158,10 +210,11 @@ BOOST_AUTO_TEST_CASE(test_case)
     dmmsg = hbd.setDriveMode(hbridge::DM_PWM);
     driver.write(dmmsg);
 
-    int i;
-    msg = driver.read() ;	
-    hbd.updateFromCAN(msg);
-
+    while(driver.getPendingMessagesCount() > 0) {
+	msg = driver.read() ;	
+	hbd.updateFromCAN(msg);
+    }
+    
     std::cout << "Testing encoders and current carrying electronics"
 	      << std::endl;
     hbridge::Ticks initial_position = hbd.getState(hbridge_id).position;
@@ -239,7 +292,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
-	if (state.error == hbridge::ERROR_CODE_OVERCURRENT )
+	if (state.error.overCurrent )
 	    break;
     }
     BOOST_CHECK(i < 500);
@@ -261,7 +314,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
-	if (state.error == hbridge::ERROR_CODE_OVERCURRENT )
+	if (state.error.overCurrent )
 	    break;
     }
     BOOST_CHECK(i < 500);

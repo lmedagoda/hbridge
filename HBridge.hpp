@@ -28,7 +28,7 @@ namespace hbridge
         unsigned short maxCurrent;
         unsigned char maxCurrentCount;
         unsigned short pwmStepPerMs;
-        
+
 #ifndef __orogen
         /**
          * Initialise all fields of the configuration structure with 0
@@ -42,6 +42,24 @@ namespace hbridge
 #endif
     };
 
+    struct EncoderConfiguration
+    {
+	unsigned int ticksPerTurn;
+	unsigned char tickDivider;
+	unsigned int ticksPerTurnExtern;
+	unsigned char tickDividerExtern;
+#ifndef __orogen
+        /**
+         * Initialise with sane values
+         */
+        EncoderConfiguration() :
+            ticksPerTurn(0), tickDivider(1), ticksPerTurnExtern(0), tickDividerExtern(1)
+        {}
+	unsigned int ticksPerTurnDivided;
+	unsigned int ticksPerTurnExternDivided;
+#endif
+    };
+    
     enum MOTOR_ID
     {
         MOTOR_REAR_LEFT  = 0,
@@ -49,16 +67,16 @@ namespace hbridge
         MOTOR_FRONT_RIGHT = 2,
         MOTOR_FRONT_LEFT = 3
     };
-
-    enum ERROR_CODES {
-        ERROR_CODE_NONE = 0,
-        ERROR_CODE_OVERHEATMOTOR = 1,
-        ERROR_CODE_OVERHEATBOARD = 2,
-        ERROR_CODE_OVERCURRENT = 3,
-        ERROR_CODE_TIMEOUT = 4,
-        ERROR_CODE_BAD_CONFIG = 5
+    
+    struct ErrorState {
+	bool motorOverheated;
+	bool boardOverheated;
+	bool overCurrent;
+	bool timeout;
+	bool badConfig;
+	bool encodersNotInitalized;
     };
-
+    
     /**
      * Drive mode constants for the hbridges
      */
@@ -75,9 +93,11 @@ namespace hbridge
         int index;
         int current;
         Ticks position;
+        Ticks positionExtern;
+	int temperature;
         int delta;
-        int error;
         float pwm;
+	struct ErrorState error;
     };
 }
 
