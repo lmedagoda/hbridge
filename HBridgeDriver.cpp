@@ -301,7 +301,7 @@ namespace hbridge
 	data->ticksPerTurnExtern = cfg.ticksPerTurnExtern;
 	data->tickDividerExtern = cfg.tickDividerExtern;
 
-	msg.can_id = firmware::PACKET_ID_ENCODER_CONFIG;
+	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG;
         msg.size = sizeof(firmware::encoderConfiguration);
 
 	return msg;
