@@ -62,7 +62,7 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
   CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE<<5;
   CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE<<5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdLow=0xFFFF;
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow=(PACKET_ID_ENCODER_CONFIG + boardNr)<<5;
   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;
   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
   CAN_FilterInit(&CAN_FilterInitStructure);
