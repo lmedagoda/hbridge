@@ -152,15 +152,16 @@ BOOST_AUTO_TEST_CASE(test_case)
     driver.write(config_msgs.second);
     for (i = 0; i < 500; i++)
     {
+        usleep(10000);
 	while(driver.getPendingMessagesCount() > 0) {
 	  msg = driver.read() ;
 	
 	  hbd.updateFromCAN(msg);
 	}
-
 	hbridge::BoardState state = hbd.getState(hbridge_id);
+	
 	if(state.error.encodersNotInitalized)
-	    break;	
+	  break;
     }    
     BOOST_CHECK(i < 500);
     
@@ -185,6 +186,8 @@ BOOST_AUTO_TEST_CASE(test_case)
     usleep(2000);
     std::cout << "Checking if hbridge cleared errors" << std::endl;
     for(i = 0; i < 500; i++) {
+        usleep(10000);
+
     	while(driver.getPendingMessagesCount() > 0) {
 	  msg = driver.read() ;
 	
