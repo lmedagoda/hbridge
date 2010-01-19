@@ -66,7 +66,7 @@ volatile struct i2cDebug dbgBuffer[dbgBufferSize];
 
 void printfI2CDbg() {
     while(dbgWrite != dbgRead) {
-	struct i2cDebug *dbg = &(dbgBuffer[dbgRead]);
+	volatile struct i2cDebug *dbg = &(dbgBuffer[dbgRead]);
 	dbgRead = (dbgRead +1 ) % dbgBufferSize;
 	printf("cnt %hu, SR1 %hu, SR2 %hu, S %hu, M %hu, idx %hu, size %hu, error %hu\n", dbg->cnt, dbg->sr1, dbg->sr2, dbg->state, dbg->mode, dbg->idx, dbg->size, dbg->error);
     }
@@ -93,7 +93,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
     vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
 
     if(nextRxWritePointer != dbgRead) {
-	struct i2cDebug *dbg = &(dbgBuffer[dbgWrite]);
+	volatile struct i2cDebug *dbg = &(dbgBuffer[dbgWrite]);
 	dbg->sr1 = sr1;
 	dbg->sr2 = sr2;
 	dbg->state = I2Cx_Data->state;
@@ -251,7 +251,7 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   }
   
   //if(nextRxWritePointer != dbgRead) {
-	struct i2cDebug *dbg = &(dbgBuffer[dbgWrite]);
+	volatile struct i2cDebug *dbg = &(dbgBuffer[dbgWrite]);
 	dbg->sr1 = cr1;
 	dbg->sr2 = sr2;
 	dbg->state = I2Cx_Data->state;

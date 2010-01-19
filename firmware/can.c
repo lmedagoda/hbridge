@@ -2,6 +2,7 @@
 #include "stm32f10x_can.h"
 #include "stm32f10x_rcc.h"
 #include "can.h"
+#include "printf.h"
 
 #define CAN_BUFFER_SIZE 36
 
