@@ -376,7 +376,7 @@ int main(int argc, char **argv)
 {
 	parseArgs(argc,argv);
 
-	fd = open(device, O_RDWR | O_NOCTTY);
+	fd = open(device, O_RDWR | O_NOCTTY | O_SYNC | O_NONBLOCK);
 	
 	if (fd == -1)
 	{
@@ -384,7 +384,23 @@ int main(int argc, char **argv)
 			device,
 			strerror(errno));
 		return 1;
-	} else {
+	} 
+	
+	int res;
+	res = fcntl(fd,F_GETFL);
+	if (res == -1) {
+		fprintf(stderr, "Unable to fcntl: %s\n",
+			strerror(errno));
+		return 1;
+	}
+	res = fcntl(fd,F_SETFL, res & ~O_NONBLOCK);
+	if (res == -1) {
+		fprintf(stderr, "Unable to fcntl: %s\n",
+			strerror(errno));
+		return 1;
+	}
+
+	{
 		struct termios options;
 		/* Get the current options for the port */
 		tcgetattr(fd, &options);
