@@ -68,6 +68,7 @@ namespace hbridge
                 this->states[index].position += diff;
                 this->states[index].delta = diff;
                 this->states[index].error = data->error;
+                this->states[index].can_time = msg.can_time;
     
                 break;
             }

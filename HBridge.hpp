@@ -5,6 +5,8 @@
 #include <stdint.h>
 #endif
 
+#include <base/time.h>
+
 namespace hbridge
 {
 #ifndef __orogen
@@ -78,6 +80,7 @@ namespace hbridge
         int delta;
         int error;
         float pwm;
+        base::Time can_time;
     };
 }
 
