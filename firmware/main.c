@@ -16,11 +16,11 @@
 
 
 /* Includes ---------------------------------------------------------------*/
-#include "stm32f10x_lib.h"
-#include "stm32f10x_gpio.h"
-#include "stm32f10x_tim.h"
+#include "inc/stm32f10x_lib.h"
+#include "inc/stm32f10x_gpio.h"
+#include "inc/stm32f10x_tim.h"
 #include "stm32f10x_it.h"
-#include "stm32f10x_can.h"
+#include "inc/stm32f10x_can.h"
 #include "stdio.h"
 #include "spi.h"
 #include "i2c.h"
@@ -822,6 +822,13 @@ void SysTickHandler(void) {
   //change state to unconfigured if error is set
   if(error != ERROR_CODE_NONE && activeCState->internalState == STATE_CONFIGURED) {
     activeCState->internalState = STATE_ERROR;
+  }
+
+  //switch into error stat if GPIO is pulled low
+  //this should securly switch off the Hbridge
+  if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11)) {
+    activeCState->internalState = STATE_ERROR;
+    error = ERROR_CODE_HW_OFF;
   }
 
   //only check for overcurrent if configured
@@ -2030,6 +2037,11 @@ void GPIO_Configuration(void)
   // Configure I2C2 pins: SCL and SDA 
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  //Configure GPIOB Pin 11 as input pull up for emergency switch off
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   
   //Configure SPI2 pins: SCK, MISO and MOSI

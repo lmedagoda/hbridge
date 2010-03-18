@@ -18,6 +18,7 @@ enum errorCodes {
   ERROR_CODE_OVERCURRENT = 3,
   ERROR_CODE_TIMEOUT = 4,
   ERROR_CODE_BAD_CONFIG = 5,
+  ERROR_CODE_HW_OFF = 6,  
 };
 
 enum packetIDs {
