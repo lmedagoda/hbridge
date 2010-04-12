@@ -21,13 +21,23 @@ const char *device = "/dev/ttyUSB0";
 const char *image = "main.bin";
 const char *exe;
 int verbose = 0;
+int baud = 38400;
 
 void usage() {
 	fprintf(stderr,"Usage: %s [-d DEVICE] [-n] IMAGE\n\n",exe);
-	fprintf(stderr,"  -d, --device=DEVICE  Serial device to use for communication, default\n"      "                          /dev/ttyUSB0\n");
-	fprintf(stderr,"  -n, --no-rx          Don't depend on acknowledgments received from serial\n" "                           device, use timing based transmission instead\n");
-	fprintf(stderr,"      --debug-no-rx    Use timing like --no-rx, but still check received\n"    "                          acknowledgments\n");
-	fprintf(stderr,"  -v, --verbose        Output info about the commands currently run\n");
+	fprintf(stderr,
+"  -d, --device=DEVICE  Serial device to use for communication, default\n"
+"                          /dev/ttyUSB0\n");
+	fprintf(stderr,
+"  -b, --baud=RATE      Serial communication speed, default 38400\n");
+	fprintf(stderr,
+"  -n, --no-rx          Don't depend on acknowledgments received from serial\n"
+"                           device, use timing based transmission instead\n");
+	fprintf(stderr,
+"      --debug-no-rx    Use timing like --no-rx, but still check received\n"
+"                          acknowledgments\n");
+	fprintf(stderr,
+"  -v, --verbose        Output info about the commands currently run\n");
 	exit(1);
 }
 
@@ -40,6 +50,7 @@ void parseArgs(int argc,char **argv) {
 	static struct option long_options[] = {
 		{ "debug-no-rx", no_argument,       NULL, 0},
 		{ "device",      required_argument, NULL, 'd'},
+		{ "baud",        required_argument, NULL, 'b'},
 		{ "no-rx",       no_argument,       NULL, 'n'},
 		{ "help",        no_argument,       NULL, 'h'},
 		{ "verbose",     no_argument,       NULL, 'v'},
@@ -47,7 +58,7 @@ void parseArgs(int argc,char **argv) {
 	};
 	
 	
-	while ( (option = getopt_long( argc, argv, "d:nhv" ,
+	while ( (option = getopt_long( argc, argv, "d:b:nhv" ,
 				       long_options, &option_index)) != EOF ) {
 		switch ( option ) {
 		case 0:
@@ -62,6 +73,9 @@ void parseArgs(int argc,char **argv) {
 			break;
 		case 'd' :
 			device = strdup(optarg);
+			break;
+		case 'b' :
+			baud = atoi(optarg);
 			break;
 		case 'n' :
 			rx_avail = NO_RX;
@@ -348,7 +362,7 @@ int write_mem(int address, void *src, size_t count)
 
 	writec(checksum);
 
-	if (check_ack(10+(count*12*1000)/38400))
+	if (check_ack(10+(count*12*1000)/baud))
 		return 1;
 	if (verbose)
 		fprintf(stderr,"done\n");
@@ -371,6 +385,31 @@ void erase_all()
 	if (verbose)
 		fprintf(stderr,"done\n");
 }
+
+static struct 
+{
+	int rate; int name;
+} baudMap[] = {
+#define B(v) { v, B ## v }
+	B(19200),
+	B(38400),
+	B(57600),
+	B(115200),
+	B(230400),
+	B(460800),
+	B(500000),
+	B(576000),
+	B(921600),
+	B(1000000),
+	B(1152000),
+	B(1500000),
+	B(2000000),
+	B(2500000),
+	B(3000000),
+	B(3500000),
+	B(4000000),
+#undef B
+};
 
 int main(int argc, char **argv)
 {
@@ -404,7 +443,18 @@ int main(int argc, char **argv)
 		struct termios options;
 		/* Get the current options for the port */
 		tcgetattr(fd, &options);
-		cfsetspeed(&options, B38400);
+		int i;
+		for(i = 0; i < sizeof(baudMap)/sizeof(baudMap[0]); i++) {
+			if (baudMap[i].rate == baud) {
+				cfsetspeed(&options, baudMap[i].name);
+				break;
+			}
+		}
+		if (i == sizeof(baudMap)/sizeof(baudMap[0])) {
+			fprintf(stderr, "Unrecognized baudrate %d\n",
+				baud);
+			return 1;
+		}
 		cfmakeraw(&options);
 		
 		/* Enable the receiver and set local mode */
