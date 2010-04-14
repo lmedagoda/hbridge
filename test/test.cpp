@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
-	if (state.position - initial_position > hbridge::TICKS_PER_TURN/2 )
+	if (state.position - initial_position > hbridge::TICKS_PER_TURN/20 )
 	    break;
     }
     BOOST_CHECK(i < 500);
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
-	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/2 )
+	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/20 )
 	    break;
     }
     BOOST_CHECK(i < 500);
