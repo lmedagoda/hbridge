@@ -213,6 +213,16 @@ void setupI2CForLM73CIMK() {
   I2C_Cmd(I2C1, ENABLE);
 
   I2C_Init(I2C1, &I2C_InitStructure);
+
+  /* configure I2C pins ----------------------------------------------------*/
+  //Configure I2C1 Pins, SDA and SCL
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_StructInit(&GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);  
+
   /* I2C2 configuration ----------------------------------------------------*/
   //I2C_InitStructure.I2C_OwnAddress1 = 0xA2;
 
