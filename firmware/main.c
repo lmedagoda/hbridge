@@ -2015,10 +2015,11 @@ void GPIO_Configuration(void)
 
   //TODO perhaps OD is wrong for SMBA !!
   // Configure SMBA
+  /*
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+  */
   //configure Timer4 ch1 (PB6) as encoder input
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -2030,15 +2031,17 @@ void GPIO_Configuration(void)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   //Configure I2C1 Pins, SDA and SCL
+  /*
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-  
+  */
   // Configure I2C2 pins: SCL and SDA 
+  /*
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+  */
   //Configure GPIOB Pin 11 as input pull up for emergency switch off
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
