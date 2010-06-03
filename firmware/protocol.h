@@ -78,7 +78,8 @@ struct errorData {
     unsigned timeout:1;
     unsigned badConfig:1;
     unsigned encodersNotInitalized:1;
-    unsigned unused:4;
+    unsigned hardwareShutdown:1;
+    unsigned unused:3;
 } __attribute__ ((packed));
 
 struct statusData {

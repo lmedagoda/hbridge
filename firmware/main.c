@@ -249,6 +249,13 @@ void SysTickHandler(void) {
     activeCState->internalState = STATE_ERROR;
   }
 
+  //switch into error stat if GPIO is pulled low
+  //this should securly switch off the Hbridge
+  if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11)) {
+    activeCState->internalState = STATE_ERROR;
+    getErrorState()->hardwareShutdown = 1;
+  }
+
   //only check for overcurrent if configured
   if(activeCState->internalState == STATE_CONFIGURED) {
     //check for overcurrent
@@ -514,10 +521,11 @@ void GPIO_Configuration(void)
 
   //TODO perhaps OD is wrong for SMBA !!
   // Configure SMBA
+  /*
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
-
+  */
   //configure Timer4 ch1 (PB6) as encoder input
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -529,13 +537,18 @@ void GPIO_Configuration(void)
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
   /* setupI2CForLM73CIMK initialises I2C1 pins */
-
   // Configure I2C2 pins: SCL and SDA 
   /*
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   */
+
+  //Configure GPIOB Pin 11 as input pull up for emergency switch off
+  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+  
   //Configure SPI2 pins: SCK, MISO and MOSI
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;

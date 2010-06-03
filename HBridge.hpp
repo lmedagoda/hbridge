@@ -5,6 +5,8 @@
 #include <stdint.h>
 #endif
 
+#include <base/time.h>
+
 namespace hbridge
 {
 #ifndef __orogen
@@ -75,6 +77,7 @@ namespace hbridge
 	bool timeout;
 	bool badConfig;
 	bool encodersNotInitalized;
+        bool hardwareShutdown;
     };
     
     /**
@@ -98,6 +101,7 @@ namespace hbridge
         int delta;
         float pwm;
 	struct ErrorState error;
+        base::Time can_time;
     };
 }
 

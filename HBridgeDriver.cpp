@@ -110,13 +110,9 @@ namespace hbridge
                 this->states[index].delta = diff;
 
 		//getting an status package is an implicit cleaner for all error states
-		states[index].error.badConfig = false;
-		states[index].error.boardOverheated = false;
-		states[index].error.encodersNotInitalized = false;
-		states[index].error.motorOverheated = false;
-		states[index].error.overCurrent = false;
-		states[index].error.timeout = false;
-
+	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
+                this->states[index].can_time = msg.can_time;
+    
                 break;
             }
 

@@ -19,7 +19,8 @@ struct ErrorState {
     unsigned timeout:1;
     unsigned badConfig:1;
     unsigned encodersNotInitalized:1;
-    unsigned unused:3;
+    unsigned hardwareShutdown:1;
+    unsigned unused:2;
 } __attribute__ ((packed));
 
 struct PIDValues {
