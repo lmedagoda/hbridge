@@ -15,8 +15,9 @@
 #include "../protocol.hpp"
 #include "../HBridge.hpp"
 
-can::Driver *driver;
+can::Driver *driver = 0;
 hbridge::Driver hbd;
+int hbridge_id = 0;
 
 // Checks for kp=400, ki=5, kd=0, minmax=1800
 unsigned char pidData[] = { 144, 1, 5, 0, 0, 0, 8, 7 }; // 8 byte
@@ -82,12 +83,11 @@ bool checkMessage(
      return true;
 }
 
-BOOST_AUTO_TEST_CASE(test_case)
-{
-    ::boost::execution_monitor ex_mon;
+void initDriver() {
+    if(driver)
+      return;
 
-    const char *can_device = "/dev/can0";
-    int hbridge_id = 0;
+    const char *can_device = "can0";
 
     std::cout << "Trying to open CAN device " << can_device << std::endl;
 #if CANBUS_VERSION >= 101
@@ -97,14 +97,11 @@ BOOST_AUTO_TEST_CASE(test_case)
     BOOST_CHECK(driver->open(can_device));
 #endif
 
-    // Initialise hbridge hbridge instance
+}
 
-
-    // Still needs configuration (where are the config values stored?)
+BOOST_AUTO_TEST_CASE(static_tests) {
     hbridge::Configuration config;
-
-    bzero(&config, sizeof(hbridge::Configuration));
-
+    hbridge::MessagePair config_msgs;
     std::cout << "Testing packet building" << std::endl;
 
     config.openCircuit = 1;
@@ -138,7 +135,17 @@ BOOST_AUTO_TEST_CASE(test_case)
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
 
 
-    std::cout << "Testing hardware" << std::endl;
+
+}
+
+BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
+    initDriver();
+    // Still needs configuration (where are the config values stored?)
+    hbridge::Configuration config;
+    hbridge::MessagePair config_msgs;
+    can::Message msg;
+
+    bzero(&config, sizeof(hbridge::Configuration));
 
     config.openCircuit = 1;
     config.maxMotorTemp = 60;
@@ -149,7 +156,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     config.maxCurrent = 5000;
     config.maxCurrentCount = 250;
     config.pwmStepPerMs = 200;
-    hbridge::MessagePair config_msgs = hbd.setConfiguration(hbridge_id, config);
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
 
     int i;
     std::cout << "Testing if HBridge goes into error state if encoders not initalized " << (hbridge_id+1) << std::endl;
@@ -169,6 +176,35 @@ BOOST_AUTO_TEST_CASE(test_case)
 	  break;
     }    
     BOOST_CHECK(i < 500);
+
+}
+
+BOOST_AUTO_TEST_CASE(encoder_initalized) {
+    initDriver();
+    // Still needs configuration (where are the config values stored?)
+    hbridge::Configuration config;
+
+    bzero(&config, sizeof(hbridge::Configuration));
+
+}
+
+
+BOOST_AUTO_TEST_CASE(test_case)
+{
+    ::boost::execution_monitor ex_mon;
+
+    initDriver();
+    // Initialise hbridge hbridge instance
+
+
+    // Still needs configuration (where are the config values stored?)
+    hbridge::Configuration config;
+    hbridge::MessagePair config_msgs;
+    can::Message msg;
+    bzero(&config, sizeof(hbridge::Configuration));
+
+    std::cout << "Testing hardware" << std::endl;
+
     
     std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
     hbridge::EncoderConfiguration encConf;
@@ -190,6 +226,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     //wait two ms, so that HB can process config
     usleep(2000);
     std::cout << "Checking if hbridge cleared errors" << std::endl;
+    int i;
     for(i = 0; i < 500; i++) {
         usleep(10000);
 
@@ -215,8 +252,8 @@ BOOST_AUTO_TEST_CASE(test_case)
     driver->write(pidmsg);
 
     std::cout << "Set drive modes" << std::endl;
-    dmmsg = hbd.setDriveMode(hbridge::DM_PWM);
-    driver->write(dmmsg);
+    msg = hbd.setDriveMode(hbridge::DM_PWM);
+    driver->write(msg);
 
     while(driver->getPendingMessagesCount() > 0) {
 	msg = driver->read() ;	
@@ -284,8 +321,8 @@ BOOST_AUTO_TEST_CASE(test_case)
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
 
-    dmmsg = hbd.setDriveMode(hbridge::DM_SPEED);
-    driver->write(dmmsg);
+    msg = hbd.setDriveMode(hbridge::DM_SPEED);
+    driver->write(msg);
 
     for (i = 0; i < 500; i++)
     {
