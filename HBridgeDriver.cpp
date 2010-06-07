@@ -296,9 +296,9 @@ namespace hbridge
         firmware::encoderConfiguration *data =
             reinterpret_cast<firmware::encoderConfiguration *>(msg.data);
 
-	data->ticksPerTurnIntern = cfg.ticksPerTurn;
+	data->ticksPerTurnIntern = encoderConfigurations[board].ticksPerTurnDivided;
 	data->tickDividerIntern = cfg.tickDivider;
-	data->ticksPerTurnExtern = cfg.ticksPerTurnExtern;
+	data->ticksPerTurnExtern = encoderConfigurations[board].ticksPerTurnExternDivided;
 	data->tickDividerExtern = cfg.tickDividerExtern;
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG;
