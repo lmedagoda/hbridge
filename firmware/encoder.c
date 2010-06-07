@@ -41,8 +41,6 @@ void encoderInit() {
     TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12,
 				TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);    
 
-    TIM_ARRPreloadConfig(TIM4, ENABLE);
-
     //signal needs to be 8 clock cycles stable
     TIM4->CCMR1 |= (3<<4) | (3<<12);
     TIM4->CCMR2 |= (3<<4) | (3<<12);
@@ -127,8 +125,8 @@ vu32 binIT = 0;
 vu32 zeroIT = 0;
 
 u32 getTicksExtern() {
-    //printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
-    //printf("Enc : %l \n", externalEncoderValue);
+/*    printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
+    printf("Enc : %l \n", externalEncoderValue);*/
     return externalEncoderValue;
 }
 
@@ -139,12 +137,12 @@ u16 getDividedTicksExtern() {
 
 void EXTI15_10_IRQHandler(void)
 {
-    u16 ain = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
-    u16 bin = GPIOB->IDR & GPIO_Pin_15; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_15);
-    
-    
-    if(EXTI_GetITStatus(EXTI_Line14) != RESET) {
-      ainIT++;
+    u16 ain = GPIOB->IDR & GPIO_Pin_13; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13);
+    u16 bin = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
+
+   
+    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
+	ainIT++;
 	//impicit ain != lastAin
 	if(ain) {
 	    if(bin)
@@ -157,10 +155,10 @@ void EXTI15_10_IRQHandler(void)
 	    else
 		externalEncoderValue++;	    
 	}
-	EXTI_ClearITPendingBit(EXTI_Line14);
+	EXTI_ClearITPendingBit(EXTI_Line13);
     }
 
-    if(EXTI_GetITStatus(EXTI_Line15) != RESET) {
+    if(EXTI_GetITStatus(EXTI_Line14) != RESET) {
 	binIT++;
 	if(bin) {
 	    if(ain)
@@ -173,7 +171,7 @@ void EXTI15_10_IRQHandler(void)
 	    else
 		externalEncoderValue--;	    
 	}      
-	EXTI_ClearITPendingBit(EXTI_Line15);
+	EXTI_ClearITPendingBit(EXTI_Line14);
     }
 
 
@@ -183,10 +181,10 @@ void EXTI15_10_IRQHandler(void)
     if(externalEncoderValue > externalEncoderConfig.ticksPerTurn)
 	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
-    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
+    if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
 	zeroIT = externalEncoderValue;
 	externalEncoderValue = 0;
-	EXTI_ClearITPendingBit(EXTI_Line13);
+	EXTI_ClearITPendingBit(EXTI_Line12);
     }
 
 }
@@ -199,25 +197,25 @@ void encoderInitExtern() {
     GPIO_StructInit(&GPIO_InitStructure);
 
     //Configure GPIO pins: AIN BIN and Zero
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOB, &GPIO_InitStructure);    
 
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource12);
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource13);
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource14);
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource15);
 
     EXTI_InitTypeDef EXTI_InitStructure;
-    EXTI_InitStructure.EXTI_Line = EXTI_Line13 | EXTI_Line14 | EXTI_Line15;
+    EXTI_InitStructure.EXTI_Line = EXTI_Line12 | EXTI_Line13 | EXTI_Line14;
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
 
-    EXTI_InitStructure.EXTI_Line = EXTI_Line14;
+    EXTI_InitStructure.EXTI_Line = EXTI_Line13;
     EXTI_Init(&EXTI_InitStructure);
-    EXTI_InitStructure.EXTI_Line = EXTI_Line15;
+    EXTI_InitStructure.EXTI_Line = EXTI_Line14;
     EXTI_Init(&EXTI_InitStructure);
 
     //programm encoder interrutps to highest priority
