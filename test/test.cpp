@@ -132,10 +132,9 @@ void initDriver() {
 
 }
 
-BOOST_AUTO_TEST_CASE(static_tests) {
+hbridge::Configuration getDefaultConfig() {
     hbridge::Configuration config;
-    hbridge::MessagePair config_msgs;
-    std::cout << "Testing packet building" << std::endl;
+    bzero(&config, sizeof(hbridge::Configuration));
 
     config.openCircuit = 1;
     config.maxMotorTemp = 60;
@@ -146,6 +145,14 @@ BOOST_AUTO_TEST_CASE(static_tests) {
     config.maxCurrent = 5000;
     config.maxCurrentCount = 250;
     config.pwmStepPerMs = 200;
+
+    return config;
+}
+
+BOOST_AUTO_TEST_CASE(static_tests) {
+    hbridge::Configuration config = getDefaultConfig();
+    hbridge::MessagePair config_msgs;
+    std::cout << "Testing packet building" << std::endl;
 
     for (int i = 0; i < 4; ++i)
     {
@@ -173,22 +180,11 @@ BOOST_AUTO_TEST_CASE(static_tests) {
 
 BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
     initDriver();
-    // Still needs configuration (where are the config values stored?)
-    hbridge::Configuration config;
+    hbridge::Configuration config = getDefaultConfig();
+    config.timeout = 0;
     hbridge::MessagePair config_msgs;
     can::Message msg;
 
-    bzero(&config, sizeof(hbridge::Configuration));
-
-    config.openCircuit = 1;
-    config.maxMotorTemp = 60;
-    config.maxMotorTempCount = 200;
-    config.maxBoardTemp = 60;
-    config.maxBoardTempCount = 200;
-    config.timeout = 50;
-    config.maxCurrent = 5000;
-    config.maxCurrentCount = 250;
-    config.pwmStepPerMs = 200;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
 
     int i;
@@ -231,10 +227,9 @@ BOOST_AUTO_TEST_CASE(test_case)
 
 
     // Still needs configuration (where are the config values stored?)
-    hbridge::Configuration config;
+    hbridge::Configuration config = getDefaultConfig();
     hbridge::MessagePair config_msgs;
     can::Message msg;
-    bzero(&config, sizeof(hbridge::Configuration));
 
     std::cout << "Testing hardware" << std::endl;
 
