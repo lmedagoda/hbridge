@@ -191,31 +191,105 @@ BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
     std::cout << "Testing if HBridge goes into error state if encoders not initalized " << (hbridge_id+1) << std::endl;
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
-    for (i = 0; i < 500; i++)
+    for (i = 0; i < 50; i++)
     {
         usleep(10000);
 	while(driver->getPendingMessagesCount() > 0) {
-	  msg = driver->read() ;
-	
-	  hbd.updateFromCAN(msg);
-	}
-	hbridge::BoardState state = hbd.getState(hbridge_id);
-	
-	if(state.error.encodersNotInitalized)
-	  break;
+	    msg = driver->read() ;
+	    
+	    hbd.updateFromCAN(msg);
+	    }
+	    hbridge::BoardState state = hbd.getState(hbridge_id);
+	    checkPrintError(state.error);
+	    
+	    if(state.error.encodersNotInitalized) {
+		std::cout << "Correct: HBridge reportet encoderNotInitalized Error " << std::endl;
+		break;
+	    }
     }    
-    BOOST_CHECK(i < 500);
+    BOOST_CHECK(i < 50);
 
 }
 
-BOOST_AUTO_TEST_CASE(encoder_initalized) {
+
+BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
+    initDriver();
+    can::Message msg;
+
+    std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
+    hbridge::EncoderConfiguration encConf;
+    encConf.tickDivider = 4;
+    encConf.ticksPerTurn = hbridge::TICKS_PER_TURN * 4;
+
+    encConf.tickDividerExtern = 1;
+    encConf.ticksPerTurnExtern = 4096;
+    
+    can::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConf);
+    driver->write(encConfMsg);
+
+    //now reconfigure
+    hbridge::Configuration config = getDefaultConfig();
+    hbridge::MessagePair config_msgs;
+
+    std::cout << "Configuring hbridge " << (hbridge_id+1) << std::endl;
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver->write(config_msgs.first);
+    driver->write(config_msgs.second);
+
+    //wait two ms, so that HB can process config
+    usleep(2000);
+    std::cout << "Checking if hbridge cleared errors" << std::endl;
+    int i;
+    for(i = 0; i < 50; i++) {
+        usleep(10000);
+
+    	while(driver->getPendingMessagesCount() > 0) {
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
+	}
+	
+	hbridge::BoardState state = hbd.getState(hbridge_id);
+	if(!checkPrintError(state.error))
+	    break;
+    }
+    BOOST_CHECK(i < 50);
+
+}
+
+
+BOOST_AUTO_TEST_CASE(internal_encoder_test) {
+    std::cout << "Internal Encoder Test" << std::endl;
     initDriver();
     // Still needs configuration (where are the config values stored?)
-    hbridge::Configuration config;
+    hbridge::Configuration config = getDefaultConfig();
+    //set infinite timeout
+    config.timeout = 0;
+    hbridge::MessagePair config_msgs;
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver->write(config_msgs.first);
+    driver->write(config_msgs.second);
+    can::Message msg;
 
-    bzero(&config, sizeof(hbridge::Configuration));
+    
+    
+    while(true) {	
+	usleep(10000);
+	bool gotmsg = false;
+    	while(driver->getPendingMessagesCount() > 0) {
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
+	    gotmsg = true;
+	}
+	if(gotmsg) {
+	    hbridge::BoardState state = hbd.getState(hbridge_id);
+	    checkPrintError(state.error);
+	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
+	}
+    }
 
 }
+
+
 
 
 BOOST_AUTO_TEST_CASE(test_case)
@@ -230,22 +304,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     hbridge::Configuration config = getDefaultConfig();
     hbridge::MessagePair config_msgs;
     can::Message msg;
-
-    std::cout << "Testing hardware" << std::endl;
-
     
-    std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
-    hbridge::EncoderConfiguration encConf;
-    encConf.tickDivider = 4;
-    encConf.ticksPerTurn = hbridge::TICKS_PER_TURN * 4;
-
-    encConf.tickDividerExtern = 1;
-    encConf.ticksPerTurnExtern = 4096;
-    
-    can::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConf);
-    driver->write(encConfMsg);
-    
-
     std::cout << "Configuring hbridge " << (hbridge_id+1) << std::endl;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
