@@ -260,7 +260,6 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
 BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     std::cout << "Internal Encoder Test" << std::endl;
     initDriver();
-    // Still needs configuration (where are the config values stored?)
     hbridge::Configuration config = getDefaultConfig();
     //set infinite timeout
     config.timeout = 0;
@@ -289,6 +288,44 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 
 }
 
+BOOST_AUTO_TEST_CASE(timeout_test) {
+    std::cout << "Testing timeout" << std::endl;
+    initDriver();
+    hbridge::Configuration config = getDefaultConfig();
+    //set 50ms timeout
+    config.timeout = 50;
+    hbridge::MessagePair config_msgs;
+    config_msgs = hbd.setConfiguration(hbridge_id, config);
+    driver->write(config_msgs.first);
+    driver->write(config_msgs.second);
+    
+    base::Time startTime = base::Time::now();
+    
+    can::Message msg;    
+    
+    int msgcnt = 0;
+    
+    while(true) {	
+	usleep(1000);
+    	while(driver->getPendingMessagesCount() > 0) {
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
+	    msgcnt++;
+	    
+	    if(hbd.getState(hbridge_id).error.timeout) {
+		break;
+	    }
+	}
+	
+	if(msgcnt > 80)
+	    break;
+    }
+    
+    BOOST_CHECK(abs((startTime - base::Time::now()).toMicroseconds()) < 10);
+    BOOST_CHECK(abs(msgcnt - 50) < 5);
+    
+
+}
 
 
 
@@ -297,8 +334,6 @@ BOOST_AUTO_TEST_CASE(test_case)
     ::boost::execution_monitor ex_mon;
 
     initDriver();
-    // Initialise hbridge hbridge instance
-
 
     // Still needs configuration (where are the config values stored?)
     hbridge::Configuration config = getDefaultConfig();
@@ -357,7 +392,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	hbridge::BoardState state = hbd.getState(hbridge_id);
 	checkPrintError(state.error);
 
-	if (state.position - initial_position > hbridge::TICKS_PER_TURN/20 )
+	if(state.position - initial_position > hbridge::TICKS_PER_TURN/2 )
 	    break;
     }
     BOOST_CHECK(i < 500);
@@ -378,7 +413,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
 	checkPrintError(state.error);
-	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/20 )
+	if(state.position - initial_position < -hbridge::TICKS_PER_TURN/2 )
 	    break;
     }
     BOOST_CHECK(i < 500);
