@@ -37,6 +37,39 @@ unsigned char value2Data[] = { 0, 0, 20, 0, 0, 0, 0, 0 }; // 8 byte
 unsigned char value3Data[] = { 0, 0, 0, 0, 20, 0, 0, 0 }; // 8 byte
 unsigned char value4Data[] = { 0, 0, 0, 0, 0, 0, 20, 0 }; // 8 byte
 
+bool checkPrintError(struct hbridge::ErrorState &error) {
+    bool ret = false;
+    if(error.badConfig) {
+	std::cout << "HBridge reported error:badConfig" << std::endl;
+	ret = true;
+    }
+    if(error.boardOverheated) {
+	std::cout << "HBridge reported error:boardOverheated" << std::endl;
+	ret = true;
+    }
+    if(error.encodersNotInitalized) {
+	std::cout << "HBridge reported error:encodersNotInitalized" << std::endl;
+	ret = true;
+    }
+    if(error.hardwareShutdown) {
+	std::cout << "HBridge reported error:hardwareShutdown" << std::endl;
+	ret = true;
+    }
+    if(error.motorOverheated) {
+	std::cout << "HBridge reported error:motorOverheated" << std::endl;
+	ret = true;
+    }
+    if(error.overCurrent) {
+	std::cout << "HBridge reported error:overCurrent" << std::endl;
+	ret = true;
+    }
+    if(error.timeout) {
+	std::cout << "HBridge reported error:timeout" << std::endl;
+	ret = true;
+    }
+    return ret;
+}
+
 bool checkMessage(
         int     board_index,
         firmware::packetIDs  pid,
