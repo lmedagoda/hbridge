@@ -318,26 +318,16 @@ BOOST_AUTO_TEST_CASE(test_case)
         usleep(10000);
 
     	while(driver->getPendingMessagesCount() > 0) {
-	  msg = driver->read() ;
-	
-	  hbd.updateFromCAN(msg);
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
 	}
 	
 	hbridge::BoardState state = hbd.getState(hbridge_id);
-	if(!state.error.encodersNotInitalized &&
-	    !state.error.badConfig &&
-	    !state.error.boardOverheated &&
-	    !state.error.motorOverheated &&
-	    !state.error.overCurrent &&
-	    !state.error.timeout)
-	    break;	
+	if(!checkPrintError(state.error))
+	    break;
     }
     BOOST_CHECK(i < 500);
     
-    std::cout << "Set PID configuration" << std::endl;
-    can::Message pidmsg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 1800.0);
-    driver->write(pidmsg);
-
     std::cout << "Set drive modes" << std::endl;
     msg = hbd.setDriveMode(hbridge::DM_PWM);
     driver->write(msg);
@@ -359,12 +349,14 @@ BOOST_AUTO_TEST_CASE(test_case)
         usleep(10000);
 
 	while(driver->getPendingMessagesCount() > 0) {
-	  msg = driver->read() ;
-	
+	  msg = driver->read();
 	  hbd.updateFromCAN(msg);
 	}
 
+	
 	hbridge::BoardState state = hbd.getState(hbridge_id);
+	checkPrintError(state.error);
+
 	if (state.position - initial_position > hbridge::TICKS_PER_TURN/20 )
 	    break;
     }
@@ -385,6 +377,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
+	checkPrintError(state.error);
 	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/20 )
 	    break;
     }
@@ -408,6 +401,12 @@ BOOST_AUTO_TEST_CASE(test_case)
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
 
+    std::cout << "Set PID configuration" << std::endl;
+    msg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 1800.0);
+    driver->write(msg);
+
+
+    
     msg = hbd.setDriveMode(hbridge::DM_SPEED);
     driver->write(msg);
 
@@ -424,6 +423,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
+	checkPrintError(state.error);
 	if (state.error.overCurrent )
 	    break;
     }
@@ -446,6 +446,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	}
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
+	checkPrintError(state.error);
 	if (state.error.overCurrent )
 	    break;
     }
