@@ -345,13 +345,16 @@ void SysTickHandler(void) {
     sdata->currentValue = currentValue;
     sdata->index = index;
     
+    //cancel out old messages
+    CAN_CancelAllTransmits();
+    
     if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
       print("Error Tranmitting status Message : No free TxMailbox \n");
     } else {
       //print("Tranmitting status Message : OK \n");  
     }
     
-        //increase timeout
+    //increase timeout
     timeoutCounter++;
 
     //set pwm
@@ -382,6 +385,9 @@ void SysTickHandler(void) {
 	edata->timeout = es->timeout;
 	edata->badConfig = es->badConfig;
 	edata->encodersNotInitalized = es->encodersNotInitalized;
+
+	//cancel out old messages
+	CAN_CancelAllTransmits();
 
 	if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
 	    print("Error Tranmitting status Message : No free TxMailbox \n");
