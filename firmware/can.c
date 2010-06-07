@@ -67,6 +67,12 @@ void CAN_Configuration(void)
     CAN_ITConfig(CAN_IT_FMP1, ENABLE);
 }
 
+void CAN_CancelAllTransmits() {
+    int i;
+    for(i = 0; i < 3; i++) {
+    if(CAN_TransmitStatus(i) == CANTXPENDING)
+	CAN_CancelTransmit(i);
+    }    
 }
 
 void CAN_ConfigureFilters(enum hostIDs boardNr) {
