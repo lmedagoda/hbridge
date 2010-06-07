@@ -1,6 +1,7 @@
 
-#include "stm32f10x_can.h"
-#include "stm32f10x_rcc.h"
+#include "inc/stm32f10x_can.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_gpio.h"
 #include "can.h"
 #include "printf.h"
 
@@ -15,40 +16,57 @@ u16 wasincanit = 0;
 
 void CAN_Configuration(void)
 {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-  /* CAN Periph clock enable */
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN, ENABLE);
+	//Configure CAN pin: RX 
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  CAN_InitTypeDef        CAN_InitStructure;
+    //Configure CAN pin: TX 
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  /* CAN register init */
-  CAN_DeInit();
-  CAN_StructInit(&CAN_InitStructure);
+	
+    /* CAN Periph clock enable */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN, ENABLE);
 
-  /* CAN cell init */
-  CAN_InitStructure.CAN_TTCM=DISABLE;
-  CAN_InitStructure.CAN_ABOM=ENABLE;
-  CAN_InitStructure.CAN_AWUM=DISABLE;
-  CAN_InitStructure.CAN_NART=DISABLE;
-  CAN_InitStructure.CAN_RFLM=DISABLE;
-  CAN_InitStructure.CAN_TXFP=DISABLE;
-  CAN_InitStructure.CAN_Mode=CAN_Mode_Normal;
-  CAN_InitStructure.CAN_SJW=CAN_SJW_1tq;
-  CAN_InitStructure.CAN_BS1=CAN_BS1_5tq;
-  CAN_InitStructure.CAN_BS2=CAN_BS2_3tq;
-  CAN_InitStructure.CAN_Prescaler=4;
-  if(CAN_Init(&CAN_InitStructure) == CANINITFAILED) {
-    print("Can init failed \n");
-  }
-  
+    CAN_InitTypeDef CAN_InitStructure;
+
+    /* CAN register init */
+    CAN_DeInit();
+    CAN_StructInit(&CAN_InitStructure);
+
+    /* CAN cell init */
+    CAN_InitStructure.CAN_TTCM=DISABLE;
+    CAN_InitStructure.CAN_ABOM=ENABLE;
+    CAN_InitStructure.CAN_AWUM=DISABLE;
+    CAN_InitStructure.CAN_NART=DISABLE;
+    CAN_InitStructure.CAN_RFLM=DISABLE;
+    CAN_InitStructure.CAN_TXFP=DISABLE;
+    CAN_InitStructure.CAN_Mode=CAN_Mode_Normal;
+    CAN_InitStructure.CAN_SJW=CAN_SJW_1tq;
+    CAN_InitStructure.CAN_BS1=CAN_BS1_5tq;
+    CAN_InitStructure.CAN_BS2=CAN_BS2_3tq;
+    CAN_InitStructure.CAN_Prescaler=4;
+    if(CAN_Init(&CAN_InitStructure) == CANINITFAILED) {
+	print("Can init failed \n");
+    }
+    
 
 
 
-  /* CAN FIFO0 message pending interrupt enable */ 
-  CAN_ITConfig(CAN_IT_FMP0, ENABLE);
+    /* CAN FIFO0 message pending interrupt enable */ 
+    CAN_ITConfig(CAN_IT_FMP0, ENABLE);
 
-  /* CAN FIFO0 message pending interrupt enable */ 
-  CAN_ITConfig(CAN_IT_FMP1, ENABLE);
+    /* CAN FIFO0 message pending interrupt enable */ 
+    CAN_ITConfig(CAN_IT_FMP1, ENABLE);
+}
+
 }
 
 void CAN_ConfigureFilters(enum hostIDs boardNr) {
