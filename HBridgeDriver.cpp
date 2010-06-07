@@ -64,21 +64,18 @@ namespace hbridge
 		int diff = directions[index] * (edata->position - this->positionOld[index]);
                 positionOld[index] = edata->position;
 
-		int diffExtern = directions[index] * (edata->externalPosition - this->positionOldExtern[index]);
-                positionOldExtern[index] = edata->externalPosition;
-
                 // We assume that a motor rotates less than half a turn per [ms]
                 // (a error packet is sent every [ms])
                 if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
                     diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided ;
 
-		if (abs(diffExtern) > encoderConfigurations[index].ticksPerTurnExternDivided / 2)
-                    diffExtern += (diffExtern < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnExternDivided;
-
                 // Track the position
                 this->states[index].position += diff;
-		this->states[index].positionExtern += diff;
-
+		if(directions[index] < 0) {
+		    this->states[index].positionExtern = encoderConfigurations[index].ticksPerTurnExternDivided - edata->externalPosition;
+		} else {
+		    this->states[index].positionExtern = edata->externalPosition;		    
+		}
 	    }
 	    break;
             case firmware::PACKET_ID_STATUS:
@@ -93,22 +90,20 @@ namespace hbridge
                 int diff = directions[index] * (data->position - this->positionOld[index]);
                 positionOld[index] = data->position;
 
-		int diffExtern = directions[index] * (data->externalPosition - this->positionOldExtern[index]);
-                positionOldExtern[index] = data->externalPosition;
-
                 // We assume that a motor rotates less than half a turn per [ms]
                 // (a status packet is sent every [ms])
                 if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
                     diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided;
 
-		if (abs(diffExtern) > encoderConfigurations[index].ticksPerTurnExternDivided / 2)
-                    diffExtern += (diffExtern < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnExternDivided;
-
                 // Track the position
                 this->states[index].position += diff;
-		this->states[index].positionExtern += diff;
-                this->states[index].delta = diff;
-
+		if(directions[index] < 0) {
+		    this->states[index].positionExtern = encoderConfigurations[index].ticksPerTurnExternDivided - data->externalPosition;
+		} else {
+		    this->states[index].positionExtern = data->externalPosition;		    
+		}
+		this->states[index].delta = diff;
+		
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
                 this->states[index].can_time = msg.can_time;
