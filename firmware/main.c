@@ -221,192 +221,178 @@ int main(void)
 }
 
 void SysTickHandler(void) {  
-  //request switch of adc value struct
-  requestNewADCValues();
-  
-  //GPIOA->BSRR |= GPIO_Pin_8;
-
-  static s32 currentPwmValue = 0;
-  static u16 index = 0;
-  static u16 overCurrentCounter = 0;
-  static u16 timeoutCounter = 0;
-
-  s32 pwmValue = 0;
-  
-  //wait for adc struct to be switched
-  waitForNewADCValues();
-
-  u32 currentValue = calculateCurrent(currentPwmValue);
-
-  //reset timeout, if "userspace" requested it
-  if(activeCState->resetTimeoutCounter) {
-    activeCState->resetTimeoutCounter = 0;
-    timeoutCounter = 0;
-  }
-
-  //change state to unconfigured if error is set
-  if(inErrorState() && activeCState->internalState == STATE_CONFIGURED) {
-    activeCState->internalState = STATE_ERROR;
-  }
-
-  //switch into error stat if GPIO is pulled low
-  //this should securly switch off the Hbridge
-  if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11)) {
-    activeCState->internalState = STATE_ERROR;
-    getErrorState()->hardwareShutdown = 1;
-  }
-
-  //only check for overcurrent if configured
-  if(activeCState->internalState == STATE_CONFIGURED) {
-    //check for overcurrent
-    if(currentValue > activeCState->maxCurrent) {
-      overCurrentCounter++;
-
-      if(overCurrentCounter > activeCState->maxCurrentCount) {
-	activeCState->internalState = STATE_ERROR;
-	getErrorState()->overCurrent = 1;
-      }
-    } else {
-      overCurrentCounter = 0;
-    }
+    //request switch of adc value struct
+    requestNewADCValues();
     
-    //check for timeout and go into error state
-    if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
-	activeCState->internalState = STATE_ERROR;
-	getErrorState()->timeout = 1;
-    }
-  } else {
-    //reset to zero values
-    overCurrentCounter = 0;
-    timeoutCounter = 0;
-  }
+    //GPIOA->BSRR |= GPIO_Pin_8;
 
-  s32 wheelPos = getTicks();
-  
-    setNewSpeedPIDValues(activeCState->speedPIDValues.kp, activeCState->speedPIDValues.ki, activeCState->speedPIDValues.kd, activeCState->speedPIDValues.minMaxPidOutput);
-    setNewPosPIDValues(activeCState->positionPIDValues.kp, activeCState->positionPIDValues.ki, activeCState->positionPIDValues.kd, activeCState->positionPIDValues.minMaxPidOutput);
-  
-  //calculate pwm value
-  switch(activeCState->controllMode) {
-    case CONTROLLER_MODE_PWM:
-      pwmValue = activeCState->targetValue;
-      break;
-    
-    case CONTROLLER_MODE_POSITION: {
-      if(activeCState->cascadedPositionController) {
-	    pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-      } else {
-	    pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-      }
-      
-    case CONTROLLER_MODE_SPEED:
-	    pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-      break; 
-    }
-  }
+    static s32 currentPwmValue = 0;
+    static u16 index = 0;
+    static u16 overCurrentCounter = 0;
+    static u16 timeoutCounter = 0;
 
-  //trunkcate to s16
-  if(pwmValue > MAX_S16) 
-    pwmValue = MAX_S16;
-  if(pwmValue < MIN_S16)
-    pwmValue = MIN_S16;
-
-  if(abs(currentPwmValue - pwmValue) < activeCState->pwmStepPerMillisecond) {
-    currentPwmValue = pwmValue;
-  } else {
-    if(currentPwmValue - pwmValue < 0) {
-      currentPwmValue += activeCState->pwmStepPerMillisecond;
-    } else {
-      currentPwmValue -= activeCState->pwmStepPerMillisecond;      
-    }
-  }
+    s32 pwmValue = 0;
+    s32 wheelPos = getTicks();
 
     index++;
-
     if(index >= (1<<10))
 	index = 0;
 
-  //send out status message
-  if(activeCState->internalState == STATE_CONFIGURED) {
-
+    setNewSpeedPIDValues(activeCState->speedPIDValues.kp, activeCState->speedPIDValues.ki, activeCState->speedPIDValues.kd, activeCState->speedPIDValues.minMaxPidOutput);
+    setNewPosPIDValues(activeCState->positionPIDValues.kp, activeCState->positionPIDValues.ki, activeCState->positionPIDValues.kd, activeCState->positionPIDValues.minMaxPidOutput);
   
-    //send status message over CAN
-    CanTxMsg statusMessage;
-    statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
-    statusMessage.RTR=CAN_RTR_DATA;
-    statusMessage.IDE=CAN_ID_STD;
-    statusMessage.DLC= sizeof(struct statusData);
-    
-    struct statusData *sdata = (struct statusData *) statusMessage.Data;
-    
-    sdata->pwm = currentPwmValue;
-    sdata->externalPosition = getDividedTicksExtern();
-    sdata->position = getDividedTicks();    
-    sdata->currentValue = currentValue;
-    sdata->index = index;
-    
-    //cancel out old messages
-    CAN_CancelAllTransmits();
-    
-    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-      print("Error Tranmitting status Message : No free TxMailbox \n");
-    } else {
-      //print("Tranmitting status Message : OK \n");  
+    //wait for adc struct to be switched
+    waitForNewADCValues();
+
+    u32 currentValue = calculateCurrent(currentPwmValue);
+
+    //reset timeout, if "userspace" requested it
+    if(activeCState->resetTimeoutCounter) {
+	activeCState->resetTimeoutCounter = 0;
+	timeoutCounter = 0;
     }
-    
-    //increase timeout
-    timeoutCounter++;
 
-    //set pwm
-    setNewPWM(currentPwmValue, activeCState->useOpenLoop, activeCState->useBackInduction);
+    //change state to unconfigured if error is set
+    if(inErrorState() && activeCState->internalState == STATE_CONFIGURED) {
+	activeCState->internalState = STATE_ERROR;
+    }
 
-  } else {
-    //send error message
-    if(activeCState->internalState == STATE_ERROR) {  
+    //switch into error stat if GPIO is pulled low
+    //this should securly switch off the Hbridge
+    if(!GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_11)) {
+	activeCState->internalState = STATE_ERROR;
+	getErrorState()->hardwareShutdown = 1;
+    }
+
+    //only check for overcurrent if configured
+    if(activeCState->internalState == STATE_CONFIGURED) {
+	//check for overcurrent
+	if(currentValue > activeCState->maxCurrent) {
+	    overCurrentCounter++;
+
+	    if(overCurrentCounter > activeCState->maxCurrentCount) {
+		activeCState->internalState = STATE_ERROR;
+		getErrorState()->overCurrent = 1;
+	    }
+	} else {
+	    overCurrentCounter = 0;
+	}
+	
+	//check for timeout and go into error state
+	if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
+	    activeCState->internalState = STATE_ERROR;
+	    getErrorState()->timeout = 1;
+	}
+  
+	//calculate pwm value
+	switch(activeCState->controllMode) {
+	    case CONTROLLER_MODE_PWM:
+	    pwmValue = activeCState->targetValue;
+	    break;
+	    
+	    case CONTROLLER_MODE_POSITION: {
+	    if(activeCState->cascadedPositionController) {
+		    pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+	    } else {
+		    pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+	    }
+	    
+	    case CONTROLLER_MODE_SPEED:
+		    pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+	    break; 
+	    }
+	}
+
+	//trunkcate to s16
+	if(pwmValue > MAX_S16) 
+	    pwmValue = MAX_S16;
+	if(pwmValue < MIN_S16)
+	    pwmValue = MIN_S16;
+
+	if(abs(currentPwmValue - pwmValue) < activeCState->pwmStepPerMillisecond) {
+	    currentPwmValue = pwmValue;
+	} else {
+	    if(currentPwmValue - pwmValue < 0) {
+	    currentPwmValue += activeCState->pwmStepPerMillisecond;
+	    } else {
+	    currentPwmValue -= activeCState->pwmStepPerMillisecond;      
+	    }
+	}
+  
 	//send status message over CAN
-	CanTxMsg errorMessage;
-	errorMessage.StdId= PACKET_ID_ERROR + ownHostId;
-	errorMessage.RTR=CAN_RTR_DATA;
-	errorMessage.IDE=CAN_ID_STD;
-	errorMessage.DLC= sizeof(struct errorData);
+	CanTxMsg statusMessage;
+	statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
+	statusMessage.RTR=CAN_RTR_DATA;
+	statusMessage.IDE=CAN_ID_STD;
+	statusMessage.DLC= sizeof(struct statusData);
 	
-	struct errorData *edata = (struct errorData *) errorMessage.Data;
-
-	struct ErrorState *es = getErrorState();
+	struct statusData *sdata = (struct statusData *) statusMessage.Data;
 	
-	//TODO value from lm73cimk
-	edata->temperature = 0;
-	edata->position = getDividedTicks();
-	edata->index = index;
-	edata->externalPosition = getDividedTicksExtern();
-	edata->motorOverheated = es->motorOverheated;
-	edata->boardOverheated = es->boardOverheated;
-	edata->overCurrent = es->overCurrent;
-	edata->timeout = es->timeout;
-	edata->badConfig = es->badConfig;
-	edata->encodersNotInitalized = es->encodersNotInitalized;
-
+	sdata->pwm = currentPwmValue;
+	sdata->externalPosition = getDividedTicksExtern();
+	sdata->position = getDividedTicks();    
+	sdata->currentValue = currentValue;
+	sdata->index = index;
+	
 	//cancel out old messages
 	CAN_CancelAllTransmits();
-
-	if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
-	    print("Error Tranmitting status Message : No free TxMailbox \n");
+	
+	if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+	print("Error Tranmitting status Message : No free TxMailbox \n");
 	} else {
 	//print("Tranmitting status Message : OK \n");  
 	}
+	
+	//increase timeout
+	timeoutCounter++;
+
+	//set pwm
+	setNewPWM(currentPwmValue, activeCState->useOpenLoop, activeCState->useBackInduction);
+    } else {
+	//send error message
+	if(activeCState->internalState == STATE_ERROR) {  
+	    //send status message over CAN
+	    CanTxMsg errorMessage;
+	    errorMessage.StdId= PACKET_ID_ERROR + ownHostId;
+	    errorMessage.RTR=CAN_RTR_DATA;
+	    errorMessage.IDE=CAN_ID_STD;
+	    errorMessage.DLC= sizeof(struct errorData);
+	    
+	    struct errorData *edata = (struct errorData *) errorMessage.Data;
+
+	    struct ErrorState *es = getErrorState();
+	    
+	    //TODO value from lm73cimk
+	    edata->temperature = 0;
+	    edata->position = getDividedTicks();
+	    edata->index = index;
+	    edata->externalPosition = getDividedTicksExtern();
+	    edata->motorOverheated = es->motorOverheated;
+	    edata->boardOverheated = es->boardOverheated;
+	    edata->overCurrent = es->overCurrent;
+	    edata->timeout = es->timeout;
+	    edata->badConfig = es->badConfig;
+	    edata->encodersNotInitalized = es->encodersNotInitalized;
+
+	    //cancel out old messages
+	    CAN_CancelAllTransmits();
+
+	    if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
+		print("Error Tranmitting status Message : No free TxMailbox \n");
+	    } else {
+	    //print("Tranmitting status Message : OK \n");  
+	    }
+	}
+    
+	//reset to zero values
+	overCurrentCounter = 0;
+	timeoutCounter = 0;
+	setNewPWM(0, activeCState->useOpenLoop, activeCState->useBackInduction);
+
+	//reset PID struct, to avoid bad controller 
+	//behavior an reactivation due to big I part
+	resetControllers();
     }
-  
-      //reset timeoutcounter
-    timeoutCounter = 0;
-    setNewPWM(0, activeCState->useOpenLoop, activeCState->useBackInduction);
-
-    //reset PID struct, to avoid bad controller 
-    //behavior an reactivation due to big I part
-    resetControllers();
-  }
- 
-  //  GPIOA->BRR |= GPIO_Pin_8;
-
 }
 
 void SysTick_Configuration(void) {
