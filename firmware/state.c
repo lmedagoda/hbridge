@@ -85,7 +85,7 @@ u8 inErrorState() {
 }
 
 struct ErrorState *getErrorState() {
-    return (struct errorState *) (&errorState);
+    return (struct ErrorState *) (&errorState);
 }
 
 void clearErrors() {
