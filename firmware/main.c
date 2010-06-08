@@ -431,15 +431,6 @@ void GPIO_Configuration(void)
 
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-  //configure TIM2 channel 1 as Push Pull (for AIN)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  //configure TIM2 channel 2 as Push Pull (for BIN)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   //configure PA2 (ADC Channel2) as analog input
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
@@ -459,18 +450,6 @@ void GPIO_Configuration(void)
   //configure PA5 (ADC Channel5) as analog input
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  //TIM3 channel 1 pin (PA6)
-  //configure TIM3 channel 1 as Push Pull (for ASD)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-  
-  //TIM3 channel 2 pin (PA7)
-  //configure TIM3 channel 2 as Push Pull (for BSD)
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   //LED (PA8)

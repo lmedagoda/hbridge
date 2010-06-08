@@ -1,6 +1,7 @@
 #include "inc/stm32f10x_tim.h"
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_adc.h"
+#include "inc/stm32f10x_gpio.h"
 #include "hbridge.h"
 #include "current_measurement.h"
 
@@ -241,7 +242,42 @@ void initAnalogeWatchdog() {
     
 }
 
+void hbridgeGPIOConfig() {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+    //TIM3 channel 1 pin (PA6)
+    //configure TIM3 channel 1 as Push Pull (for ASD)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    
+    //TIM3 channel 2 pin (PA7)
+    //configure TIM3 channel 2 as Push Pull (for BSD)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    //configure TIM2 channel 1 as Push Pull (for AIN)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    //configure TIM2 channel 2 as Push Pull (for BIN)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);  
+}
+
 void hbridgeInit() {
+    //init gpios
+    hbridgeGPIOConfig();
+    
     //init all timers
     initHbridgeTimers();
 
