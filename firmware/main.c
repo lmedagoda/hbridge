@@ -397,7 +397,7 @@ void SysTickHandler(void) {
 
 	//reset PID struct, to avoid bad controller 
 	//behavior an reactivation due to big I part
-	resetControllers();
+	resetControllers(wheelPos);
     }
 }
 

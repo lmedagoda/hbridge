@@ -7,6 +7,7 @@
 extern volatile enum hostIDs ownHostId;
 struct pid_data posPidData;
 struct pid_data speedPidData;
+static s32 lastWheelPos = 0;
 
 void initControllers()
 {
@@ -15,8 +16,9 @@ void initControllers()
     initPIDStruct(&(speedPidData));
 }
 
-void resetControllers()
+void resetControllers(s32 wheelPos)
 {
+    lastWheelPos = wheelPos;
     resetPIDStruct(&(speedPidData));
     resetPIDStruct(&(posPidData));
 }
@@ -85,7 +87,6 @@ s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) 
 	}
     }
 
-
     return pwmValue;
 }
 
@@ -95,21 +96,20 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
     CanTxMsg speedDbgMessage;
     CanTxMsg pidMessageSpeed;
 
-    static s32 lastWheelPos = 0;
     s32 curSpeed = wheelPos - lastWheelPos;
 
     //this assumes, that the motor will never turn faster than
     //a quarter wheel turn (or 12.5 motor turns) in a ms 
     if(abs(curSpeed) > ticksPerTurn / 4) {
-    //wheel ist turning backward
-    if(lastWheelPos < wheelPos) {
-	curSpeed -= ticksPerTurn;
-    }
+	//wheel ist turning backward
+	if(lastWheelPos < wheelPos) {
+	    curSpeed -= ticksPerTurn;
+	}
 
-    //wheel is turning forward
-    if(lastWheelPos > wheelPos) {
-	curSpeed += ticksPerTurn;
-    }
+	//wheel is turning forward
+	if(lastWheelPos > wheelPos) {
+	    curSpeed += ticksPerTurn;
+	}
     }
 
     if(debug) {
@@ -150,7 +150,8 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
 	    ;
 	}
     }    
-    
+
+    lastWheelPos = wheelPos;
     return pwmValue;
 }
 

@@ -14,7 +14,7 @@ void initControllers();
 * controllers should be reseted, so that no quirks occure on
 * reactivation, but configurationd data should be kept.
 **/
-void resetControllers();
+void resetControllers(s32 wheelPos);
 
 
 void setNewSpeedPIDValues(s32 p, s32 i, s32 d, s32 minMax);
