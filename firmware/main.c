@@ -142,13 +142,14 @@ int main(void)
   u16 time;
   u16 counter = 0;  
 
+  u16 cnt = 0;
   /* Enable AWD interupt */
   //ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
     
   print("Loop start 3\n");
-  u32 temp = 0;
-  u32 gotTmpCnt = 0;
-  u8 lmk72addr = (0x4E<<1);
+//   u32 temp = 0;
+//   u32 gotTmpCnt = 0;
+//   u8 lmk72addr = (0x4E<<1);
 
   /** END DEBUG **/
  
@@ -212,11 +213,18 @@ int main(void)
       *lastActiveCState = *activeCState;      
       
       u16 errorDbg = inErrorState();
-      printf("Error is %hu \n", errorDbg);
-      print("ActiveCstate: ");
-      printStateDebug(activeCState);
-      print(" LastActiveCstate: ");
-      printStateDebug(lastActiveCState);
+      if(curMsg->StdId != PACKET_ID_SET_VALUE || cnt == 50) {
+	cnt = 0;  
+	printf("Error is %hu \n", errorDbg);
+	print("ActiveCstate: ");
+	printStateDebug(activeCState);
+	printf("P:%hi I:%hi D:%hi \n", activeCState->speedPIDValues.kp,  activeCState->speedPIDValues.ki,  activeCState->speedPIDValues.kd );
+	print(" LastActiveCstate: ");
+	printStateDebug(lastActiveCState);
+	printf("P:%hi I:%hi D:%hi \n", lastActiveCState->speedPIDValues.kp,  lastActiveCState->speedPIDValues.ki, lastActiveCState->speedPIDValues.kd );
+      } else {
+	  cnt++;
+      }
     } 
   }
 }
