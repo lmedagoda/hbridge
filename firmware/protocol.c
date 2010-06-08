@@ -110,7 +110,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	    state->positionPIDValues.ki = data->ki;
 	    state->positionPIDValues.kd = data->kd;
 	    state->positionPIDValues.minMaxPidOutput = data->minMaxPidOutput;
-	    printf("Got PACKET_ID_SET_PI_POS Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+	    printf("Got PACKET_ID_SET_PI_POS Msg %hi %hi %hi %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
 	  
 	  } else {
 	    print("Error, not configured \n");
@@ -126,7 +126,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	    state->speedPIDValues.ki = data->ki;
 	    state->speedPIDValues.kd = data->kd;
 	    state->speedPIDValues.minMaxPidOutput = data->minMaxPidOutput;
-	    printf("Got PACKET_ID_SET_PID_SET Msg %h %h %h %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+	    printf("Got PACKET_ID_SET_PID_SET Msg %hi %hi %hi %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
 	  } else {
 	    print("Error, not configured \n");
 	    state->internalState = STATE_ERROR;

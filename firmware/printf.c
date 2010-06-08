@@ -54,7 +54,7 @@ int printf(const char *format, ...) {
   int pos = 0;
   va_list ap;
   long int ds;
-  unsigned long int d;
+  unsigned long int d = 0;
   unsigned short int h;
   short int hs;  
   char c, *s;
@@ -87,21 +87,23 @@ int printf(const char *format, ...) {
     case 'l':               /* unsigned long int */
       fmt++;
       if(*fmt == 'u') {
-	fmt++;
 	d = (unsigned long int) va_arg(ap, long int);
       } else {
-	ds = va_arg(ap, long int);
+	if(*fmt == 'i') {
+	    ds = va_arg(ap, long int);
 
-	if(ds < 0) {
-	  msg[pos] = '-';
-	  pos++;
-	  //set first bit to zero, so there is no 
-	  //difference singend / unsigend now
-	  //and we can use generic function for unsigend int
-	  ds *=-1;
+	    if(ds < 0) {
+	    msg[pos] = '-';
+	    pos++;
+	    //set first bit to zero, so there is no 
+	    //difference singend / unsigend now
+	    //and we can use generic function for unsigend int
+	    ds *=-1;
+	    }
+	    d = ds;
 	}
-	d = ds;
       }
+      fmt++;
 
       fillInUnsignedLongInt(d, msg, &pos);
 
@@ -110,23 +112,25 @@ int printf(const char *format, ...) {
     case 'h':              /* short int */
       fmt++;
       if(*fmt == 'u') {
-	fmt++;
 	h = (unsigned short int) va_arg(ap, int);
 	d = h;
       } else {
-	hs = (short int) va_arg(ap, int);
-	d = hs;
-	if(hs < 0) {
-	  msg[pos] = '-';
-	  pos++;
-	  //set first bit to zero, so there is no 
-	  //difference singend / unsigend now
-	  //and we can use generic function for unsigend int
-	  ds = hs;
-	  ds *=-1;
-	  d = ds;
+	if(*fmt == 'i') {
+	    hs = (short int) va_arg(ap, int);
+	    d = hs;
+	    if(hs < 0) {
+	    msg[pos] = '-';
+	    pos++;
+	    //set first bit to zero, so there is no 
+	    //difference singend / unsigend now
+	    //and we can use generic function for unsigend int
+	    ds = hs;
+	    ds *=-1;
+	    d = ds;
+	    }
 	}
       }
+      fmt++;	
       fillInUnsignedLongInt(d, msg, &pos);
       break;
     case 'c':              /* char */
@@ -170,13 +174,13 @@ void testprintf() {
   
   //s16
   signedShort = 0;
-  printf("s16 0 is %h \n", signedShort);
+  printf("s16 0 is %hi \n", signedShort);
 
   signedShort = 32767;
-  printf("s16 32767 is %h \n", signedShort);
+  printf("s16 32767 is %hi \n", signedShort);
 
   signedShort = -32768;
-  printf("s16 -32768 is %h \n", signedShort);
+  printf("s16 -32768 is %hi \n", signedShort);
 
   //u32
   unsignedLong = 0;
@@ -190,13 +194,13 @@ void testprintf() {
 
   //s32
   signedLong = 0;
-  printf("s32 0 is %l \n", signedLong);
+  printf("s32 0 is %li \n", signedLong);
 
   signedLong = 2147483647;
-  printf("s32 2147483647 is %l \n", signedLong);
+  printf("s32 2147483647 is %li \n", signedLong);
 
   signedLong = -2147483648;
-  printf("s32 -2147483648 is %l \n", signedLong);
+  printf("s32 -2147483648 is %li \n", signedLong);
 
 
 }

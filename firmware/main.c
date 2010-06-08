@@ -211,10 +211,10 @@ int main(void)
       *lastActiveCState = *activeCState;      
       
       u16 errorDbg = inErrorState();
-      printf("Error is %h \n", errorDbg);
+      printf("Error is %hu \n", errorDbg);
       print("ActiveCstate: ");
       printStateDebug(activeCState);
-      print("LastActiveCstate: ");
+      print(" LastActiveCstate: ");
       printStateDebug(lastActiveCState);
     } 
   }

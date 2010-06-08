@@ -1,7 +1,7 @@
 #ifndef __PRINTF_H
 #define __PRINTF_H
 
-#include "stm32f10x_type.h"
+#include "inc/stm32f10x_type.h"
 
 #undef printf
 

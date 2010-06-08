@@ -44,7 +44,6 @@ void initStateStruct(volatile struct ControllerState *cs) {
 
 void printStateDebug(volatile struct ControllerState* cs)
 {
-    printf("ControllMode : %l , internal State : %l ,targetVal : %l , openloop:%h , backIndo %h , pwmstep %hu \n", cs->controllMode, cs->internalState, cs->targetValue, cs->useOpenLoop, cs->useBackInduction, cs->pwmStepPerMillisecond);
 }
 
 u8 inErrorState() {
