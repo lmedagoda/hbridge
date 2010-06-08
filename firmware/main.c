@@ -290,20 +290,23 @@ void SysTickHandler(void) {
 	    //calculate pwm value
 	    switch(activeCState->controllMode) {
 		case CONTROLLER_MODE_PWM:
-		pwmValue = activeCState->targetValue;
-		break;
+		    pwmValue = activeCState->targetValue;
+		    break;
 		
 		case CONTROLLER_MODE_POSITION: {
-		if(activeCState->cascadedPositionController) {
+		    if(activeCState->cascadedPositionController) {
 			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-		} else {
+		    } else {
 			pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-		}
-		
+		    }
+		    break;
+		}   
 		case CONTROLLER_MODE_SPEED:
-			pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-		break; 
-		}
+		    pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		    break; 
+		default:
+		    pwmValue = 0;
+		    break;
 	    }
 
 	    //trunkcate to s16
@@ -316,9 +319,9 @@ void SysTickHandler(void) {
 		currentPwmValue = pwmValue;
 	    } else {
 		if(currentPwmValue - pwmValue < 0) {
-		currentPwmValue += activeCState->pwmStepPerMillisecond;
+		    currentPwmValue += activeCState->pwmStepPerMillisecond;
 		} else {
-		currentPwmValue -= activeCState->pwmStepPerMillisecond;      
+		    currentPwmValue -= activeCState->pwmStepPerMillisecond;      
 		}
 	    }
 	} else {
@@ -344,9 +347,9 @@ void SysTickHandler(void) {
 	CAN_CancelAllTransmits();
 	
 	if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-	print("Error Tranmitting status Message : No free TxMailbox \n");
+	    print("Error Tranmitting status Message : No free TxMailbox \n");
 	} else {
-	//print("Tranmitting status Message : OK \n");  
+	    //print("Tranmitting status Message : OK \n");  
 	}
 	
 	//increase timeout
