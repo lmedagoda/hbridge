@@ -1,7 +1,8 @@
 
 #include "usart.h"
-#include "stm32f10x_usart.h"
-#include "stm32f10x_rcc.h"
+#include "inc/stm32f10x_usart.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_gpio.h"
 
 
 volatile struct USART_Data USART1_Data;
@@ -15,45 +16,60 @@ volatile struct USART_Data USART1_Data;
 * Return         : None
 *******************************************************************************/
 void USART_Configuration(void) {
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
 
-  USART1_Data.RxWritePointer = 0;
-  USART1_Data.RxReadPointer = 0;
-  
-  USART1_Data.TxWritePointer = 0;
-  USART1_Data.TxReadPointer = 0;
+    /* Enable GPIOA, GPIOD, USB_DISCONNECT(GPIOC) and USART1 clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB2Periph_USART1, ENABLE);
 
-  USART_InitTypeDef USART_InitStructure;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-  /* USART1 and USART2 configuration ---------------------------------------*/
-  /* USART and USART2 configured as follow:
-        - BaudRate = 230400 baud  
-        - Word Length = 8 Bits
-        - One Stop Bit
-        - No parity
-        - Hardware flow control disabled (RTS and CTS signals)
-        - Receive and transmit enabled
-  */
+    // Configure USART1 Tx (PA09) as alternate function push-pull
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  USART_InitStructure.USART_BaudRate = 115200;
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No;
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-  
-  /* Configure USART1 */
-  USART_Init(USART1, &USART_InitStructure);
+    // Configure USART1 Rx (PA10) as input floating
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOA, &GPIO_InitStructure); 
 
-  /* Enable USART1 Receive and Transmit interrupts */
-  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-  USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+    USART1_Data.RxWritePointer = 0;
+    USART1_Data.RxReadPointer = 0;
+    
+    USART1_Data.TxWritePointer = 0;
+    USART1_Data.TxReadPointer = 0;
 
-  /* Enable the USART1 */
-  USART_Cmd(USART1, ENABLE);
+    USART_InitTypeDef USART_InitStructure;
 
+    /* USART1 and USART2 configuration ---------------------------------------*/
+    /* USART and USART2 configured as follow:
+	    - BaudRate = 230400 baud  
+	    - Word Length = 8 Bits
+	    - One Stop Bit
+	    - No parity
+	    - Hardware flow control disabled (RTS and CTS signals)
+	    - Receive and transmit enabled
+    */
 
+    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    
+    /* Configure USART1 */
+    USART_Init(USART1, &USART_InitStructure);
+
+    /* Enable USART1 Receive and Transmit interrupts */
+    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+    USART_ITConfig(USART1, USART_IT_TXE, ENABLE);
+
+    /* Enable the USART1 */
+    USART_Cmd(USART1, ENABLE);
 }
 
 u8 USART1_SendData(const u8 *data, const u32 size) {
