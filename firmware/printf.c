@@ -74,6 +74,7 @@ int printf(const char *format, ...) {
 
     switch (*fmt) {
     case 's':              /* string */
+      fmt++;
       s = va_arg(ap, char *);
       while(*s) {
 	msg[pos] = *s;
