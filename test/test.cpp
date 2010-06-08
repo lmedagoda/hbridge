@@ -281,6 +281,8 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     hbridge::Ticks posInternStart; 
     hbridge::Ticks posExternStart; 
 
+    hbridge::BoardState state;
+    
     //get inital position
     while(true) {	
     	can::Message msg = hbd.setTargetValues(0, 0, 0, 0);
@@ -293,7 +295,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	    gotmsg = true;
 	}
 	if(gotmsg) {
-	    hbridge::BoardState state = hbd.getState(hbridge_id);
+	    state = hbd.getState(hbridge_id);
 	    checkPrintError(state.error);
 	    posInternStart = state.position;
 	    posExternStart = state.positionExtern;
@@ -301,48 +303,89 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	}
     }
 
-    while(true) {	
-    	can::Message msg = hbd.setTargetValues(200, 0, 0, 0);
+    int speed = 200;
+    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
+    while(!checkPrintError(state.error)) {	
+    	usleep(10000);
+	can::Message msg = hbd.setTargetValues(speed, 0, 0, 0);
         driver->write(msg);
-	usleep(10000);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
 	    msg = driver->read() ;
 	    hbd.updateFromCAN(msg);
 	    gotmsg = true;
 	}
+	
 	if(gotmsg) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
-	    checkPrintError(state.error);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
-	    if(abs(state.position - posInternStart) > 500 && abs(state.positionExtern - posExternStart) > 500)
-		break;
-
+	    if(abs(state.position - posInternStart) > ticksPerTurnIntern / 2) {
+		if(speed < 0)
+		    break;
+		posInternStart = state.position;
+		speed = -200;
+		std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(backwards)" << std::endl;
+	    }
+	}
+    }
+    
+    while(driver->getPendingMessagesCount() > 0) {
+	msg = driver->read() ;
+	hbd.updateFromCAN(msg);
+    }
+    posExternStart = state.positionExtern;
+    
+    std::cout << "Testing external encoder" << std::endl;
+    speed = 200;
+    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
+    while(!checkPrintError(state.error)) {	
+    	usleep(10000);
+	can::Message msg = hbd.setTargetValues(speed, 0, 0, 0);
+        driver->write(msg);
+	bool gotmsg = false;
+    	while(driver->getPendingMessagesCount() > 0) {
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
+	    gotmsg = true;
 	}
 	
+	if(gotmsg) {
+	    hbridge::BoardState state = hbd.getState(hbridge_id);
+	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
+	    if(abs(state.positionExtern - posExternStart) > ticksPerTurnExtern / 2) {
+		if(speed < 0)
+		    break;
+		posExternStart = state.positionExtern;
+		speed = -200;
+		std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(backwards)" << std::endl;
+	    }
+	}
     }
-
-    std::cout << "Waiting a second" << std::endl;
-    usleep(1000000);
     
-
 }
 
+
 BOOST_AUTO_TEST_CASE(timeout_test) {
-    std::cout << "Testing timeout" << std::endl;
+    std::cout << "Testing timeout of 50 ms" << std::endl;
     initDriver();
     hbridge::Configuration config = getDefaultConfig();
     //set 50ms timeout
     config.timeout = 50;
+    
     hbridge::MessagePair config_msgs;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
-    
-    base::Time startTime = base::Time::now();
-    
     can::Message msg;    
+    usleep(1000);
     
+    //flush messages
+    while(driver->getPendingMessagesCount() > 0) {
+	msg = driver->read() ;
+    }
+  
+    base::Time startTime = base::Time::now();
+
     int msgcnt = 0;
     
     while(true) {	
@@ -351,20 +394,25 @@ BOOST_AUTO_TEST_CASE(timeout_test) {
 	    msg = driver->read() ;
 	    hbd.updateFromCAN(msg);
 	    msgcnt++;
-	    
 	    if(hbd.getState(hbridge_id).error.timeout) {
 		break;
-	    }
+	    }	    
 	}
 	
 	if(msgcnt > 80)
 	    break;
+
+	if(hbd.getState(hbridge_id).error.timeout) {
+	    break;
+	}
     }
     
-    BOOST_CHECK(abs((startTime - base::Time::now()).toMicroseconds()) < 10);
-    BOOST_CHECK(abs(msgcnt - 50) < 5);
+    base::Time endTime = base::Time::now();
     
-
+    std::cout << "Time until timeout was reported in ms " << (endTime - startTime).toMilliseconds() << std::endl;
+    std::cout << "Received " << msgcnt << " messages until timeout was reported" << std::endl;
+    BOOST_CHECK(abs((endTime - startTime).toMilliseconds() - 50) < 5);
+    BOOST_CHECK(abs(msgcnt - 50) < 5);
 }
 
 
@@ -401,60 +449,6 @@ BOOST_AUTO_TEST_CASE(test_case)
     }
     BOOST_CHECK(i < 500);
     
-    std::cout << "Set drive modes" << std::endl;
-    msg = hbd.setDriveMode(hbridge::DM_PWM);
-    driver->write(msg);
-
-    while(driver->getPendingMessagesCount() > 0) {
-	msg = driver->read() ;	
-	hbd.updateFromCAN(msg);
-    }
-    
-    std::cout << "Testing encoders and current carrying electronics"
-	      << std::endl;
-    hbridge::Ticks initial_position = hbd.getState(hbridge_id).position;
-    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forwards)"
-	      << std::endl;
-    for (i = 0; i < 500; i++)
-    {
-    	can::Message msg = hbd.setTargetValues(200, 0, 0, 0);
-        driver->write(msg);
-        usleep(10000);
-
-	while(driver->getPendingMessagesCount() > 0) {
-	  msg = driver->read();
-	  hbd.updateFromCAN(msg);
-	}
-
-	
-	hbridge::BoardState state = hbd.getState(hbridge_id);
-	checkPrintError(state.error);
-
-	if(state.position - initial_position > hbridge::TICKS_PER_TURN/2 )
-	    break;
-    }
-    BOOST_CHECK(i < 500);
-
-    initial_position = hbd.getState(hbridge_id).position;
-    std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(backwards)" << std::endl;
-    for (i = 0; i < 500; i++)
-    {
-    	can::Message msg = hbd.setTargetValues(-200, 0, 0, 0);
-        driver->write(msg);
-        usleep(10000);
-
-	while(driver->getPendingMessagesCount() > 0) {
-	  msg = driver->read() ;
-	
-	  hbd.updateFromCAN(msg);
-	}
-
-	hbridge::BoardState state = hbd.getState(hbridge_id);
-	checkPrintError(state.error);
-	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/5 )
-	    break;
-    }
-    BOOST_CHECK(i < 500);
 
     std::cout << "Testing overcurrent protection" << std::endl;
     std::cout << "Please block wheel and press return" << std::endl;
