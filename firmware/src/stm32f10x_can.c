@@ -200,6 +200,8 @@ u8 CAN_Init(CAN_InitTypeDef* CAN_InitStruct)
     ((u32)CAN_InitStruct->CAN_Prescaler - 1);
 
   InitStatus = CANINITOK;
+
+  return InitStatus;
 }
 
 void CAN_EnterNormalMode() {
