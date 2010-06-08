@@ -13,7 +13,8 @@ struct encoderData {
 
 vs32 externalEncoderValue = 0;
 
-static u8 configured = 0;
+static vu8 configured = 0;
+static vu8 foundZero = 0;
 
 struct encoderData internalEncoderConfig;
 struct encoderData externalEncoderConfig;
@@ -92,6 +93,7 @@ void setTicksPerTurn(u16 ticks, u8 tickDivider) {
     TIM_SetCounter(TIM4, 0);
     
     TIM_Cmd(TIM4, ENABLE);
+    foundZero = 0;
     configured = 1;
 }
 
@@ -137,19 +139,29 @@ void setTicksPerTurnExtern(u32 ticks, u8 tickDivider) {
     externalEncoderConfig.tickDivider = tickDivider;
     externalEncoderConfig.ticksPerTurn = ticks;
     configured = 1;
+    foundZero = 0;
 }
 
 vu32 ainIT = 0;
 vu32 binIT = 0;
-vu32 zeroIT = 0;
+vs32 zeroIT = 0;
 
 u32 getTicksExtern() {
+    if(zeroIT != -1) {
+	printf("Z: %li \n", zeroIT );
+	zeroIT = -1;
+    }
 /*    printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
     printf("Enc : %l \n", externalEncoderValue);*/
+    if(!foundZero)
+	return 0;
+
     return externalEncoderValue;
 }
 
 u16 getDividedTicksExtern() {
+    if(!foundZero)
+	return 0;
     return externalEncoderValue / externalEncoderConfig.tickDivider;
 }
 
@@ -201,8 +213,11 @@ void EXTI15_10_IRQHandler(void)
 	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
-	zeroIT = externalEncoderValue;
+	if(zeroIT == -1)
+	    zeroIT = externalEncoderValue;
 	externalEncoderValue = 0;
+	if(configured)
+	    foundZero = 1;
 	EXTI_ClearITPendingBit(EXTI_Line12);
     }
 
