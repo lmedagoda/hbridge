@@ -23,6 +23,25 @@ u8 encodersConfigured() {
 }
 
 void encoderInit() {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
+    
+      //configure Timer4 ch1 (PB6) as encoder input
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    
+    //configure Timer4 ch2 (PB7) as encoder input
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
+    
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
@@ -191,6 +210,9 @@ void EXTI15_10_IRQHandler(void)
 
 
 void encoderInitExtern() {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    
     GPIO_InitTypeDef GPIO_InitStructure;
 
     //get default GPIO config
