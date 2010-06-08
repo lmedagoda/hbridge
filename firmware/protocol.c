@@ -42,69 +42,86 @@ enum hostIDs getOwnHostId() {
 
 
 void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
-      //clear device specific adress bits
-      curMsg->StdId &= ~ownHostId;
-    
-      switch(curMsg->StdId) {
-        case PACKET_ID_EMERGENCY_STOP:
-	  //print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
-	  state->internalState = STATE_UNCONFIGURED;
-	  state->targetValue = 0;
-	  break;
-        case PACKET_ID_SET_VALUE: {
-	  //print("Got PACKET_ID_SET_VALUE Msg \n");
-	  if(state->internalState == STATE_CONFIGURED) {
-	    struct setValueData *data = (struct setValueData *) curMsg->Data;
-	    switch(ownHostId) {
-	    case RECEIVER_ID_H_BRIDGE_1:
-	      state->targetValue = data->board1Value;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_2:
-	      state->targetValue = data->board2Value;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_3:
-	      state->targetValue = data->board3Value;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_4:
-	      state->targetValue = data->board4Value;
-	      break;
+    //clear device specific adress bits
+    curMsg->StdId &= ~ownHostId;
+
+    switch(curMsg->StdId) {
+	case PACKET_ID_EMERGENCY_STOP:
+	    //print("Got PACKET_ID_EMERGENCY_STOP Msg \n");
+	    state->internalState = STATE_UNCONFIGURED;
+	    state->targetValue = 0;
+	    break;
+
+	case PACKET_ID_SET_VALUE: {
+	    //print("Got PACKET_ID_SET_VALUE Msg \n");
+	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
+		struct setValueData *data = (struct setValueData *) curMsg->Data;
+		switch(ownHostId) {
+		    case RECEIVER_ID_H_BRIDGE_1:
+			state->targetValue = data->board1Value;
+			state->internalState = STATE_GOT_TARGET_VAL;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_2:
+			state->targetValue = data->board2Value;
+			state->internalState = STATE_GOT_TARGET_VAL;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_3:
+			state->targetValue = data->board3Value;
+			state->internalState = STATE_GOT_TARGET_VAL;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_4:
+			state->targetValue = data->board4Value;
+			state->internalState = STATE_GOT_TARGET_VAL;
+			break;
+		    default:
+			//if we are not HBRIDGE 1-4 this is not meant for us
+			break;
+		}
+	    } else {
+		if(ownHostId == RECEIVER_ID_H_BRIDGE_1 || ownHostId == RECEIVER_ID_H_BRIDGE_2 || ownHostId == RECEIVER_ID_H_BRIDGE_3 || ownHostId == RECEIVER_ID_H_BRIDGE_4) {
+		    print("Error, not configured \n");
+		    state->internalState = STATE_ERROR;
+		    getErrorState()->badConfig = 1;
+		}
 	    }
-	  } else {
-	    print("Error, not configured \n");
-	    state->internalState = STATE_ERROR;
-	    getErrorState()->badConfig = 1;
-	  }
-	  break;
+	    break;
 	}
 
-        case PACKET_ID_SET_MODE: {
-	  if(state->internalState == STATE_CONFIGURED) {
-	    struct setModeData *data = (struct setModeData *) curMsg->Data;
-	    switch(ownHostId) {
-	    case RECEIVER_ID_H_BRIDGE_1:
-	      
-	      state->controllMode = data->board1Mode;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_2:
-	      state->controllMode = data->board2Mode;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_3:
-	      state->controllMode = data->board3Mode;
-	      break;
-	    case RECEIVER_ID_H_BRIDGE_4:
-	      state->controllMode = data->board4Mode;
-	      break;
+	case PACKET_ID_SET_MODE: {
+	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
+		struct setModeData *data = (struct setModeData *) curMsg->Data;
+		switch(ownHostId) {
+		    case RECEIVER_ID_H_BRIDGE_1:
+			state->controllMode = data->board1Mode;
+			state->internalState = STATE_CONFIGURED;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_2:
+			state->controllMode = data->board2Mode;
+			state->internalState = STATE_CONFIGURED;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_3:
+			state->controllMode = data->board3Mode;
+			state->internalState = STATE_CONFIGURED;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_4:
+			state->controllMode = data->board4Mode;
+			state->internalState = STATE_CONFIGURED;
+			break;
+		    default:
+			break;		
+		}
+	    } else {
+		if(ownHostId == RECEIVER_ID_H_BRIDGE_1 || ownHostId == RECEIVER_ID_H_BRIDGE_2 || ownHostId == RECEIVER_ID_H_BRIDGE_3 || ownHostId == RECEIVER_ID_H_BRIDGE_4) {
+		    print("Error, not configured \n");
+		    state->internalState = STATE_ERROR;
+		    getErrorState()->badConfig = 1;
+		}
 	    }
-	  } else {
-	    print("Error, not configured \n");
-	    state->internalState = STATE_ERROR;
-	    getErrorState()->badConfig = 1;
-	  }
-	  break;
+	    break;
 	}
 	  
         case PACKET_ID_SET_PID_POS: {
-	  if(state->internalState == STATE_CONFIGURED) {
+	  if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 	    struct setPidData *data = (struct setPidData *) curMsg->Data;
 	    state->positionPIDValues.kp = data->kp;
 	    state->positionPIDValues.ki = data->ki;
@@ -120,7 +137,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  break;
 	}
         case PACKET_ID_SET_PID_SPEED: {
-	  if(state->internalState == STATE_CONFIGURED) {
+	  if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 	    struct setPidData *data = (struct setPidData *) curMsg->Data;
 	    state->speedPIDValues.kp = data->kp;
 	    state->speedPIDValues.ki = data->ki;
@@ -185,7 +202,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	}
 	case PACKET_ID_ENCODER_CONFIG: {
 	    print("Got PACKET_ID_ENCODER_CONFIG Msg \n");
-	    if(state->internalState == STATE_CONFIGURED) {
+	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		print("Bad, state is configured \n");
 		//do not allow to configure encoders while PID might be active
 		getErrorState()->badConfig = 1;

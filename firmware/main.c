@@ -19,6 +19,7 @@
 #include "inc/stm32f10x_lib.h"
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_tim.h"
+#include "inc/stm32f10x_rcc.h"
 #include "stm32f10x_it.h"
 #include "inc/stm32f10x_can.h"
 #include "stdio.h"
@@ -26,7 +27,6 @@
 #include "i2c.h"
 #include "pid.h"
 #include "usart.h"
-#include "printf.h"
 #include "protocol.h"
 #include "can.h"
 #include "state.h"
@@ -35,6 +35,7 @@
 #include "encoder.h"
 #include "current_measurement.h"
 #include "lm73cimk.h"
+#include "printf.h"
 #include <stdlib.h>
 
 /* Private typedef --------------------------------------------------------*/
@@ -253,7 +254,7 @@ void SysTickHandler(void) {
     }
 
     //change state to unconfigured if error is set
-    if(inErrorState() && activeCState->internalState == STATE_CONFIGURED) {
+    if(inErrorState() && (activeCState->internalState == STATE_CONFIGURED || activeCState->internalState == STATE_GOT_TARGET_VAL)) {
 	activeCState->internalState = STATE_ERROR;
     }
 
@@ -265,7 +266,7 @@ void SysTickHandler(void) {
     }
 
     //only check for overcurrent if configured
-    if(activeCState->internalState == STATE_CONFIGURED) {
+    if(activeCState->internalState == STATE_CONFIGURED || activeCState->internalState == STATE_GOT_TARGET_VAL) {
 	//check for overcurrent
 	if(currentValue > activeCState->maxCurrent) {
 	    overCurrentCounter++;
@@ -283,40 +284,45 @@ void SysTickHandler(void) {
 	    activeCState->internalState = STATE_ERROR;
 	    getErrorState()->timeout = 1;
 	}
-  
-	//calculate pwm value
-	switch(activeCState->controllMode) {
-	    case CONTROLLER_MODE_PWM:
-	    pwmValue = activeCState->targetValue;
-	    break;
-	    
-	    case CONTROLLER_MODE_POSITION: {
-	    if(activeCState->cascadedPositionController) {
-		    pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+    
+	//only run controllers if we got an target value
+	if(activeCState->internalState == STATE_GOT_TARGET_VAL) {
+	    //calculate pwm value
+	    switch(activeCState->controllMode) {
+		case CONTROLLER_MODE_PWM:
+		pwmValue = activeCState->targetValue;
+		break;
+		
+		case CONTROLLER_MODE_POSITION: {
+		if(activeCState->cascadedPositionController) {
+			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		} else {
+			pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		}
+		
+		case CONTROLLER_MODE_SPEED:
+			pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		break; 
+		}
+	    }
+
+	    //trunkcate to s16
+	    if(pwmValue > MAX_S16) 
+		pwmValue = MAX_S16;
+	    if(pwmValue < MIN_S16)
+		pwmValue = MIN_S16;
+
+	    if(abs(currentPwmValue - pwmValue) < activeCState->pwmStepPerMillisecond) {
+		currentPwmValue = pwmValue;
 	    } else {
-		    pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		if(currentPwmValue - pwmValue < 0) {
+		currentPwmValue += activeCState->pwmStepPerMillisecond;
+		} else {
+		currentPwmValue -= activeCState->pwmStepPerMillisecond;      
+		}
 	    }
-	    
-	    case CONTROLLER_MODE_SPEED:
-		    pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
-	    break; 
-	    }
-	}
-
-	//trunkcate to s16
-	if(pwmValue > MAX_S16) 
-	    pwmValue = MAX_S16;
-	if(pwmValue < MIN_S16)
-	    pwmValue = MIN_S16;
-
-	if(abs(currentPwmValue - pwmValue) < activeCState->pwmStepPerMillisecond) {
-	    currentPwmValue = pwmValue;
 	} else {
-	    if(currentPwmValue - pwmValue < 0) {
-	    currentPwmValue += activeCState->pwmStepPerMillisecond;
-	    } else {
-	    currentPwmValue -= activeCState->pwmStepPerMillisecond;      
-	    }
+	    currentPwmValue = 0;
 	}
   
 	//send status message over CAN
