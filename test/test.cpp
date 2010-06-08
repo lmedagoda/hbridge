@@ -37,6 +37,9 @@ unsigned char value2Data[] = { 0, 0, 20, 0, 0, 0, 0, 0 }; // 8 byte
 unsigned char value3Data[] = { 0, 0, 0, 0, 20, 0, 0, 0 }; // 8 byte
 unsigned char value4Data[] = { 0, 0, 0, 0, 0, 0, 20, 0 }; // 8 byte
 
+const unsigned int ticksPerTurnIntern = 512 * 729 / 16;
+const unsigned int ticksPerTurnExtern = 4096;
+
 bool checkPrintError(struct hbridge::ErrorState &error) {
     bool ret = false;
     if(error.badConfig) {
@@ -159,7 +162,6 @@ BOOST_AUTO_TEST_CASE(static_tests) {
         hbridge::MessagePair config_msgs = hbd.setConfiguration(i, config);
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE, config1Data, config1DataSize, config_msgs.first));
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_CONFIGURE2, config2Data, config2DataSize, config_msgs.second));
-
     }
 
     for (int i = 0; i < 4; ++i)
@@ -209,6 +211,8 @@ BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
     }    
     BOOST_CHECK(i < 50);
 
+    std::cout << "Waiting a second" << std::endl;
+    usleep(1000000);
 }
 
 
@@ -219,10 +223,10 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
     hbridge::EncoderConfiguration encConf;
     encConf.tickDivider = 4;
-    encConf.ticksPerTurn = hbridge::TICKS_PER_TURN * 4;
+    encConf.ticksPerTurn = ticksPerTurnIntern * 4;
 
     encConf.tickDividerExtern = 1;
-    encConf.ticksPerTurnExtern = 4096;
+    encConf.ticksPerTurnExtern = ticksPerTurnExtern;
     
     can::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConf);
     driver->write(encConfMsg);
@@ -254,6 +258,8 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     }
     BOOST_CHECK(i < 50);
 
+    std::cout << "Waiting a second" << std::endl;
+    usleep(1000000);
 }
 
 
@@ -262,16 +268,42 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     initDriver();
     hbridge::Configuration config = getDefaultConfig();
     //set infinite timeout
-    config.timeout = 0;
+    config.timeout = 50;
     hbridge::MessagePair config_msgs;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
     can::Message msg;
 
+    msg = hbd.setDriveMode(hbridge::DM_PWM);
+    driver->write(msg);
     
-    
+    hbridge::Ticks posInternStart; 
+    hbridge::Ticks posExternStart; 
+
+    //get inital position
     while(true) {	
+    	can::Message msg = hbd.setTargetValues(0, 0, 0, 0);
+        driver->write(msg);
+	usleep(10000);
+	bool gotmsg = false;
+    	while(driver->getPendingMessagesCount() > 0) {
+	    msg = driver->read() ;
+	    hbd.updateFromCAN(msg);
+	    gotmsg = true;
+	}
+	if(gotmsg) {
+	    hbridge::BoardState state = hbd.getState(hbridge_id);
+	    checkPrintError(state.error);
+	    posInternStart = state.position;
+	    posExternStart = state.positionExtern;
+	    break;
+	}
+    }
+
+    while(true) {	
+    	can::Message msg = hbd.setTargetValues(200, 0, 0, 0);
+        driver->write(msg);
 	usleep(10000);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
@@ -283,8 +315,16 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    checkPrintError(state.error);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
+	    if(abs(state.position - posInternStart) > 500 && abs(state.positionExtern - posExternStart) > 500)
+		break;
+
 	}
+	
     }
+
+    std::cout << "Waiting a second" << std::endl;
+    usleep(1000000);
+    
 
 }
 
@@ -331,8 +371,6 @@ BOOST_AUTO_TEST_CASE(timeout_test) {
 
 BOOST_AUTO_TEST_CASE(test_case)
 {
-    ::boost::execution_monitor ex_mon;
-
     initDriver();
 
     // Still needs configuration (where are the config values stored?)
@@ -413,7 +451,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 
 	hbridge::BoardState state = hbd.getState(hbridge_id);
 	checkPrintError(state.error);
-	if(state.position - initial_position < -hbridge::TICKS_PER_TURN/2 )
+	if (state.position - initial_position < -hbridge::TICKS_PER_TURN/5 )
 	    break;
     }
     BOOST_CHECK(i < 500);
@@ -424,12 +462,6 @@ BOOST_AUTO_TEST_CASE(test_case)
     std::string dummy;
     std::getline(std::cin,dummy);
 
-    while(driver->getPendingMessagesCount() > 0) {//flush messages
-      msg = driver->read() ;
-      
-      hbd.updateFromCAN(msg);
-    }
-
     config.maxCurrent = 500;
     config.maxCurrentCount = 250;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
@@ -437,19 +469,27 @@ BOOST_AUTO_TEST_CASE(test_case)
     driver->write(config_msgs.second);
 
     std::cout << "Set PID configuration" << std::endl;
-    msg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 1800.0);
+    msg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 500.0);
     driver->write(msg);
-
-
     
     msg = hbd.setDriveMode(hbridge::DM_SPEED);
     driver->write(msg);
 
-    for (i = 0; i < 500; i++)
+    //wait for hbridge to process messages
+    usleep(5000);
+
+    //flush messages
+    while(driver->getPendingMessagesCount() > 0) {
+      msg = driver->read() ; 
+      hbd.updateFromCAN(msg);
+    }
+    
+    hbridge::BoardState state = hbd.getState(hbridge_id);
+    while(!checkPrintError(state.error))
     {
     	can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
         driver->write(msg);
-        usleep(10000);
+        usleep(5000);
 
 	while(driver->getPendingMessagesCount() > 0) {
 	  msg = driver->read() ;
@@ -457,16 +497,22 @@ BOOST_AUTO_TEST_CASE(test_case)
 	  hbd.updateFromCAN(msg);
 	}
 
-	hbridge::BoardState state = hbd.getState(hbridge_id);
-	checkPrintError(state.error);
-	if (state.error.overCurrent )
-	    break;
+	state = hbd.getState(hbridge_id);
     }
-    BOOST_CHECK(i < 500);
+    BOOST_CHECK(state.error.overCurrent);
 
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
+
+    //wait for hbridge to process messages
+    usleep(5000);
+
+    //flush messages
+    while(driver->getPendingMessagesCount() > 0) {
+      msg = driver->read() ; 
+      hbd.updateFromCAN(msg);
+    }
 
     for (i = 0; i < 500; i++)
     {
@@ -480,7 +526,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 	  hbd.updateFromCAN(msg);
 	}
 
-	hbridge::BoardState state = hbd.getState(hbridge_id);
+	state = hbd.getState(hbridge_id);
 	checkPrintError(state.error);
 	if (state.error.overCurrent )
 	    break;
