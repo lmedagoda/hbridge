@@ -14,9 +14,7 @@ namespace hbridge
     Driver::Driver() :
         states(), positionOld()
     {
-        bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
-        bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
-        bzero(&this->positionOldExtern, BOARD_COUNT * sizeof(firmware::s16));
+	reset();
 
         directions[MOTOR_REAR_LEFT]   = -1;
         directions[MOTOR_FRONT_LEFT]  = -1;
@@ -34,6 +32,7 @@ namespace hbridge
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
         bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
+        bzero(&this->positionOldExtern, BOARD_COUNT * sizeof(firmware::s16));
     }
 
     int Driver::getBoardIdFromMessage(const can::Message& msg) const
