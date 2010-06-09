@@ -28,6 +28,11 @@ namespace hbridge
         Driver();
         ~Driver();
 
+	/**
+	* Extracts and returns the board id from the given message.
+	* Note, this method does not perform range checks.
+	**/
+	int getBoardIdFromMessage(const can::Message &msg) const;
         /**
          * Resets the internal state of the driver. This has to be called upon
          * reconfiguration of the h-bridges

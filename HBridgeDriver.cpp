@@ -36,9 +36,15 @@ namespace hbridge
         bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
     }
 
-    bool Driver::updateFromCAN(can::Message &msg)
+    int Driver::getBoardIdFromMessage(const can::Message& msg) const
     {
 	int index = ((msg.can_id & ~0x1f) >> 5) - 1;
+	return index;
+    }
+
+    bool Driver::updateFromCAN(const can::Message& msg)
+    {
+	int index = getBoardIdFromMessage(msg);
 
 	if ((index < 0) || (index > (BOARD_COUNT - 1)))
 	{
