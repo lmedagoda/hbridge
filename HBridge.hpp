@@ -78,6 +78,30 @@ namespace hbridge
 	bool badConfig;
 	bool encodersNotInitalized;
         bool hardwareShutdown;
+#ifndef __orogen
+
+	ErrorState() :
+            motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitalized(false), hardwareShutdown(false)
+        {}
+        
+        bool hasError() 
+        {
+	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitalized || hardwareShutdown);
+	}
+	
+	ErrorState operator + (ErrorState const& es) const
+	{
+	    ErrorState ret;
+	    ret.motorOverheated = this->motorOverheated || es.motorOverheated;
+	    ret.boardOverheated = this->boardOverheated || es.boardOverheated;
+	    ret.overCurrent     = this->overCurrent || es.overCurrent;
+	    ret.timeout         = this->timeout || es.timeout;
+	    ret.badConfig       = this->badConfig || es.badConfig;
+	    ret.encodersNotInitalized = this->encodersNotInitalized || es.encodersNotInitalized;
+	    ret.hardwareShutdown = this->hardwareShutdown || es.hardwareShutdown;
+	    return ret;
+	}
+#endif
     };
     
     /**
