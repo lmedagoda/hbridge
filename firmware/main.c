@@ -213,7 +213,7 @@ int main(void)
       *lastActiveCState = *activeCState;      
       
       u16 errorDbg = inErrorState();
-      if(curMsg->StdId != PACKET_ID_SET_VALUE || cnt == 50) {
+      if((curMsg->StdId != PACKET_ID_SET_VALUE14 && curMsg->StdId != PACKET_ID_SET_VALUE58)  || cnt == 50) {
 	cnt = 0;  
 	printf("Error is %hu \n", errorDbg);
 	print("ActiveCstate: ");

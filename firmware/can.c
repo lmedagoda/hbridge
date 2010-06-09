@@ -86,8 +86,13 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
   CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
   CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
-  CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE<<5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE<<5;
+  if(boardNr == RECEIVER_ID_H_BRIDGE_1 || boardNr == RECEIVER_ID_H_BRIDGE_2 || boardNr == RECEIVER_ID_H_BRIDGE_3 || boardNr == RECEIVER_ID_H_BRIDGE_4) {
+    CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE14<<5;
+    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE14<<5;
+  } else {
+    CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE58<<5;
+    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE58<<5;      
+  }
   CAN_FilterInitStructure.CAN_FilterMaskIdLow=(PACKET_ID_ENCODER_CONFIG + boardNr)<<5;
   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;
   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;

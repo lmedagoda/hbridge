@@ -52,70 +52,71 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	    state->targetValue = 0;
 	    break;
 
-	case PACKET_ID_SET_VALUE: {
+	case PACKET_ID_SET_VALUE58: 
+	case PACKET_ID_SET_VALUE14: {
 	    //print("Got PACKET_ID_SET_VALUE Msg \n");
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		struct setValueData *data = (struct setValueData *) curMsg->Data;
 		switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
+		    case RECEIVER_ID_H_BRIDGE_5:
 			state->targetValue = data->board1Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
+		    case RECEIVER_ID_H_BRIDGE_6:
 			state->targetValue = data->board2Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
+		    case RECEIVER_ID_H_BRIDGE_7:
 			state->targetValue = data->board3Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
+		    case RECEIVER_ID_H_BRIDGE_8:
 			state->targetValue = data->board4Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
-		    default:
-			//if we are not HBRIDGE 1-4 this is not meant for us
-			break;
 		}
 	    } else {
-		if(ownHostId == RECEIVER_ID_H_BRIDGE_1 || ownHostId == RECEIVER_ID_H_BRIDGE_2 || ownHostId == RECEIVER_ID_H_BRIDGE_3 || ownHostId == RECEIVER_ID_H_BRIDGE_4) {
-		    print("Error, not configured \n");
-		    state->internalState = STATE_ERROR;
-		    getErrorState()->badConfig = 1;
-		}
+		print("Error, not configured \n");
+		state->internalState = STATE_ERROR;
+		getErrorState()->badConfig = 1;
 	    }
 	    break;
 	}
 
-	case PACKET_ID_SET_MODE: {
+	case PACKET_ID_SET_MODE14:
+	case PACKET_ID_SET_MODE58: {
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		struct setModeData *data = (struct setModeData *) curMsg->Data;
 		switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
+		    case RECEIVER_ID_H_BRIDGE_5:
 			state->controllMode = data->board1Mode;
 			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
+		    case RECEIVER_ID_H_BRIDGE_6:
 			state->controllMode = data->board2Mode;
 			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
+		    case RECEIVER_ID_H_BRIDGE_7:
 			state->controllMode = data->board3Mode;
 			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
+		    case RECEIVER_ID_H_BRIDGE_8:
 			state->controllMode = data->board4Mode;
 			state->internalState = STATE_CONFIGURED;
 			break;
-		    default:
-			break;		
 		}
 	    } else {
-		if(ownHostId == RECEIVER_ID_H_BRIDGE_1 || ownHostId == RECEIVER_ID_H_BRIDGE_2 || ownHostId == RECEIVER_ID_H_BRIDGE_3 || ownHostId == RECEIVER_ID_H_BRIDGE_4) {
-		    print("Error, not configured \n");
-		    state->internalState = STATE_ERROR;
-		    getErrorState()->badConfig = 1;
-		}
+		print("Error, not configured \n");
+		state->internalState = STATE_ERROR;
+		getErrorState()->badConfig = 1;
 	    }
 	    break;
 	}
