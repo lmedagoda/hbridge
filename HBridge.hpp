@@ -50,6 +50,8 @@ namespace hbridge
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnExtern;
 	unsigned char tickDividerExtern;
+	unsigned int ticksPerTurnDivided;
+	unsigned int ticksPerTurnExternDivided;
 #ifndef __orogen
         /**
          * Initialise with sane values
@@ -57,8 +59,6 @@ namespace hbridge
         EncoderConfiguration() :
             ticksPerTurn(0), tickDivider(1), ticksPerTurnExtern(0), tickDividerExtern(1)
         {}
-	unsigned int ticksPerTurnDivided;
-	unsigned int ticksPerTurnExternDivided;
 #endif
     };
     
