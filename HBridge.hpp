@@ -3,6 +3,7 @@
 
 #ifndef __orogen
 #include <stdint.h>
+#include <stdexcept>
 #endif
 
 #include <base/time.h>
@@ -57,8 +58,18 @@ namespace hbridge
          * Initialise with sane values
          */
         EncoderConfiguration() :
-            ticksPerTurn(0), tickDivider(1), ticksPerTurnExtern(0), tickDividerExtern(1)
+            ticksPerTurn(0), tickDivider(1), ticksPerTurnExtern(0), tickDividerExtern(1), ticksPerTurnDivided(0), ticksPerTurnExternDivided(0)
         {}
+        
+        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider, uint32_t ticksPerTurnExtern, uint8_t tickDividerExtern) :
+            ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), ticksPerTurnExtern(ticksPerTurnExtern), tickDividerExtern(tickDividerExtern)
+        {
+	    if(tickDivider == 0 || tickDividerExtern == 0)
+		throw std::out_of_range("Invalid tick divider given");
+	    
+	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
+	    this->ticksPerTurnExternDivided = ticksPerTurnExtern / tickDividerExtern;
+	}
 #endif
     };
     
