@@ -301,7 +301,7 @@ namespace hbridge
         return msgs;
     }
 
-    can::Message Driver::setEncoderConfiguration(int board, EncoderConfiguration& cfg)
+    can::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration& cfg)
     {
 	can::Message msg;
         bzero(&msg, sizeof(can::Message));

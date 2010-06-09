@@ -177,7 +177,7 @@ namespace hbridge
 	*
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
-	can::Message setEncoderConfiguration(int board, EncoderConfiguration &cfg);
+	can::Message setEncoderConfiguration(int board, const EncoderConfiguration &cfg);
 				     
     protected:
         /**
