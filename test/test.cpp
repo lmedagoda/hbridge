@@ -170,11 +170,11 @@ BOOST_AUTO_TEST_CASE(static_tests) {
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
     }
 
-    can::Message dmmsg = hbd.setDriveMode(hbridge::DM_SPEED);
-    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE, dmData, dmDataSize, dmmsg));
+    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
+    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
 
-    can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
-    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE, value1Data, valueDataSize, msg));
+    can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
+    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE14, value1Data, valueDataSize, msg));
 
 
 
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     driver->write(config_msgs.second);
     can::Message msg;
 
-    msg = hbd.setDriveMode(hbridge::DM_PWM);
+    msg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_PWM);
     driver->write(msg);
     
     hbridge::Ticks posInternStart; 
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     
     //get inital position
     while(true) {	
-    	can::Message msg = hbd.setTargetValues(0, 0, 0, 0);
+    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 0, 0, 0, 0);
         driver->write(msg);
 	usleep(10000);
 	bool gotmsg = false;
@@ -303,11 +303,23 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	}
     }
 
+//     while(!checkPrintError(state.error)) {	
+//     	usleep(10000);
+// 	can::Message msg = hbd.setTargetValues(1800, 0, 0, 0);
+//         driver->write(msg);
+// 	bool gotmsg = false;
+//     	while(driver->getPendingMessagesCount() > 0) {
+// 	    msg = driver->read() ;
+// 	    hbd.updateFromCAN(msg);
+// 	    gotmsg = true;
+// 	}
+//     }
+
     int speed = 200;
     std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
     while(!checkPrintError(state.error)) {	
     	usleep(10000);
-	can::Message msg = hbd.setTargetValues(speed, 0, 0, 0);
+	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
         driver->write(msg);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
@@ -340,7 +352,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
     while(!checkPrintError(state.error)) {	
     	usleep(10000);
-	can::Message msg = hbd.setTargetValues(speed, 0, 0, 0);
+	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
         driver->write(msg);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
@@ -466,7 +478,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     msg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 500.0);
     driver->write(msg);
     
-    msg = hbd.setDriveMode(hbridge::DM_SPEED);
+    msg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
     driver->write(msg);
 
     //wait for hbridge to process messages
@@ -481,7 +493,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     hbridge::BoardState state = hbd.getState(hbridge_id);
     while(!checkPrintError(state.error))
     {
-    	can::Message msg = hbd.setTargetValues(20, 0, 0, 0);
+    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
         driver->write(msg);
         usleep(5000);
 
@@ -510,7 +522,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 
     for (i = 0; i < 500; i++)
     {
-    	can::Message msg = hbd.setTargetValues(-20, 0, 0, 0);
+    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, -20, 0, 0, 0);
         driver->write(msg);
         usleep(10000);
 
