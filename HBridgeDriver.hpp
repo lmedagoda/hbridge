@@ -11,7 +11,11 @@ namespace hbridge
 {
     typedef std::pair<can::Message, can::Message> MessagePair;
 
-    const int BOARD_COUNT = 4;
+    const int BOARD_COUNT = 8;
+    enum BOARD_SET {
+	BOARDS_14,
+	BOARDS_58,	    
+    };
 
     class Driver
     {
@@ -19,12 +23,13 @@ namespace hbridge
 
         BoardState states[BOARD_COUNT];
 	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
-        int directions[4];
-        hbridge::DRIVE_MODE current_modes[4];
+        int directions[BOARD_COUNT];
+        hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
         int32_t positionOld[BOARD_COUNT];
         int32_t positionOldExtern[BOARD_COUNT];
 
     public:
+	
         Driver();
         ~Driver();
 
@@ -33,6 +38,7 @@ namespace hbridge
 	* Note, this method does not perform range checks.
 	**/
 	int getBoardIdFromMessage(const can::Message &msg) const;
+	
         /**
          * Resets the internal state of the driver. This has to be called upon
          * reconfiguration of the h-bridges
@@ -46,7 +52,7 @@ namespace hbridge
          *
          * @return True if the message was processed successfully, false otherwise.
          */
-        bool updateFromCAN(can::Message &msg);
+        bool updateFromCAN(const can::Message &msg);
 
         /**
          * Query the board state (current [mA], position [ticks], errors) for the given board (hbridge)
@@ -72,7 +78,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
-        can::Message setDriveMode(DRIVE_MODE mode);
+        can::Message setDriveMode(BOARD_SET set, DRIVE_MODE mode);
 
         /**
          * Generate a CAN message for setting the drive mode fpr every
@@ -85,7 +91,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
-        can::Message setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
+        can::Message setDriveMode(BOARD_SET set ,DRIVE_MODE board1, DRIVE_MODE board2,
                              DRIVE_MODE board3, DRIVE_MODE board4);
 
         /**
@@ -111,12 +117,12 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_NEW_VALUE)
          */
-        can::Message setTargetValues(short int* targets) const;
+        can::Message setTargetValues(BOARD_SET set, short int* targets) const;
 
         /**
          * \overloaded
          */
-        can::Message setTargetValues(short int value1, short int value2,
+        can::Message setTargetValues(BOARD_SET set, short int value1, short int value2,
                                      short int value3, short int value4) const;
 
         /**

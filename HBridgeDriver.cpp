@@ -22,7 +22,7 @@ namespace hbridge
         directions[MOTOR_FRONT_LEFT]  = -1;
         directions[MOTOR_REAR_RIGHT]  = 1;
         directions[MOTOR_FRONT_RIGHT] = 1;
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < BOARD_COUNT; ++i)
             current_modes[i] = DM_UNINITIALIZED;
     }
 
@@ -56,8 +56,8 @@ namespace hbridge
         {
 	    case firmware::PACKET_ID_ERROR: {
 
-		firmware::errorData *edata =
-		    reinterpret_cast<firmware::errorData *>(msg.data);
+		const firmware::errorData *edata =
+		    reinterpret_cast<const firmware::errorData *>(msg.data);
                 
 		states[index].error.badConfig = edata->badConfig;
 		states[index].error.boardOverheated = edata->boardOverheated;
@@ -86,8 +86,8 @@ namespace hbridge
 	    break;
             case firmware::PACKET_ID_STATUS:
             {
-		firmware::statusData *data =
-		    reinterpret_cast<firmware::statusData *>(msg.data);
+		const firmware::statusData *data =
+		    reinterpret_cast<const firmware::statusData *>(msg.data);
 
                 this->states[index].index   = data->index;
                 this->states[index].current = data->currentValue; // Current in [mA]
@@ -143,6 +143,8 @@ namespace hbridge
 
     const BoardState &Driver::getState(int board) const
     {
+	if(board < 0 || board > BOARD_COUNT)
+	    throw std::out_of_range("Wrong board id");
         return this->states[board];
     }
 
@@ -158,12 +160,12 @@ namespace hbridge
         return msg;
     }
 
-    can::Message Driver::setDriveMode(DRIVE_MODE mode)
+    can::Message Driver::setDriveMode(hbridge::BOARD_SET set, hbridge::DRIVE_MODE mode)
     {
-        return setDriveMode(mode, mode, mode, mode);
+        return setDriveMode(set, mode, mode, mode, mode);
     }
 
-    can::Message Driver::setDriveMode(DRIVE_MODE board1, DRIVE_MODE board2,
+    can::Message Driver::setDriveMode(BOARD_SET set, DRIVE_MODE board1, DRIVE_MODE board2,
                                       DRIVE_MODE board3, DRIVE_MODE board4)
     {
         can::Message msg;
@@ -182,19 +184,26 @@ namespace hbridge
         current_modes[2] = board3;
         current_modes[3] = board4;
 
-        msg.can_id = firmware::PACKET_ID_SET_MODE;
+	switch(set) {
+	    case BOARDS_14:
+		msg.can_id = firmware::PACKET_ID_SET_MODE14;
+		break;
+	    case BOARDS_58:
+		msg.can_id = firmware::PACKET_ID_SET_MODE58;
+		break;
+	}
         msg.size = sizeof(firmware::setModeData);
 
         return msg;
     }
 
-    can::Message Driver::setTargetValues(short int value1, short int value2,
+    can::Message Driver::setTargetValues(BOARD_SET set, short int value1, short int value2,
                                          short int value3, short int value4) const
     {
         short int value_array[4] = { value1, value2, value3, value4 };
-        return setTargetValues(value_array);
+        return setTargetValues(set, value_array);
     }
-    can::Message Driver::setTargetValues(short int* targets) const
+    can::Message Driver::setTargetValues(BOARD_SET set, short int* targets) const
     {
         can::Message msg;
 
@@ -222,7 +231,15 @@ namespace hbridge
             }
         }
 
-        msg.can_id = firmware::PACKET_ID_SET_VALUE;
+	switch(set) {
+	    case BOARDS_14:
+		msg.can_id = firmware::PACKET_ID_SET_VALUE14;
+		break;
+	    case BOARDS_58:
+		msg.can_id = firmware::PACKET_ID_SET_VALUE58;
+		break;
+	}
+
         msg.size = sizeof(firmware::setValueData);
 
         return msg;
