@@ -10,8 +10,11 @@
 
 namespace hbridge
 {
+#define HBRIGE_MAXIMUM_BOARDS 8
 #ifndef __orogen
     const int TICKS_PER_TURN = 512 * 729 / 16;
+    const int BOARD_COUNT = HBRIGE_MAXIMUM_BOARDS;
+    
 #endif /* __orogen */
 
     typedef int64_t Ticks;

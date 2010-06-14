@@ -11,7 +11,6 @@ namespace hbridge
 {
     typedef std::pair<can::Message, can::Message> MessagePair;
 
-    const int BOARD_COUNT = 8;
     enum BOARD_SET {
 	BOARDS_14,
 	BOARDS_58,	    
