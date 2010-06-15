@@ -58,6 +58,7 @@ namespace hbridge
 		const firmware::errorData *edata =
 		    reinterpret_cast<const firmware::errorData *>(msg.data);
                 
+                states[index].index   = edata->index;
 		states[index].error.badConfig = edata->badConfig;
 		states[index].error.boardOverheated = edata->boardOverheated;
 		states[index].error.encodersNotInitalized = edata->encodersNotInitalized;
