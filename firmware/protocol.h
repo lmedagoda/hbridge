@@ -48,28 +48,28 @@ struct speedDebugData {
   s16 pwmVal;
   u16 encoderVal;
   s16 speedVal;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct posDebugData {
   u16 targetVal;
   s16 pwmVal;
   u16 encoderVal;
   u16 posVal;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct pidDebugData {
   s16 pPart;
   s16 iPart;
   s16 dPart;
   u16 minMaxPidOutput;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct piezoData {
   u16 value1;
   u16 value2;
   u16 value3;
   u16 value4;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct errorData {
     u8 temperature;
@@ -84,7 +84,7 @@ struct errorData {
     unsigned encodersNotInitalized:1;
     unsigned hardwareShutdown:1;
     unsigned unused:3;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct statusData {
   signed pwm :12;
@@ -92,35 +92,35 @@ struct statusData {
   u16 position;
   unsigned currentValue :14;
   unsigned index :10;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setValueData {
   s16 board1Value;
   s16 board2Value;
   s16 board3Value;
   s16 board4Value;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setModeData {
   enum controllerModes board1Mode:8;
   enum controllerModes board2Mode:8;
   enum controllerModes board3Mode:8;
   enum controllerModes board4Mode:8;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setPidData {
   s16 kp;
   s16 ki;
   s16 kd;
   u16 minMaxPidOutput;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__)) ;
 
 struct encoderConfiguration {
     unsigned ticksPerTurnIntern:24;
     u8 tickDividerIntern;
     unsigned ticksPerTurnExtern:24;
     u8 tickDividerExtern;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct configure1Data {
   unsigned openCircuit :1;
@@ -135,14 +135,14 @@ struct configure1Data {
   u8 maxBoardTemp;
   u8 maxBoardTempCount;
   u16 timeout;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct configure2Data {
   u16 maxCurrent;
   u8 maxCurrentCount;
   u16 pwmStepPerMs;
   //  unsigned unused :24;
-} __attribute__ ((packed));
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 #ifndef __NO_STM32
 struct ControllerState;
