@@ -276,7 +276,7 @@ int read_mem(int address, void *dst, size_t count)
 		fprintf(stderr,"command: read mem\n");
 	writecmd(0x11);
 
-	if (check_ack(0))
+	if (check_ack(20))
 		return 1;
 
 	writec(address >> 24);
@@ -285,7 +285,7 @@ int read_mem(int address, void *dst, size_t count)
 	writec(address >> 0);
 	writec((address >> 24)^(address >> 16)^(address >> 8)^(address >> 0));
 
-	if (check_ack(0))
+	if (check_ack(20))
 		return 1;
 
 	/* if the address is otherwise invalid, e.g. not readable,
@@ -294,7 +294,7 @@ int read_mem(int address, void *dst, size_t count)
 	c = count - 1;
 	writecmd(c);
 
-	if (check_ack(0))
+	if (check_ack(20))
 		return 1;
 
 	char *p = dst;
@@ -519,7 +519,7 @@ int main(int argc, char **argv)
 			fprintf(stderr,"write error\n");
 			return 1;
 		}
-		if (rx_avail == HAVE_RX) {
+		if (rx_avail == HAVE_RX || rx_avail == DEBUG_NO_RX) {
 			if(read_mem(addr,vbuf,count)) {
 				fprintf(stderr,"readback error\n");
 				return 1;
