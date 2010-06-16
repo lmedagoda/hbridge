@@ -11,8 +11,52 @@
 using namespace std;
 namespace hbridge
 {
+ 
+Encoder::Encoder()
+{
+    wrapValue = 0;
+    lastPositionInTurn = 0;
+    turns = 0;
+}
+
+void Encoder::setWrapValue(uint value)
+{
+    //we go sane and reset the encoder if wrap value changes
+    wrapValue = value;
+    lastPositionInTurn = 0;
+    turns = 0;
+}
+
+void Encoder::init(uint value)
+{
+    lastPositionInTurn = value;
+    turns = 0;
+}
+
+void Encoder::setZeroPosition(Ticks zeroPos) 
+{
+    zeroPosition = zeroPos;
+};
+
+void Encoder::setRawEncoderValue(uint value)
+{
+    
+    int diff = value - lastPositionInTurn;
+    lastPositionInTurn = value;
+    
+    // We assume that a motor rotates less than half a turn per [ms]
+    // (a status packet is sent every [ms])
+    if (abs(diff) > wrapValue / 2)
+	turns += (diff < 0 ? 1 : -1);
+}
+
+Ticks Encoder::getAbsolutPosition()
+{
+    return turns*wrapValue + lastPositionInTurn - zeroPosition;
+}
+
     Driver::Driver() :
-        states(), positionOld()
+        states()
     {
 	reset();
 
@@ -31,8 +75,9 @@ namespace hbridge
     void Driver::reset()
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
-        bzero(&this->positionOld, BOARD_COUNT * sizeof(firmware::s16));
-        bzero(&this->positionOldExtern, BOARD_COUNT * sizeof(firmware::s16));
+	for(int i = 0; i < BOARD_COUNT; i++) {
+	    firstPacket[i] = true;
+	}
     }
 
     int Driver::getBoardIdFromMessage(const can::Message& msg) const
@@ -66,22 +111,19 @@ namespace hbridge
 		states[index].error.overCurrent = edata->overCurrent;
 		states[index].error.timeout = edata->timeout;
 		states[index].temperature = edata->temperature;
-		
-		int diff = directions[index] * (edata->position - this->positionOld[index]);
-                positionOld[index] = edata->position;
-
-                // We assume that a motor rotates less than half a turn per [ms]
-                // (a error packet is sent every [ms])
-                if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
-                    diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided ;
-
-                // Track the position
-                this->states[index].position += diff;
-		if(directions[index] < 0) {
-		    this->states[index].positionExtern = encoderConfigurations[index].ticksPerTurnExternDivided - edata->externalPosition;
-		} else {
-		    this->states[index].positionExtern = edata->externalPosition;		    
+		if(firstPacket[index]) 
+		{
+		    encoderIntern[index].init(edata->position);
+		    encoderExtern[index].init(edata->externalPosition);
 		}
+		else 
+		{
+		    encoderIntern[index].setRawEncoderValue(edata->position);
+		    encoderExtern[index].setRawEncoderValue(edata->externalPosition);
+		}
+		
+		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
+		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
 	    }
 	    break;
             case firmware::PACKET_ID_STATUS:
@@ -93,22 +135,22 @@ namespace hbridge
                 this->states[index].current = data->currentValue; // Current in [mA]
                 this->states[index].pwm     = directions[index] * static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
 
-                int diff = directions[index] * (data->position - this->positionOld[index]);
-                positionOld[index] = data->position;
-
-                // We assume that a motor rotates less than half a turn per [ms]
-                // (a status packet is sent every [ms])
-                if (abs(diff) > encoderConfigurations[index].ticksPerTurnDivided / 2)
-                    diff += (diff < 0 ? 1 : -1) * encoderConfigurations[index].ticksPerTurnDivided;
-
-                // Track the position
-                this->states[index].position += diff;
-		if(directions[index] < 0) {
-		    this->states[index].positionExtern = encoderConfigurations[index].ticksPerTurnExternDivided - data->externalPosition;
-		} else {
-		    this->states[index].positionExtern = data->externalPosition;		    
+		if(firstPacket[index]) 
+		{
+		    encoderIntern[index].init(data->position);
+		    encoderExtern[index].init(data->externalPosition);
 		}
-		this->states[index].delta = diff;
+		else 
+		{
+		    encoderIntern[index].setRawEncoderValue(data->position);
+		    encoderExtern[index].setRawEncoderValue(data->externalPosition);
+		}
+
+		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
+		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
+
+		//FIXME, What is this ?
+// 		this->states[index].delta = diff;
 		
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
@@ -137,6 +179,8 @@ namespace hbridge
 
 	      break;
         }
+
+	firstPacket[index] = false;
 
         return true;
     }
@@ -322,8 +366,24 @@ namespace hbridge
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG;
         msg.size = sizeof(firmware::encoderConfiguration);
 
+	encoderIntern[board].setWrapValue(encoderConfigurations[board].ticksPerTurnDivided);
+	encoderExtern[board].setWrapValue(encoderConfigurations[board].ticksPerTurnExternDivided);
+	
 	return msg;
     }
+    
+void Driver::setEncoderOffset(int board, ENCODER_TYPE type, int value)
+{
+    switch(type) {
+	case INTERN:
+	    encoderIntern[board].setZeroPosition(-value  * directions[board]);
+	    break;
+	case EXTERN:
+	    encoderExtern[board].setZeroPosition(-value * directions[board]);
+	    break;
+    }
+}
+
 
     void Driver::setPID(can::Message &msg,
                        double kp, double ki, double kd,

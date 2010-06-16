@@ -16,17 +16,41 @@ namespace hbridge
 	BOARDS_58,	    
     };
 
+    enum ENCODER_TYPE {
+	INTERN,
+	EXTERN,
+    };
+    
+    class Encoder
+    {
+	private:
+	    unsigned int wrapValue;
+	    Ticks zeroPosition;
+	    unsigned int positionInTurn;
+	    unsigned int lastPositionInTurn;
+	    int turns;
+	public:
+	    Encoder();
+	    void init(unsigned int value);
+	    void setWrapValue(unsigned int value);
+	    void setZeroPosition(Ticks zeroPos);
+	    void setRawEncoderValue(unsigned int value);
+	    Ticks getAbsolutPosition();
+    };
+
     class Driver
     {
+    public:
     protected:
 
         BoardState states[BOARD_COUNT];
 	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
         int directions[BOARD_COUNT];
         hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
-        int32_t positionOld[BOARD_COUNT];
-        int32_t positionOldExtern[BOARD_COUNT];
-
+	bool firstPacket[BOARD_COUNT];
+	
+	Encoder encoderIntern[BOARD_COUNT];
+	Encoder encoderExtern[BOARD_COUNT];
     public:
 	
         Driver();
@@ -177,7 +201,9 @@ namespace hbridge
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
 	can::Message setEncoderConfiguration(int board, const EncoderConfiguration &cfg);
-				     
+	
+	void setEncoderOffset(int board, hbridge::ENCODER_TYPE type, int value);	
+	
     protected:
         /**
          * Generate a CAN message for PID values but with no id set.
