@@ -73,7 +73,8 @@ namespace hbridge
          *
          * @param msg A newly received CAN message
          *
-         * @return True if the message was processed successfully, false otherwise.
+         * @return True if the message updated the internal state. False if it did not.
+	 * @throw std::invalid_argument if a protocoll error was detected 
          */
         bool updateFromCAN(const can::Message &msg);
 
@@ -203,7 +204,6 @@ namespace hbridge
 	can::Message setEncoderConfiguration(int board, const EncoderConfiguration &cfg);
 	
 	void setEncoderOffset(int board, hbridge::ENCODER_TYPE type, int value);	
-	
     protected:
         /**
          * Generate a CAN message for PID values but with no id set.

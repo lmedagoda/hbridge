@@ -82,24 +82,28 @@ Ticks Encoder::getAbsolutPosition()
 
     int Driver::getBoardIdFromMessage(const can::Message& msg) const
     {
-	int index = ((msg.can_id & ~0x1f) >> 5) - 1;
+	int index = ((msg.can_id & 0xE0) >> 5) - 1;
 	return index;
     }
 
     bool Driver::updateFromCAN(const can::Message& msg)
     {
 	int index = getBoardIdFromMessage(msg);
-
-	if ((index < 0) || (index > (BOARD_COUNT - 1)))
+	
+	//broadcast message is allways a controll message
+	//and thuis does not update the internal state
+	if(index == -1)
+	    return false;
+	
+	if ((index < -1) || (index > (BOARD_COUNT - 1)))
 	{
 	    // Invalid id specified in packet
-	    return false;
+	    throw std::invalid_argument("Got message with non existing board ID");
 	}
 
         switch (msg.can_id & 0x1f)
         {
 	    case firmware::PACKET_ID_ERROR: {
-
 		const firmware::errorData *edata =
 		    reinterpret_cast<const firmware::errorData *>(msg.data);
                 
@@ -124,6 +128,7 @@ Ticks Encoder::getAbsolutPosition()
 		
 		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
 		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
+		firstPacket[index] = false;
 	    }
 	    break;
             case firmware::PACKET_ID_STATUS:
@@ -155,7 +160,7 @@ Ticks Encoder::getAbsolutPosition()
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
                 this->states[index].can_time = msg.can_time;
-    
+		firstPacket[index] = false;
                 break;
             }
 
@@ -175,12 +180,10 @@ Ticks Encoder::getAbsolutPosition()
                 // To be implemented
                 break;
 	    default:
-	        std::cout << "Got message with unknown id:" << msg.can_id << std::endl;
-
+		//whatever it is, it did not update our internal state
+		return false;
 	      break;
         }
-
-	firstPacket[index] = false;
 
         return true;
     }
