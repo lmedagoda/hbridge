@@ -354,28 +354,33 @@ Ticks Encoder::getAbsolutPosition()
         return msgs;
     }
 
-    can::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration& cfg)
+    can::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration &interncfg, const EncoderConfiguration &externcfg)
     {
 	can::Message msg;
         bzero(&msg, sizeof(can::Message));
 	
-	encoderConfigurations[board] = cfg;
-	encoderConfigurations[board].ticksPerTurnDivided = encoderConfigurations[board].ticksPerTurn / encoderConfigurations[board].tickDivider;
-	encoderConfigurations[board].ticksPerTurnExternDivided = encoderConfigurations[board].ticksPerTurnExtern / encoderConfigurations[board].tickDividerExtern;
+	EncoderConfiguration icfg = interncfg;
+	EncoderConfiguration ecfg = externcfg;
+	
+	icfg.validate();
+	ecfg.validate();
 
         firmware::encoderConfiguration *data =
             reinterpret_cast<firmware::encoderConfiguration *>(msg.data);
 
-	data->ticksPerTurnIntern = encoderConfigurations[board].ticksPerTurnDivided;
-	data->tickDividerIntern = cfg.tickDivider;
-	data->ticksPerTurnExtern = encoderConfigurations[board].ticksPerTurnExternDivided;
-	data->tickDividerExtern = cfg.tickDividerExtern;
+	data->ticksPerTurnIntern = icfg.ticksPerTurnDivided;
+	data->tickDividerIntern = icfg.tickDivider;
+	data->ticksPerTurnExtern = ecfg.ticksPerTurnDivided;
+	data->tickDividerExtern = ecfg.tickDivider;
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG;
         msg.size = sizeof(firmware::encoderConfiguration);
 
-	encoderIntern[board].setWrapValue(encoderConfigurations[board].ticksPerTurnDivided);
-	encoderExtern[board].setWrapValue(encoderConfigurations[board].ticksPerTurnExternDivided);
+	encoderIntern[board].setWrapValue(icfg.ticksPerTurnDivided);
+	encoderIntern[board].setZeroPosition(icfg.zeroPosition);
+	
+	encoderExtern[board].setWrapValue(ecfg.ticksPerTurnDivided);
+	encoderExtern[board].setZeroPosition(ecfg.zeroPosition);
 	
 	return msg;
     }

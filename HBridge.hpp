@@ -52,30 +52,36 @@ namespace hbridge
     {
 	unsigned int ticksPerTurn;
 	unsigned char tickDivider;
-	unsigned int ticksPerTurnExtern;
-	unsigned char tickDividerExtern;
 	unsigned int ticksPerTurnDivided;
-	unsigned int ticksPerTurnExternDivided;
+	Ticks zeroPosition;
 #ifndef __orogen
         /**
          * Initialise with sane values
          */
         EncoderConfiguration() :
-            ticksPerTurn(0), tickDivider(1), ticksPerTurnExtern(0), tickDividerExtern(1), ticksPerTurnDivided(0), ticksPerTurnExternDivided(0)
+            ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0)
         {}
         
-        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider, uint32_t ticksPerTurnExtern, uint8_t tickDividerExtern) :
-            ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), ticksPerTurnExtern(ticksPerTurnExtern), tickDividerExtern(tickDividerExtern)
-        {
-	    if(tickDivider == 0 || tickDividerExtern == 0)
+        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider) :
+	    ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), zeroPosition(0)
+	{
+	    validate();
+	}
+	
+	void setZeroPosition(Ticks zeroPos) 
+	{
+	    zeroPosition = zeroPos;
+	}
+	
+	void validate() 
+	{
+	    if(tickDivider == 0)
 		throw std::out_of_range("Invalid tick divider given");
 	    
 	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
-	    this->ticksPerTurnExternDivided = ticksPerTurnExtern / tickDividerExtern;
 	}
 #endif
-    };
-    
+    };    
     enum MOTOR_ID
     {
         MOTOR_REAR_LEFT  = 0,
