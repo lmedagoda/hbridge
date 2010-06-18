@@ -17,10 +17,14 @@ Encoder::Encoder()
     wrapValue = 0;
     lastPositionInTurn = 0;
     turns = 0;
+    zeroPosition = 0;
 }
 
 void Encoder::setWrapValue(uint value)
 {
+    if(wrapValue == value)
+        return;
+
     //we go sane and reset the encoder if wrap value changes
     wrapValue = value;
     lastPositionInTurn = 0;
