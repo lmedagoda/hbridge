@@ -40,19 +40,20 @@ void Encoder::setZeroPosition(Ticks zeroPos)
 
 void Encoder::setRawEncoderValue(uint value)
 {
-    
     int diff = value - lastPositionInTurn;
     lastPositionInTurn = value;
-    
     // We assume that a motor rotates less than half a turn per [ms]
     // (a status packet is sent every [ms])
     if (abs(diff) > wrapValue / 2)
+    {
 	turns += (diff < 0 ? 1 : -1);
+    }
 }
 
 Ticks Encoder::getAbsolutPosition()
 {
-    return turns*wrapValue + lastPositionInTurn - zeroPosition;
+    Ticks ret = turns* ((int)wrapValue) + ((int)lastPositionInTurn) - zeroPosition;
+    return ret;
 }
 
     Driver::Driver() :
