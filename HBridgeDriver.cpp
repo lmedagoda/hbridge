@@ -377,10 +377,10 @@ Ticks Encoder::getAbsolutPosition()
         msg.size = sizeof(firmware::encoderConfiguration);
 
 	encoderIntern[board].setWrapValue(icfg.ticksPerTurnDivided);
-	encoderIntern[board].setZeroPosition(icfg.zeroPosition);
+	encoderIntern[board].setZeroPosition(icfg.zeroPosition * directions[board]);
 	
 	encoderExtern[board].setWrapValue(ecfg.ticksPerTurnDivided);
-	encoderExtern[board].setZeroPosition(ecfg.zeroPosition);
+	encoderExtern[board].setZeroPosition(ecfg.zeroPosition * directions[board]);
 	
 	return msg;
     }
