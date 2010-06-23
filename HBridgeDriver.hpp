@@ -16,11 +16,6 @@ namespace hbridge
 	BOARDS_58,	    
     };
 
-    enum ENCODER_TYPE {
-	INTERN,
-	EXTERN,
-    };
-    
     class Encoder
     {
 	private:
@@ -201,8 +196,6 @@ namespace hbridge
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
 	can::Message setEncoderConfiguration(int board, const hbridge::EncoderConfiguration& interncfg, const hbridge::EncoderConfiguration& externcfg);
-	
-	void setEncoderOffset(int board, hbridge::ENCODER_TYPE type, int value);	
     protected:
         /**
          * Generate a CAN message for PID values but with no id set.

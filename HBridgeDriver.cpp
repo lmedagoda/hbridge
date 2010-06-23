@@ -379,19 +379,6 @@ Ticks Encoder::getAbsolutPosition()
 	return msg;
     }
     
-void Driver::setEncoderOffset(int board, ENCODER_TYPE type, int value)
-{
-    switch(type) {
-	case INTERN:
-	    encoderIntern[board].setZeroPosition(-value  * directions[board]);
-	    break;
-	case EXTERN:
-	    encoderExtern[board].setZeroPosition(-value * directions[board]);
-	    break;
-    }
-}
-
-
     void Driver::setPID(can::Message &msg,
                        double kp, double ki, double kd,
                        double minMaxValue) const
