@@ -73,6 +73,9 @@ void encoderInit() {
 }
 
 void setTicksPerTurn(u16 ticks, u8 tickDivider) {
+    if(configured && internalEncoderConfig.ticksPerTurn == ticks && internalEncoderConfig.tickDivider == tickDivider)
+	return;
+    
     internalEncoderConfig.tickDivider = tickDivider;
     internalEncoderConfig.ticksPerTurn = ticks;
     TIM_Cmd(TIM4, DISABLE);    
@@ -136,6 +139,9 @@ u16 getDividedTicks() {
 }
 
 void setTicksPerTurnExtern(u32 ticks, u8 tickDivider) {
+    if(configured && externalEncoderConfig.ticksPerTurn == ticks && externalEncoderConfig.tickDivider == tickDivider)
+	return;
+    
     externalEncoderConfig.tickDivider = tickDivider;
     externalEncoderConfig.ticksPerTurn = ticks;
     configured = 1;
