@@ -18,6 +18,7 @@ Encoder::Encoder()
     lastPositionInTurn = 0;
     turns = 0;
     zeroPosition = 0;
+    gotValidReading = false;
 }
 
 void Encoder::setWrapValue(uint value)
@@ -29,12 +30,7 @@ void Encoder::setWrapValue(uint value)
     wrapValue = value;
     lastPositionInTurn = 0;
     turns = 0;
-}
-
-void Encoder::init(uint value)
-{
-    lastPositionInTurn = value;
-    turns = 0;
+    gotValidReading = false;    
 }
 
 void Encoder::setZeroPosition(Ticks zeroPos) 
@@ -44,13 +40,31 @@ void Encoder::setZeroPosition(Ticks zeroPos)
 
 void Encoder::setRawEncoderValue(uint value)
 {
-    int diff = value - lastPositionInTurn;
-    lastPositionInTurn = value;
-    // We assume that a motor rotates less than half a turn per [ms]
-    // (a status packet is sent every [ms])
-    if (abs(diff) > wrapValue / 2)
+
+    if(!gotValidReading)
     {
-	turns += (diff < 0 ? 1 : -1);
+	if(value > 0)
+	{
+	    gotValidReading = true;
+	    lastPositionInTurn = value;
+	}
+	else
+	{
+	    //report 0 to the outside world
+	    lastPositionInTurn = 0;
+	}
+    }
+    else 
+    {
+	int diff = value - lastPositionInTurn;
+	lastPositionInTurn = value;
+	
+	// We assume that a motor rotates less than half a turn per [ms]
+	// (a status packet is sent every [ms])
+	if (abs(diff) > wrapValue / 2)
+	{
+	    turns += (diff < 0 ? 1 : -1);
+	}
     }
 }
 
@@ -80,9 +94,6 @@ Ticks Encoder::getAbsolutPosition()
     void Driver::reset()
     {
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
-	for(int i = 0; i < BOARD_COUNT; i++) {
-	    firstPacket[i] = true;
-	}
     }
 
     int Driver::getBoardIdFromMessage(const can::Message& msg) const
@@ -120,20 +131,12 @@ Ticks Encoder::getAbsolutPosition()
 		states[index].error.overCurrent = edata->overCurrent;
 		states[index].error.timeout = edata->timeout;
 		states[index].temperature = edata->temperature;
-		if(firstPacket[index]) 
-		{
-		    encoderIntern[index].init(edata->position);
-		    encoderExtern[index].init(edata->externalPosition);
-		}
-		else 
-		{
-		    encoderIntern[index].setRawEncoderValue(edata->position);
-		    encoderExtern[index].setRawEncoderValue(edata->externalPosition);
-		}
+
+		encoderIntern[index].setRawEncoderValue(edata->position);
+		encoderExtern[index].setRawEncoderValue(edata->externalPosition);
 		
 		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
 		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
-		firstPacket[index] = false;
 	    }
 	    break;
             case firmware::PACKET_ID_STATUS:
@@ -145,16 +148,8 @@ Ticks Encoder::getAbsolutPosition()
                 this->states[index].current = data->currentValue; // Current in [mA]
                 this->states[index].pwm     = directions[index] * static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
 
-		if(firstPacket[index]) 
-		{
-		    encoderIntern[index].init(data->position);
-		    encoderExtern[index].init(data->externalPosition);
-		}
-		else 
-		{
-		    encoderIntern[index].setRawEncoderValue(data->position);
-		    encoderExtern[index].setRawEncoderValue(data->externalPosition);
-		}
+		encoderIntern[index].setRawEncoderValue(data->position);
+		encoderExtern[index].setRawEncoderValue(data->externalPosition);
 
 		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
 		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
@@ -165,7 +160,6 @@ Ticks Encoder::getAbsolutPosition()
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
                 this->states[index].can_time = msg.can_time;
-		firstPacket[index] = false;
                 break;
             }
 

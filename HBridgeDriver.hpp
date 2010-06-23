@@ -29,9 +29,9 @@ namespace hbridge
 	    unsigned int positionInTurn;
 	    unsigned int lastPositionInTurn;
 	    int turns;
+	    bool gotValidReading;
 	public:
 	    Encoder();
-	    void init(unsigned int value);
 	    void setWrapValue(unsigned int value);
 	    void setZeroPosition(Ticks zeroPos);
 	    void setRawEncoderValue(unsigned int value);
@@ -47,7 +47,6 @@ namespace hbridge
 	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
         int directions[BOARD_COUNT];
         hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
-	bool firstPacket[BOARD_COUNT];
 	
 	Encoder encoderIntern[BOARD_COUNT];
 	Encoder encoderExtern[BOARD_COUNT];
