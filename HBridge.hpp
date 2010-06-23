@@ -4,6 +4,7 @@
 #ifndef __orogen
 #include <stdint.h>
 #include <stdexcept>
+#include <iostream>
 #endif
 
 #include <base/time.h>
@@ -107,6 +108,17 @@ namespace hbridge
         bool hasError() 
         {
 	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitalized || hardwareShutdown);
+	}
+		
+	void printError()
+	{
+	    std::cout << "MotorOverheated      :" << motorOverheated << std::endl;
+	    std::cout << "boardOverheated      :" << boardOverheated << std::endl;
+	    std::cout << "overCurrent          :" << overCurrent << std::endl;
+	    std::cout << "timeout              :" << timeout << std::endl;
+	    std::cout << "badConfig            :" << badConfig << std::endl;
+	    std::cout << "encodersNotInitalized:" << encodersNotInitalized << std::endl;
+	    std::cout << "hardwareShutdown     :" << hardwareShutdown << std::endl;
 	}
 	
 	ErrorState operator + (ErrorState const& es) const
