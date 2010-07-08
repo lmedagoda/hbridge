@@ -124,6 +124,9 @@ Ticks Encoder::getAbsolutPosition()
 		    reinterpret_cast<const firmware::errorData *>(msg.data);
                 
                 states[index].index   = edata->index;
+		//hbridge is off, no current is flowing
+                states[index].current = 0;
+		states[index].pwm = 0;
 		states[index].error.badConfig = edata->badConfig;
 		states[index].error.boardOverheated = edata->boardOverheated;
 		states[index].error.encodersNotInitalized = edata->encodersNotInitalized;
