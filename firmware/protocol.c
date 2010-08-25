@@ -15,21 +15,37 @@ enum hostIDs getOwnHostId() {
 
     //get correct host id from gpio pins
     switch(gpioData) {
-    case 1 :
-	print("Configured as H_BRIDGE_1\n");
+    case 0 :
+    	print("Configured as H_BRIDGE_1\n");
 	id = RECEIVER_ID_H_BRIDGE_1;
 	break;
-    case 2 :
+    case 1 :
 	print("Configured as H_BRIDGE_2\n");
 	id = RECEIVER_ID_H_BRIDGE_2;
 	break;
-    case 4 :
+    case 2 :
 	print("Configured as H_BRIDGE_3\n");
 	id = RECEIVER_ID_H_BRIDGE_3;
 	break;
-    case 8 :
+    case 3 :
 	print("Configured as H_BRIDGE_4\n");
 	id = RECEIVER_ID_H_BRIDGE_4;
+	break;
+    case 4 :
+	print("Configured as H_BRIDGE_5\n");
+	id = RECEIVER_ID_H_BRIDGE_5;
+	break;
+    case 5 :
+	print("Configured as H_BRIDGE_6\n");
+	id = RECEIVER_ID_H_BRIDGE_6;
+	break;
+    case 6 :
+	print("Configured as H_BRIDGE_7\n");
+	id = RECEIVER_ID_H_BRIDGE_7;
+	break;
+    case 7 :
+	print("Configured as H_BRIDGE_8\n");
+	id = RECEIVER_ID_H_BRIDGE_8;
 	break;
     default:
 	printf("Wrong host ide configured %hu\n", gpioData);
