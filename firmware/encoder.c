@@ -76,6 +76,9 @@ void setTicksPerTurn(u16 ticks, u8 tickDivider) {
     if(configured && internalEncoderConfig.ticksPerTurn == ticks && internalEncoderConfig.tickDivider == tickDivider)
 	return;
     
+    if(ticks == 0)
+	ticks = 1;
+    
     internalEncoderConfig.tickDivider = tickDivider;
     internalEncoderConfig.ticksPerTurn = ticks;
     TIM_Cmd(TIM4, DISABLE);    
@@ -84,14 +87,14 @@ void setTicksPerTurn(u16 ticks, u8 tickDivider) {
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
     // Time base configuration 
-    TIM_TimeBaseStructure.TIM_Period = ticks;
+    TIM_TimeBaseStructure.TIM_Period = ticks - 1;
     TIM_TimeBaseStructure.TIM_Prescaler = 0;
     TIM_TimeBaseStructure.TIM_ClockDivision = 0;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
     TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
     
     //configure value to reload after wrap around
-    TIM_SetAutoreload(TIM4, ticks);
+    TIM_SetAutoreload(TIM4, ticks - 1);
     
     TIM_SetCounter(TIM4, 0);
     
