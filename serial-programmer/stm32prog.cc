@@ -1,15 +1,13 @@
 
 #include <stdio.h>
-#include <unistd.h>
 #include <termios.h>
 #include <sys/types.h>
-#include <fcntl.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <errno.h>
 #include <string.h>
 #include <getopt.h>
 #include "stm32proto.hh"
+#include "imagereader.hh"
 #include "ioerror.hh"
 
 
@@ -126,12 +124,26 @@ int main(int argc, char **argv)
 {
 	parseArgs(argc,argv);
 
-	int ifd = open(image,O_RDONLY);
-
-	if (ifd < 0) {
-		fprintf(stderr, "Unable to open image file %s: %s\n",
-			image,
-			strerror(errno));
+	ImageReader *img = NULL;
+#ifdef HAVE_LIBELF
+	if (!img)
+		try {
+			img = new ELFImageReader(image);
+		} catch(IOError e) {
+			fprintf(stderr,"ELF reader reported: %s\n",
+				e.what());
+			img = NULL;
+		}
+#endif /*HAVE_LIBELF*/
+	if (!img)
+		try {
+			img = new BinaryImageReader(image);
+		} catch(IOError) {
+			img = NULL;
+		}
+	if (!img) {
+		fprintf(stderr,"Could not open image %s\n",
+			image);
 		return 1;
 	}
 
@@ -154,39 +166,33 @@ int main(int argc, char **argv)
 
 		proto.erase_all();
 
-		char buf[256];
 		char vbuf[256];
 
-		int count;
-		int addr = 0x08000000;
-		do {
-			count = read(ifd,buf,256);
-			if (count < 0) {
-				fprintf(stderr,"read error: %s\n",strerror(errno));
-				return 1;
-			}
+		ImageReader::Chunk chunk;
+		while(img->getNextChunk(chunk)) {
 			if (verbose)
 				fprintf(stderr,
 					"writing %lu bytes at address %08x\n",
-					(unsigned long)count,
-					addr);
-			if(proto.write_mem(addr,buf,count)) {
+					(unsigned long)chunk.size,
+					chunk.address);
+			if(proto.write_mem(chunk.address,chunk.buf,
+					   chunk.size)) {
 				fprintf(stderr,"write error\n");
 				return 1;
 			}
 			if (rx_avail == Stm32Proto::HAVE_RX ||
 			    rx_avail == Stm32Proto::DEBUG_NO_RX) {
-				if(proto.read_mem(addr,vbuf,count)) {
+				if(proto.read_mem(chunk.address,vbuf,
+						  chunk.size)) {
 					fprintf(stderr,"readback error\n");
 					return 1;
 				}
-				if (memcmp(buf,vbuf,count) != 0) {
+				if (memcmp(chunk.buf,vbuf,chunk.size) != 0) {
 					fprintf(stderr,"verify failed\n");
 					return 1;
 				}
 			}
-			addr += count;
-		} while(count == 256);
+		}
 
 	} catch (IOError e) {
 		fputs(e.what(),stderr);
