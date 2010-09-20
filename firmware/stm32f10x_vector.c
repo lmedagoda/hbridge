@@ -35,24 +35,24 @@ typedef union { intfunc __fun; void * __ptr; } intvec_elem;
 /* Private macro -------------------------------------------------------------*/
 #define NVIC_CCR ((volatile unsigned long *)(0xE000ED14))
 
-/* end address for the .text section. defined in linker script */		
-extern unsigned long _etext;
+/* end address for the .text section. defined in linker script */
+extern unsigned char _etext;
 
-/* start address for the .data section. defined in linker script */		
-extern unsigned long _data;
+/* start address for the .data section. defined in linker script */
+extern unsigned char _data;
 
-/* end address for the .data section. defined in linker script */		
-extern unsigned long _edata;
-		
+/* end address for the .data section. defined in linker script */
+extern unsigned char _edata;
+
 /* start address for the .bss section. defined in linker script */
-extern unsigned long _bss;
+extern unsigned char _bss;
 
-/* end address for the .bss section. defined in linker script */			
-extern unsigned long _ebss;	
-		
+/* end address for the .bss section. defined in linker script */
+extern unsigned char _ebss;
+
 /* init value for the stack pointer. defined in linker script */
-extern void _estack;	
-	
+extern void _estack;
+
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void Reset_Handler(void) __attribute__((__interrupt__));
@@ -139,6 +139,7 @@ void (* const g_pfnVectors[])(void) =
 
 
 
+void cpu_init(void) __attribute__((section(".reset")));
 void cpu_init()
 {
   *NVIC_CCR = *NVIC_CCR | 0x200;	/* Set STKALIGN in NVIC */
@@ -181,24 +182,39 @@ void cpu_init()
 * Output         :
 * Return         :
 *******************************************************************************/
+void Reset_Handler(void) __attribute__((section(".reset")));
 void Reset_Handler(void)
 {
-unsigned long *pulSrc, *pulDest;
+    u32 *pulSrc, *pulDest;
 
 /* Copy the data segment initializers from flash to SRAM */
-    pulSrc = &_etext;
-    for(pulDest = &_data; pulDest < &_edata; )
+    pulSrc = (u32*)&_etext;
+    for(pulDest = (u32*)&_data; (unsigned char*)pulDest < &_edata; )
     {
         *(pulDest++) = *(pulSrc++);
     }
 /* Zero fill the bss segment.  */
-    for(pulDest = &_bss; pulDest < &_ebss; )
+    for(pulDest = (u32*)&_bss; pulDest < &_ebss; )
     {
         *(pulDest++) = 0;
     }
 
 /* init cpu at 72 mhz */
     cpu_init();
+
+    u32 c = 0;
+
+    for(pulSrc = 0; (unsigned char*)pulSrc < &_etext+(&_edata-&_data); ) {
+	c += *pulSrc++;
+    }
+    /* account for non-aligned &_edata */
+    switch (((u32)&_edata) & 0x3) {
+    case 0: break;
+    case 1: c -= (*--pulSrc) & 0xffffff00; break;
+    case 2: c -= (*--pulSrc) & 0xffff0000; break;
+    case 3: c -= (*--pulSrc) & 0xff000000; break;
+    }
+    while (c != 0) {} /*checksum error*/
 
 /* Call the application's entry point.*/
     main();

@@ -14,12 +14,16 @@ SECTIONS
 	.  = 0x00000000;          /* From 0x00000000 */
   .text : {
     *(.vectors)      /* Vector table */
+/* this is negated sum over all int32s in final .text and .data, without this
+   int32. the firmware just needs to check that the sum over all int32s is 0. */
+    *(.checksum)
+    *(.reset)        /* init code */
     *(.text)        /* Program code */
     *(.rodata)      /* Read only data */
     *(.rodata*)      /* Read only data */
     _etext = .;
     } >flash
-        .  = 0x20000000;   /* From 0x20000000 */      
+        .  = 0x20000000;   /* From 0x20000000 */
   .data : {
     _data = .;
     *(.data)        /* Data memory */
