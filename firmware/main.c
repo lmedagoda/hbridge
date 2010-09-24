@@ -75,7 +75,7 @@ vu32 wasini2cit = 0;
 *******************************************************************************/
 int main(void)
 {
-  int delay;
+  vu32 delay;
 
 
   //Enable peripheral clock for GPIO
@@ -109,7 +109,7 @@ int main(void)
   
   print("Loop start 1\n");
 
-  delay = 5000000;
+  delay = 72000000;
   while(delay)
     delay--;
 
@@ -126,7 +126,8 @@ int main(void)
   initStateStruct(lastActiveCState);
 
   hbridgeInit();
-  
+
+
   measureACS712BaseVoltage(); 
 
   //activate systick interrupt, at this point
