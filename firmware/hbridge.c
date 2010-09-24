@@ -605,7 +605,8 @@ void TIM1_CC_IRQHandler(void) {
 
     //set High Value of ADC threshold to half battery Voltage
     //batValue is in ADC scale (0 - 4096)
-    ADC2->LTR = getBatteryVoltage() *2 /3;
+	//FIXME remove the whole code block for ADC watchdog mode
+    //ADC2->LTR = getBatteryVoltage() *2 /3;
     //ADC2->HTR = batValue / 2;
 
     //timers where updated atomar, so now we reenable

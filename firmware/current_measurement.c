@@ -18,7 +18,6 @@ static DMA_InitTypeDef DMA_InitStructure;
 
 vu32 acs712BaseVoltage = 0;
 vu32 currentValue = 0;
-vu32 batValue = 0;
 
 struct adcValues{
   u32 currentValues[32];
@@ -49,12 +48,6 @@ void waitForNewADCValues() {
 	;
     }
 };
-
-u32 getBatteryVoltage()
-{
-    return batValue;
-}
-
 
 void measureACS712BaseVoltage()
 {
