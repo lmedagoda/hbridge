@@ -161,6 +161,7 @@ void cpu_init()
   RCC_HCLKConfig(RCC_SYSCLK_Div1);	// HCLK = SYSCLK
   RCC_PCLK1Config(RCC_HCLK_Div2);	// PCLK1 = HCLK/2
   RCC_PCLK2Config(RCC_HCLK_Div1);	// PCLK2 = HCLK
+  RCC_ADCCLKConfig(RCC_PCLK2_Div6);	// ADCCLK = PCLK2/6 = 12Mhz
 
   //Configure PLL for 72 MHz
   RCC_PLLConfig(RCC_PLLSource_HSE_Div2, RCC_PLLMul_9); // 16 MHz / 2 * 9 = 72 MHz
