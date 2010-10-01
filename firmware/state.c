@@ -13,11 +13,11 @@ void initStateStruct(volatile struct ControllerState *cs) {
     //init cotroller state with sane values
     cs->controllMode = CONTROLLER_MODE_PWM;
     cs->internalState = STATE_UNCONFIGURED;
-    cs->useBackInduction = 0;
     cs->useOpenLoop = 0;
     cs->cascadedPositionController = 0;
     cs->pwmStepPerMillisecond = 0;
     cs->maxCurrent = 0;
+    cs->maxCurrentCount = 0;
     cs->maxMotorTemp = 0;
     cs->maxMotorTempCount = 0;
     cs->maxBoardTemp = 0;
@@ -33,9 +33,8 @@ void initStateStruct(volatile struct ControllerState *cs) {
     cs->positionPIDValues.kd = 0;
     cs->positionPIDValues.minMaxPidOutput = 0;
     cs->enablePIDDebug = 0;
-    cs->ticksPerTurn = HALF_WHEEL_TURN_TICKS * 2;
-    
-    errorState = 0;
+    cs->ticksPerTurn = 0;
+    cs->resetTimeoutCounter = 0;
 };
 
 void printStateDebug(volatile struct ControllerState* cs)
@@ -73,7 +72,7 @@ void printStateDebug(volatile struct ControllerState* cs)
 	    int_state_s = "UNCONFIGURED";
 	    break;
     }
-    printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,backIndo %hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetValue, cs->useOpenLoop, cs->useBackInduction, cs->pwmStepPerMillisecond);    
+    printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetValue, cs->useOpenLoop, cs->pwmStepPerMillisecond);    
 }
 
 u8 inErrorState() {

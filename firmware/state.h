@@ -35,7 +35,6 @@ struct ControllerState {
   enum internalState internalState;
   struct PIDValues speedPIDValues;
   struct PIDValues positionPIDValues;
-  u8 useBackInduction;
   u8 useOpenLoop;
   u8 enablePIDDebug;
   u8 cascadedPositionController;
@@ -60,7 +59,7 @@ void initStateStruct(volatile struct ControllerState *cs);
 void printStateDebug(volatile struct ControllerState *cs);
 
 u8 inErrorState();
-struct ErrorState *getErrorState();
+volatile struct ErrorState *getErrorState();
 void clearErrors();
 
 #endif
