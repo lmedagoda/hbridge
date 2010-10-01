@@ -195,7 +195,7 @@ void Reset_Handler(void)
         *(pulDest++) = *(pulSrc++);
     }
 /* Zero fill the bss segment.  */
-    for(pulDest = (u32*)&_bss; pulDest < &_ebss; )
+    for(pulDest = (u32*)&_bss; pulDest < (u32*)&_ebss; )
     {
         *(pulDest++) = 0;
     }
