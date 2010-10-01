@@ -22,7 +22,7 @@ struct encoderData externalEncoderConfig;
 u8 encodersConfigured() {
     return configured;
 }
-
+// incremental encoder
 void encoderInit() {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
@@ -61,9 +61,12 @@ void encoderInit() {
     TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12,
 				TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);    
 
-    //signal needs to be 8 clock cycles stable
+    //only take edges into account where the 
+    //signal is stable for at least 8 clock cycles
     TIM4->CCMR1 |= (3<<4) | (3<<12);
     TIM4->CCMR2 |= (3<<4) | (3<<12);
+
+    TIM_SetCounter(TIM4, 0);
 
     // TIM enable counter
     TIM_Cmd(TIM4, ENABLE);    
@@ -113,7 +116,7 @@ u32 getTicks()
   
   u32 wheelPos = encoderValue;
   s32 diff = encoderValue - lastEncoderValue;
-  //we got an wraparound
+  //we got a wraparound
   if(abs(diff) > internalEncoderConfig.ticksPerTurn / 2) {
       //test if we wrapped "forward" or "backwards"
       if(diff < 0)  {
@@ -232,7 +235,7 @@ void EXTI15_10_IRQHandler(void)
 
 }
 
-
+// incremental encoder with zero signal
 void encoderInitExtern() {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
