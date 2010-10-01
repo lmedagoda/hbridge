@@ -20,14 +20,16 @@ vu32 acs712BaseVoltage = 0;
 vu32 currentValue = 0;
 
 struct adcValues{
-  u32 currentValues[32];
+  u32 currentValues[USED_REGULAR_ADC_CHANNELS];
   u32 currentValueCount;
 };
 
 vu8 switchAdcValues = 0;
 
-struct adcValues avs1;
-struct adcValues avs2;
+//need to be static, so that they 
+//are initalized with zero
+static struct adcValues avs1;
+static struct adcValues avs2;
 
 volatile struct adcValues *activeAdcValues = &avs1;
 volatile struct adcValues *inActiveAdcValues = &avs2;
@@ -35,7 +37,6 @@ volatile struct adcValues *inActiveAdcValues = &avs2;
 extern vu8 actualDirection;
 vu8 oldDirection;
 
-// struct 
 vu32 hall1[USED_REGULAR_ADC_CHANNELS/2];
 vu32 hall2[USED_REGULAR_ADC_CHANNELS/2];
 
@@ -57,11 +58,11 @@ void measureACS712BaseVoltage()
   //disable pwm output, so that ADC is not triggered any more
   TIM_CtrlPWMOutputs(TIM1, DISABLE);
 
-  for(k = 0; k < 40; k++) {
+  for(k = 0; k < 40; ++k) {
     acs712BaseVoltage = 0;
 
     //reset adc values
-    for( i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+    for( i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
       activeAdcValues->currentValues[i] = 0;
     }
     activeAdcValues->currentValueCount = 0;
@@ -69,17 +70,17 @@ void measureACS712BaseVoltage()
     //trigger adc
     TIM_CtrlPWMOutputs(TIM1, ENABLE);
     
-    //wait for adc conversation to start
+    //wait for adc conversion to start
     while(!(activeAdcValues->currentValues[0])) {;}
     
     //disable further triggering
     TIM_CtrlPWMOutputs(TIM1, DISABLE);
     
-    //Wait for conversation to be finished
+    //Wait for conversion to be finished
     while(!activeAdcValues->currentValueCount) {;}
 
     //sum up values
-    for( i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+    for( i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
       //printf("Calibration value[%lu]= %lu \n",i, activeAdcValues->currentValues[i]);
       acs712BaseVoltage += activeAdcValues->currentValues[i];
     }
@@ -124,7 +125,7 @@ u32 calculateCurrent(s32 currentPwmValue) {
     int i,k;
 
     // sum up all values for hall-sensor 1 and 2
-    for(i = 0, k = 0; k < 6; i=i+2, k++) {
+    for(i = 0, k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; i=i+2, ++k) {
 	// copy values
 	hall1[k] = currentValues[i];
 	hall2[k] = currentValues[i+1];
@@ -135,8 +136,8 @@ u32 calculateCurrent(s32 currentPwmValue) {
     }
 
     // compute average of hall1 and hall2
-    rawCurrentValueHall1 = rawCurrentValueHall1 / 6;
-    rawCurrentValueHall2 = rawCurrentValueHall2 / 6;
+    rawCurrentValueHall1 = rawCurrentValueHall1 / (USED_REGULAR_ADC_CHANNELS / 2);
+    rawCurrentValueHall2 = rawCurrentValueHall2 / (USED_REGULAR_ADC_CHANNELS / 2);
 
     //  set thresholds
     u32 threshold = AVERAGE_THRESHOLD * adcValueCount;
@@ -149,15 +150,15 @@ u32 calculateCurrent(s32 currentPwmValue) {
     u8 hall2_cnt = 0;
 
     // search for corrupted values
-    for(k = 0; k < 6; k++) {
+    for(k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; ++k) {
 	// sum up only usable values
 	if (hall1[k] > hall1_threshold_min && hall1[k] < hall1_threshold_max) {
 	    currentValueHall1 += hall1[k];
-	    hall1_cnt++;
+	    ++hall1_cnt;
 	}
 	if (hall2[k] > hall2_threshold_min && hall2[k] < hall2_threshold_max) {
 	    currentValueHall2 += hall2[k];
-	    hall2_cnt++;
+	    ++hall2_cnt;
 	}
     }
 
@@ -191,7 +192,7 @@ u32 calculateCurrent(s32 currentPwmValue) {
     currentValue = (currentValue * 3300) / 4096;
 
     //set all values to zero
-    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
 	currentValues[i] = 0;
     }
 
@@ -207,9 +208,6 @@ u32 calculateCurrent(s32 currentPwmValue) {
  * ADC1 is configured to be Triggered by Timer1 Ch2
  * and to convert ADC_Channel2 and 3 (VIA and VIB)
  * once. 
- *
- * ADC2 is configured to be Triggered by Timer Ch3
- * and to start an ADC Watchdog in response. 
  */
 void currentMeasurementInit()
 {
@@ -299,10 +297,10 @@ void DMA1_Channel1_IRQHandler(void) {
   if(DMA1->ISR & DMA1_IT_HT1) {
   
     // copy the first values to active struct
-    for(i = 0; i < (USED_REGULAR_ADC_CHANNELS/2); i++) {
+    for(i = 0; i < (USED_REGULAR_ADC_CHANNELS/2); ++i) {
       *cvp += *avp;
-      cvp++;
-      avp++;
+      ++cvp;
+      ++avp;
     }
 
     //clear DMA interrupt pending bit
@@ -316,14 +314,14 @@ void DMA1_Channel1_IRQHandler(void) {
     avp += (USED_REGULAR_ADC_CHANNELS/2);
   
     // copy adc values to active struct
-    for(i = (USED_REGULAR_ADC_CHANNELS/2); i < USED_REGULAR_ADC_CHANNELS; i++) {
+    for(i = (USED_REGULAR_ADC_CHANNELS/2); i < USED_REGULAR_ADC_CHANNELS; ++i) {
       *cvp += *avp;
-      cvp++;
-      avp++;
+      ++cvp;
+      ++avp;
     }
 
     // increase value count
-    (activeAdcValues->currentValueCount)++;
+    ++(activeAdcValues->currentValueCount);
 
     // check switch value request
     if(switchAdcValues) {
@@ -335,7 +333,7 @@ void DMA1_Channel1_IRQHandler(void) {
       switchAdcValues = 0;
       
       //set rest to zero
-      for(i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+      for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
         activeAdcValues->currentValues[i] = 0;
       }
       activeAdcValues->currentValueCount = 0;
