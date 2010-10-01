@@ -1,28 +1,9 @@
-/******************** (C) COPYRIGHT 2008 STMicroelectronics ********************
-* File Name          : main.c
-* Author             : MCD Application Team
-* Version            : V2.0
-* Date               : 05/23/2008
-* Description        : Main program body
-********************************************************************************
-* THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-* WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE TIME.
-* AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY DIRECT,
-* INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING FROM THE
-* CONTENT OF SUCH SOFTWARE AND/OR THE USE MADE BY CUSTOMERS OF THE CODING
-* INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
-* FOR MORE INFORMATION PLEASE CAREFULLY READ THE LICENSE AGREEMENT FILE LOCATED 
-* IN THE ROOT DIRECTORY OF THIS FIRMWARE PACKAGE.***************************/
-
-
-/* Includes ---------------------------------------------------------------*/
 #include "inc/stm32f10x_lib.h"
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_tim.h"
 #include "inc/stm32f10x_rcc.h"
 #include "stm32f10x_it.h"
 #include "inc/stm32f10x_can.h"
-#include "stdio.h"
 #include "spi.h"
 #include "i2c.h"
 #include "pid.h"
@@ -38,20 +19,6 @@
 #include "printf.h"
 #include <stdlib.h>
 
-/* Private typedef --------------------------------------------------------*/
-/* Private define ---------------------------------------------------------*/
-/* Private macro ----------------------------------------------------------*/  
-
-/*
-#define  USARTx                     USART1
-#define  GPIOx                      GPIOA
-#define  RCC_APB2Periph_GPIOx       RCC_APB2Periph_GPIOA
-#define  GPIO_RxPin                 GPIO_Pin_10
-#define  GPIO_TxPin                 GPIO_Pin_9
-*/
-/* Private variables ------------------------------------------------------*/
-/* Private function prototypes --------------------------------------------*/
-/* Private functions ------------------------------------------------------*/
 void NVIC_Configuration(void);
 
 void GPIO_Configuration(void);
@@ -62,8 +29,6 @@ void SysTick_Configuration(void);
 #define MAX_S16 ((1<<15) -1)
 
 volatile enum hostIDs ownHostId;
-
-vu32 wasini2cit = 0;
 
 
 /*******************************************************************************
@@ -77,7 +42,6 @@ int main(void)
 {
   vu32 delay;
 
-
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
@@ -85,10 +49,16 @@ int main(void)
   NVIC_Configuration();
 
   GPIO_Configuration();
+
+  // re-route timer1 output to pins not included in chip package (non-existing pins)
+  // needed for timer chaining
   GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
 
   USART_Configuration();
-    
+
+//note, this mesage can only be send AFTER usart configuration
+  print("Entered main loop\n");
+
   //turn of red led
   GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
@@ -105,10 +75,9 @@ int main(void)
   encoderInitExtern();  
   
   //init i2c to read out temperature sensor
-  setupI2CForLM73CIMK();
-  
-  print("Loop start 1\n");
+  setupI2CForLM73CIMK();  
 
+  //wait until 5V rail get's stable
   delay = 72000000;
   while(delay)
     delay--;
@@ -125,6 +94,9 @@ int main(void)
   initStateStruct(activeCState);
   initStateStruct(lastActiveCState);
 
+  //clear all errors, btw initialize error state struct
+  clearErrors();
+
   hbridgeInit();
 
 
@@ -136,18 +108,17 @@ int main(void)
 
 
   
-  print("Loop start 2\n");
+  print("Peripheral configuration finished\n");
  
   /** DEBUG**/
+/*
   u16 lastTime = 0;
   u16 time;
   u16 counter = 0;  
+*/
 
   u16 cnt = 0;
-  /* Enable AWD interupt */
-  //ADC_ITConfig(ADC2, ADC_IT_AWD, ENABLE);
     
-  print("Loop start 3\n");
 //   u32 temp = 0;
 //   u32 gotTmpCnt = 0;
 //   u8 lmk72addr = (0x4E<<1);
@@ -160,30 +131,30 @@ int main(void)
     /*if(!getTemperature(lmk72addr, &temp)) {
 	gotTmpCnt++;
 	    //printf("got temp %lu\n", temp);
-    }*/
+    }
 
-    //printfI2CDbg();
-    if(counter > 10000) {  
-	/*printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
-	gotTmpCnt = 0;
+    printfI2CDbg();
+    if(counter > 10000) {
+      printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
+      gotTmpCnt = 0;
       counter = 0;
       print(".");
       u32 eet = getTicksExtern();
       u32 iet = getTicks();
-      printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);*/
-      /*printf("Error is %h \n", error);
-      print("ActiveCstate: ");
-      printStateDebug(activeCState);
-      print("LastActiveCstate: ");
-      printStateDebug(lastActiveCState);*/
+      printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);
+      //printf("Error is %h \n", error);
+      //print("ActiveCstate: ");
+      //printStateDebug(activeCState);
+      //print("LastActiveCstate: ");
+      //printStateDebug(lastActiveCState);
     }
-    /** END DEBUG **/
-    
+
     time = TIM_GetCounter(TIM1);
     if(lastTime > time) {
       counter++;
     }
     lastTime = time;
+*/
 
     /* END DEBUG */
 
@@ -238,8 +209,6 @@ int main(void)
 void SysTickHandler(void) {  
     //request switch of adc value struct
     requestNewADCValues();
-    
-    //GPIOA->BSRR |= GPIO_Pin_8;
 
     static s32 currentPwmValue = 0;
     static u16 index = 0;
@@ -267,7 +236,7 @@ void SysTickHandler(void) {
 	timeoutCounter = 0;
     }
 
-    //change state to unconfigured if error is set
+    //change state to error if error is set
     if(inErrorState() && (activeCState->internalState == STATE_CONFIGURED || activeCState->internalState == STATE_GOT_TARGET_VAL)) {
 	activeCState->internalState = STATE_ERROR;
     }
@@ -308,6 +277,7 @@ void SysTickHandler(void) {
 		    break;
 		
 		case CONTROLLER_MODE_POSITION: {
+                    //FIXME activeCState->ticksPerTurn is deprecated get it from encoder.c
 		    if(activeCState->cascadedPositionController) {
 			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
 		    } else {
@@ -383,7 +353,7 @@ void SysTickHandler(void) {
 	    
 	    struct errorData *edata = (struct errorData *) errorMessage.Data;
 
-	    struct ErrorState *es = getErrorState();
+	    volatile struct ErrorState *es = getErrorState();
 	    
 	    //TODO value from lm73cimk
 	    edata->temperature = 0;
@@ -492,7 +462,6 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-  //TODO perhaps OD is wrong for SMBA !!
   // Configure SMBA
   /*
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_5;
@@ -532,15 +501,6 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-  /** DEBUG**/
-  // Configure I2C2 pins: SCL and SDA as push pull for testLED
-/*  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_8 | GPIO_Pin_9;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);*/
-  /** END DEBUG**/
-  
-  
 }
 
 
@@ -650,8 +610,7 @@ void assert_failed(u8* file, u32 line)
 
   GPIO_InitTypeDef GPIO_InitStructure;
   
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
   // Configure PA.8 as output push-pull (LED)
   GPIO_WriteBit(GPIOA,GPIO_Pin_8,Bit_SET);
@@ -664,7 +623,7 @@ void assert_failed(u8* file, u32 line)
   int waittime = 500000;
   
 
-
+ // blink red LED
   while(1)
     {    
       GPIO_SetBits(GPIOA, GPIO_Pin_8);
@@ -679,25 +638,4 @@ void assert_failed(u8* file, u32 line)
 	delay--;
       }
     }
-
-  /* Infinite loop */
-  while (1)
-  {
-  }
 }
-
-/*
-void *memcpy(void *dest, const void *src, size_t n) {
-  size_t i;
-  u8 *d = (u8 *) dest;
-  u8 *s = (u8 *) src;
-  
-
-  for(i = 0; i < n; i++) {
-    *d = *s;
-    d++;
-    s++;
-  }
-
-  return dest;
-  }*/
