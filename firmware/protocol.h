@@ -146,7 +146,7 @@ struct configure2Data {
 
 #ifndef __NO_STM32
 struct ControllerState;
-void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId);
+u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId);
 enum hostIDs getOwnHostId();
 #endif
 

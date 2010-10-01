@@ -194,12 +194,12 @@ int main(void)
       //print("Got a Msg \n");
       print("P");
 
-      updateStateFromMsg(curMsg, lastActiveCState, ownHostId);
+      u8 forceSynchronisation = updateStateFromMsg(curMsg, lastActiveCState, ownHostId);
     
       //mark current message als processed
       CAN_MarkNextDataAsRead();
 
-      //this is concurrency proff, as this code can not run, while
+      //this is concurrency proof, as this code can not run, while
       //systick Handler is active !
       volatile struct ControllerState *tempstate = activeCState;
 
@@ -213,6 +213,11 @@ int main(void)
       
       *lastActiveCState = *activeCState;      
       
+      if(forceSynchronisation) {
+          while(activeCState->resetTimeoutCounter)
+              ;
+      }
+
       u16 errorDbg = inErrorState();
       if((curMsg->StdId != PACKET_ID_SET_VALUE14 && curMsg->StdId != PACKET_ID_SET_VALUE58)  || cnt == 50) {
 	cnt = 0;  

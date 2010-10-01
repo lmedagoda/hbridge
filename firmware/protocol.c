@@ -27,9 +27,11 @@ enum hostIDs getOwnHostId() {
 }
 
 
-void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
+u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
     //clear device specific adress bits
     curMsg->StdId &= ~ownHostId;
+
+    u8 forceSynchronisation = 0;
 
     switch(curMsg->StdId) {
 	case PACKET_ID_EMERGENCY_STOP:
@@ -198,6 +200,8 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 		setTicksPerTurnExtern(encData->ticksPerTurnExtern, encData->tickDividerExtern);
 		clearErrors();
 		state->internalState = STATE_UNCONFIGURED;
+                //systick needs to run one time after new encoder values are set
+                forceSynchronisation = 1;
 	    }
 	}
 	break;
@@ -208,6 +212,7 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  printf("Got unknown packet id : %hu ! \n", id);
 	  break;
 	}
-      }
-    
+    }
+
+    return forceSynchronisation;
 }
