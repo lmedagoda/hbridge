@@ -18,7 +18,7 @@ u8 getTemperature(u8 addr, u32 *val);
 void setupI2CForLM73CIMK();
 
 //for internal use only
-u8 lm73cimk_triggerTemeratureConversation(u8 addr);
+u8 lm73cimk_triggerTemeratureConversion(u8 addr);
 
 u8 requestTemperature(u8 addr);
 

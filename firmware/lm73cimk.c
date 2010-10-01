@@ -77,14 +77,13 @@ void moveLM73CIMKStateMachine(u8 addr) {
 
   switch(lm73cimkState) {
   case LM73_IDLE:
-    //trigger new conversation
-    if(!lm73cimk_triggerTemeratureConversation(addr)) {
+    //trigger new conversion
+    if(!lm73cimk_triggerTemeratureConversion(addr)) {
       statistic1++;
       statistic_tr++;
       lm73cimkState = LM73_TRIGGERED;
       //print("Triggered\n");
-    }
-    
+    }    
     break;
     
   case LM73_TRIGGERED:
@@ -107,6 +106,7 @@ void moveLM73CIMKStateMachine(u8 addr) {
       I2C1_Data.I2C_Buffer_Rx[0] = 0;
       I2C1_Data.I2C_Buffer_Rx[1] = 1;
 
+      // value is bigger than 0x8000 when sensor is still working on temperature conversion
       if(value >= 0x8000) {
 	//print("Temp Conversation not finished\n");
 	statistic_nr++;
@@ -129,12 +129,12 @@ void moveLM73CIMKStateMachine(u8 addr) {
 /**
  * Note, this function also configures the 
  * LM73CIMK.
- * The LM73CIMK needs 14 ms for a conversation
+ * The LM73CIMK needs 14 ms for a conversion
  **/
-u8 lm73cimk_triggerTemeratureConversation(u8 addr) {
+u8 lm73cimk_triggerTemeratureConversion(u8 addr) {
   u8 config = 0;
   
-  //set in shutdown mode, ie singe shot mode
+  //set in shutdown mode, ie single shot mode
   config |= (1<<7);
   
   //disable alert
@@ -143,7 +143,7 @@ u8 lm73cimk_triggerTemeratureConversation(u8 addr) {
   //reset alert
   config |= (1<<3);
   
-  //request new conversation
+  //request new conversion
   config |= (1<<2);
 
   u8 data[3];
@@ -199,15 +199,14 @@ void setupI2CForLM73CIMK() {
   /* I2C1 configuration ----------------------------------------------------*/
   I2C_StructInit(&I2C_InitStructure);
   I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
-  //I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-  I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9;
+  //I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
+  I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9; // for > 100 kHz
   //we are master, no address
   I2C_InitStructure.I2C_OwnAddress1 = 0xA0;
   I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
   //I2C_InitStructure.I2C_ClockSpeed = 50000;
   I2C_InitStructure.I2C_ClockSpeed = 400000;
-  //I2C_InitStructure.I2C_ClockSpeed = 400000;
 
   /* Enable I2C1 and I2C2 --------------------------------------------------*/
   I2C_Cmd(I2C1, ENABLE);
@@ -223,25 +222,14 @@ void setupI2CForLM73CIMK() {
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);  
 
-  /* I2C2 configuration ----------------------------------------------------*/
-  //I2C_InitStructure.I2C_OwnAddress1 = 0xA2;
-
-  //I2C_Cmd(I2C2, ENABLE);
-  //I2C_Init(I2C2, &I2C_InitStructure);
-
-
-  /* Disable PEC for I2C1 and I2C2 -----------------------------------------*/
+  /* Disable PEC for I2C1 -----------------------------------------*/
   I2C_CalculatePEC(I2C1, DISABLE);
-  //I2C_CalculatePEC(I2C2, DISABLE);
 
   /* Enable I2C1 and I2C2 event and buffer interrupt */
   I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE);
-  //I2C_ITConfig(I2C2, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE);
-
+ 
   I2C1_Data.I2CMode = I2C_FINISHED;
   lm73cimkState = LM73_IDLE;
-  
-  //print("lmk init\n");
 }
 
 

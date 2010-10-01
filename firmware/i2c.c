@@ -7,10 +7,10 @@
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
-volatile int ledcounter = 0;
-vu32 i2cSafetyCounter = 0;
+// counter to detect i2c interrupt storm (flooding)
+u32 i2cSafetyCounter = 0;
 
-
+// define I2C register
 #define I2C_SMBALERT (1<<15)
 #define I2C_TIMEOUT (1<<14)
 #define I2C_PECERR (1<<12)
@@ -32,8 +32,6 @@ vu32 i2cSafetyCounter = 0;
 #define I2C_TRA (1<<2)
 #define I2C_BUSY (1<<1)
 #define I2C_MSL (1<<0)
-
-extern vu32 wasini2cit;
 
 /*******************************************************************************
 * Function Name  : I2C2_ER_IRQHandler
@@ -74,7 +72,6 @@ void printfI2CDbg() {
 
 void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 {
-    wasini2cit = 1;
     u16 sr1 = I2Cx->SR1;
     u16 sr2 = I2Cx->SR2;
     static u16 cnt = 0;
@@ -83,9 +80,9 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
     if(i2cSafetyCounter == 0)
 	dbgWrite = dbgRead;
 
-    i2cSafetyCounter++;
+    ++i2cSafetyCounter;
 
-    
+    // interrupt storm detected, disable irq
     if(i2cSafetyCounter > 120) {
 	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
     }
@@ -107,15 +104,6 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
     
     cnt++;
     
-//    if(I2Cx_Data->I2CError)
-//	I2Cx_Data->I2CMode = I2C_FINISHED;
-    //printf("SR1 %hu, SR2 %hu S %hu, M %hu, idx %hu, size %hu\n", sr1, sr2, I2Cx_Data->state, mode, idx, size);
-    
-    /*if(cnt > 100) {
-	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
-    }
-    cnt++;
-    */
     switch(I2Cx_Data->state) {
 	case START_WRITTEN:
 	    if(sr1& I2C_SB) {
@@ -124,8 +112,8 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 		if(I2Cx_Data->I2CMode == I2C_READ) {
 		    // Send I2C2 slave Address for write
 		    I2C_Send7bitAddress(I2Cx, I2Cx_Data->curI2CAddr, I2C_Direction_Receiver);
-		} else {
-		    if(I2Cx_Data->I2CMode != I2C_FINISHED) {//I2Cx_Data->I2CMode == I2C_WRITE || I2Cx_Data->I2CMode == I2C_WRITE_READ 
+		} else {//I2Cx_Data->I2CMode == I2C_WRITE || I2Cx_Data->I2CMode == I2C_WRITE_READ
+		    if(I2Cx_Data->I2CMode != I2C_FINISHED) { 
 			// Send I2C2 slave Address for write
 			I2C_Send7bitAddress(I2Cx, I2Cx_Data->curI2CAddr, I2C_Direction_Transmitter);
 		    }
@@ -139,14 +127,13 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 	case ADDRESS_WRITTEN:
 	    //advance state for debug purposes
 	    if(sr1 & I2C_ADDR) {
-		I2Cx_Data->state = HANDLING_DATA;
-		
+		I2Cx_Data->state = HANDLING_DATA;		
 	    }
 	    //no break here by purpose
 	case HANDLING_DATA:
 	    //this basicly means, we are not in transmission
 	    //mode, but the chip is waiting for data to transmit
-	    //as we had this error, we are goint to handle this case
+	    //as we had this error, we are going to handle this case
 	    if(sr1 & I2C_TxE && !(sr2 & I2C_TRA)) {
 		I2C_SendData(I2Cx, 0);		
 	    }
@@ -160,16 +147,16 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 			I2Cx_Data->I2C_Tx_Idx++;
 		    } else {
 			if(I2Cx_Data->I2CMode == I2C_WRITE) {
-			/* Disable I2C1 BUF interrupts */
-			I2C_ITConfig(I2Cx, I2C_IT_BUF, DISABLE);
-			// Send STOP Condition
-			I2C_GenerateSTOP(I2Cx, ENABLE);
+                            /* Disable I2C1 BUF interrupts */
+                            I2C_ITConfig(I2Cx, I2C_IT_BUF, DISABLE);
+                            // Send STOP Condition
+                            I2C_GenerateSTOP(I2Cx, ENABLE);
 
-			//write some data to DR, so that BTF is never set
-			//note this data is NOT sended
-			I2C_SendData(I2Cx, 0);
+                            //write some data to DR, so that BTF is never set
+                            //note this data is NOT sended
+                            I2C_SendData(I2Cx, 0);
 
-			I2Cx_Data->I2CMode = I2C_FINISHED;
+                            I2Cx_Data->I2CMode = I2C_FINISHED;
 			} else {
 			    if(I2Cx_Data->I2CMode == I2C_WRITE_READ) {
 				//Write phase finished, switch to read
@@ -188,7 +175,8 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 				//note this data is NOT sended
 				I2C_SendData(I2Cx, 0);
 			    } else {
-				//handle TxE or BTF in weired state
+				//handle TxE or BTF in weird state
+                                //note we should never end up here !
 				I2C_SendData(I2Cx, 0);
 			    }
 			}
@@ -239,7 +227,7 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   u16 sr2 = I2Cx->SR2;
   u16 cr1 = I2Cx->CR1;
   
-  //we got an error, be shur we don't stop 
+  //we got an error, be sure we don't stop
   //later by an orphan start condition
   I2C_GenerateSTART(I2Cx, DISABLE);
   
@@ -373,7 +361,7 @@ u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I
     I2Cx_Data->I2C_Buffer_Tx[i] = data[i];
   }
 
-  //disable orphant stop conditions
+  //disable orphaned stop conditions
   I2C_GenerateSTOP(I2Cx, DISABLE);
 
   // Enable Acknowledgement
@@ -413,7 +401,7 @@ u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2
   I2Cx_Data->I2CMode = I2C_READ;
   I2Cx_Data->state = START_WRITTEN;
 
-   //disable orphant stop conditions
+   //disable orphaned stop conditions
   I2C_GenerateSTOP(I2Cx, DISABLE);
 
   // Enable Acknowledgement
@@ -461,7 +449,7 @@ u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2C
     I2Cx_Data->I2C_Buffer_Tx[i] = txdata[i];
   }
 
-  //disable orphant stop conditions
+  //disable orphaned stop conditions
   I2C_GenerateSTOP(I2Cx, DISABLE);
 
   // Enable Acknowledgement
