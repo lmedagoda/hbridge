@@ -12,8 +12,6 @@ u8 canRxWritePointer;
 u8 canRxReadPointer;
 u8 canRxError;
 
-u16 wasincanit = 0;
-
 void CAN_Configuration(void)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -57,10 +55,8 @@ void CAN_Configuration(void)
     CAN_InitStructure.CAN_Prescaler=4;
     if(CAN_Init(&CAN_InitStructure) == CANINITFAILED) {
 	print("Can init failed \n");
+        assert_param(false);
     }
-    
-
-
 
     /* CAN FIFO0 message pending interrupt enable */ 
     CAN_ITConfig(CAN_IT_FMP0, ENABLE);
@@ -71,7 +67,7 @@ void CAN_Configuration(void)
 
 void CAN_CancelAllTransmits() {
     int i;
-    for(i = 0; i < 3; i++) {
+    for(i = 0; i < 3; ++i) {
     if(CAN_TransmitStatus(i) == CANTXPENDING)
 	CAN_CancelTransmit(i);
     }    
@@ -80,7 +76,6 @@ void CAN_CancelAllTransmits() {
 void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitTypeDef  CAN_FilterInitStructure;
 
-  //TODO perhaps filter ide seem to be a bit different(stdId + RTR + IDE + EXId)
   //Emergency stop, setMode and setValue are matched to FIFO0
   CAN_FilterInitStructure.CAN_FilterNumber=0;
   CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
@@ -117,8 +112,7 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
 void USB_LP_CAN_RX0_IRQHandler(void)
 {
   int received = 0;
-  wasincanit++;
-  
+ 
   vu8 nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;
   while((u8)(CAN->RF0R&(u32)0x03) && nextRxWritePointer != canRxReadPointer) {
     CAN_Receive(CAN_FIFO0, canRXBuffer + canRxWritePointer);
@@ -138,7 +132,6 @@ void USB_LP_CAN_RX0_IRQHandler(void)
 void CAN_RX1_IRQHandler(void)
 {
   int received = 0;
-  wasincanit++;
   
   vu8 nextRxWritePointer = (canRxWritePointer + 1) % CAN_BUFFER_SIZE;
   while((u8)(CAN->RF1R&(u32)0x03) && nextRxWritePointer != canRxReadPointer) {
