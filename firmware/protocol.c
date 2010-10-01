@@ -77,28 +77,27 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	case PACKET_ID_SET_MODE58: {
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		struct setModeData *data = (struct setModeData *) curMsg->Data;
+                enum controllerModes lastMode = state->controllMode;
 		switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
 		    case RECEIVER_ID_H_BRIDGE_5:
 			state->controllMode = data->board1Mode;
-			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
 		    case RECEIVER_ID_H_BRIDGE_6:
 			state->controllMode = data->board2Mode;
-			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
 		    case RECEIVER_ID_H_BRIDGE_7:
 			state->controllMode = data->board3Mode;
-			state->internalState = STATE_CONFIGURED;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
 		    case RECEIVER_ID_H_BRIDGE_8:
 			state->controllMode = data->board4Mode;
-			state->internalState = STATE_CONFIGURED;
 			break;
 		}
+                if(lastMode != state->controllMode)
+                    state->internalState = STATE_CONFIGURED;
 	    } else {
 		print("Error, not configured \n");
 		state->internalState = STATE_ERROR;
@@ -139,9 +138,13 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
+            if(!encodersConfigured()) {
+                state->internalState = STATE_ERROR;
+                getErrorState()->encodersNotInitalized = 1;
+                break;
+            }
 	    print("Got PACKET_ID_SET_CONFIGURE Msg \n");
 	    struct configure1Data *data = (struct configure1Data *) curMsg->Data;
-	    state->useBackInduction = data->activeFieldCollapse;
 	    state->useOpenLoop = data->openCircuit;
 	    state->cascadedPositionController = data->cascadedPositionController;
 	    state->enablePIDDebug = data->enablePIDDebug;
@@ -153,13 +156,8 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	    state->timeout = data->timeout;
 
 	    if(state->internalState == STATE_CONFIG2_RECEIVED) {
-		if(!encodersConfigured()) {
-			state->internalState = STATE_ERROR;
-			getErrorState()->encodersNotInitalized = 1;
-		    } else {
-			state->internalState = STATE_CONFIGURED;
-			clearErrors();
-		    }
+                state->internalState = STATE_CONFIGURED;
+                clearErrors();
 	    } else {
 		state->internalState = STATE_CONFIG1_RECEIVED;
 	    }
@@ -168,6 +166,11 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	}
 	  
         case PACKET_ID_SET_CONFIGURE2: {
+            if(!encodersConfigured()) {
+                state->internalState = STATE_ERROR;
+                getErrorState()->encodersNotInitalized = 1;
+                break;
+            }
 	    print("Got PACKET_ID_SET_CONFIGURE2 Msg \n");
 	    struct configure2Data *data = (struct configure2Data *) curMsg->Data;
 	    state->maxCurrent = data->maxCurrent;
@@ -175,13 +178,8 @@ void updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state
 	    state->pwmStepPerMillisecond = data->pwmStepPerMs;
 
 	    if(state->internalState == STATE_CONFIG1_RECEIVED) {
-		if(!encodersConfigured()) {
-		    state->internalState = STATE_ERROR;
-		    getErrorState()->encodersNotInitalized = 1;
-		} else {
-		    state->internalState = STATE_CONFIGURED;
-		    clearErrors();
-		}
+                state->internalState = STATE_CONFIGURED;
+                clearErrors();
 	    } else {
 		state->internalState = STATE_CONFIG2_RECEIVED;
 	    }
