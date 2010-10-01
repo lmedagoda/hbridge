@@ -4,15 +4,15 @@
 #include "inc/stm32f10x_type.h"
 
 /**
-* This function initalizes internal values of the controllers
+* This function initializes internal values of the controllers
 **/
 void initControllers();
 
 /**
 * This function sould be called, if the h-bridge goes into an
 * error state. In this function the internal data of the 
-* controllers should be reseted, so that no quirks occure on
-* reactivation, but configurationd data should be kept.
+* controllers should be reset, so that no quirks occure on
+* reactivation, but configuration data should be kept.
 **/
 void resetControllers(s32 wheelPos);
 

@@ -7,7 +7,7 @@
 extern volatile enum hostIDs ownHostId;
 struct pid_data posPidData;
 struct pid_data speedPidData;
-static s32 lastWheelPos = 0;
+volatile s32 lastWheelPos = 0;
 
 void initControllers()
 {
@@ -39,10 +39,7 @@ void setNewPosPIDValues(s32 p, s32 i, s32 d, s32 minMax) {
 }
 
 
-s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
-    CanTxMsg pidMessagePos;
-    CanTxMsg posDbgMessage;
-    
+s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) {    
     s32 pwmValue = 0;
     s32 curVal = wheelPos;
 
@@ -59,6 +56,9 @@ s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) 
     pwmValue = pid(&(posPidData), curVal);
 
     if(debug) {
+        CanTxMsg pidMessagePos;
+        CanTxMsg posDbgMessage;
+
 	//send status message over CAN
 	pidMessagePos.StdId= PACKET_ID_PID_DEBUG_POS + ownHostId;
 	pidMessagePos.RTR=CAN_RTR_DATA;
@@ -93,15 +93,13 @@ s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) 
 
 s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
     s32 pwmValue = 0;
-    CanTxMsg speedDbgMessage;
-    CanTxMsg pidMessageSpeed;
 
     s32 curSpeed = wheelPos - lastWheelPos;
 
     //this assumes, that the motor will never turn faster than
     //a quarter wheel turn (or 12.5 motor turns) in a ms 
     if(abs(curSpeed) > ticksPerTurn / 4) {
-	//wheel ist turning backward
+	//wheel is turning backward
 	if(lastWheelPos < wheelPos) {
 	    curSpeed -= ticksPerTurn;
 	}
@@ -112,22 +110,22 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
 	}
     }
 
-    if(debug) {
-	speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
-	speedDbgMessage.RTR=CAN_RTR_DATA;
-	speedDbgMessage.IDE=CAN_ID_STD;
-	speedDbgMessage.DLC= sizeof(struct speedDebugData);
-    }
-
-    struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
-
     //calculate PID value
     //use input from PC-Side
     setTargetValue(&(speedPidData), targetSpeed);
     pwmValue = pid(&(speedPidData), curSpeed);
-    sdbgdata->targetVal = targetSpeed;
 
     if(debug) {
+        CanTxMsg speedDbgMessage;
+        CanTxMsg pidMessageSpeed;
+        speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
+	speedDbgMessage.RTR=CAN_RTR_DATA;
+	speedDbgMessage.IDE=CAN_ID_STD;
+	speedDbgMessage.DLC= sizeof(struct speedDebugData);
+
+        struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
+        
+        sdbgdata->targetVal = targetSpeed;
 	sdbgdata->pwmVal = pwmValue;
 	sdbgdata->encoderVal = wheelPos;
 	sdbgdata->speedVal = curSpeed;
