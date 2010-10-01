@@ -365,7 +365,7 @@ void SysTickHandler(void) {
 	timeoutCounter++;
 
 	//set pwm
-	setNewPWM(currentPwmValue, activeCState->useOpenLoop, activeCState->useBackInduction);
+	setNewPWM(currentPwmValue, activeCState->useOpenLoop);
     } else {
 	//send error message
 	if(activeCState->internalState == STATE_ERROR) {  
@@ -405,7 +405,7 @@ void SysTickHandler(void) {
 	//reset to zero values
 	overCurrentCounter = 0;
 	timeoutCounter = 0;
-	setNewPWM(0, activeCState->useOpenLoop, activeCState->useBackInduction);
+	setNewPWM(0, activeCState->useOpenLoop);
 
 	//reset PID struct, to avoid bad controller 
 	//behavior an reactivation due to big I part
