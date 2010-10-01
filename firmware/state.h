@@ -14,15 +14,14 @@ enum internalState {
 };
 
 struct ErrorState {
-    unsigned motorOverheated:1;
-    unsigned boardOverheated:1;
-    unsigned overCurrent:1;
-    unsigned timeout:1;
-    unsigned badConfig:1;
-    unsigned encodersNotInitalized:1;
-    unsigned hardwareShutdown:1;
-    unsigned unused:2;
-} __attribute__ ((packed));
+    u8 motorOverheated;
+    u8 boardOverheated;
+    u8 overCurrent;
+    u8 timeout;
+    u8 badConfig;
+    u8 encodersNotInitalized;
+    u8 hardwareShutdown;
+};
 
 struct PIDValues {
   s16 kp;

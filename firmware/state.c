@@ -7,11 +7,7 @@ volatile struct ControllerState state2;
 volatile struct ControllerState *activeCState = &state1;
 volatile struct ControllerState *lastActiveCState = &state2;
 
-volatile u8 errorState = 0;
-
-//motorticks * gear reduction
-//512 * 729 / 16
-#define HALF_WHEEL_TURN_TICKS (23328 * 2)
+volatile struct ErrorState errorState;
 
 void initStateStruct(volatile struct ControllerState *cs) {
     //init cotroller state with sane values
@@ -81,15 +77,27 @@ void printStateDebug(volatile struct ControllerState* cs)
 }
 
 u8 inErrorState() {
-    return errorState;
+    return  errorState.motorOverheated ||
+            errorState.boardOverheated ||
+            errorState.overCurrent ||
+            errorState.timeout ||
+            errorState.badConfig ||
+            errorState.encodersNotInitalized ||
+            errorState.hardwareShutdown;
 }
 
-struct ErrorState *getErrorState() {
-    return (struct ErrorState *) (&errorState);
+volatile struct ErrorState *getErrorState() {
+    return &errorState;
 }
 
 void clearErrors() {
-    errorState = 0;
+    errorState.motorOverheated = 0;
+    errorState.boardOverheated = 0;
+    errorState.overCurrent = 0;
+    errorState.timeout = 0;
+    errorState.badConfig = 0;
+    errorState.encodersNotInitalized = 0;
+    errorState.hardwareShutdown = 0;
 }
 
 
