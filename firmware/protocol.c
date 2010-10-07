@@ -149,6 +149,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    struct configure1Data *data = (struct configure1Data *) curMsg->Data;
 	    state->useOpenLoop = data->openCircuit;
 	    state->cascadedPositionController = data->cascadedPositionController;
+            state->controllerInputEncoder = data->controllerInputEncoder;
 	    state->enablePIDDebug = data->enablePIDDebug;
 
 	    state->maxMotorTemp = data->maxMotorTemp;
@@ -187,7 +188,8 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    }
 	    break;
 	}
-	case PACKET_ID_ENCODER_CONFIG: {
+	case PACKET_ID_ENCODER_CONFIG_EXTERN:
+	case PACKET_ID_ENCODER_CONFIG_INTERN: {
 	    print("Got PACKET_ID_ENCODER_CONFIG Msg \n");
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		print("Bad, state is configured \n");
@@ -196,8 +198,13 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    } else {
 		print("configuring encoders \n");
 		struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
-		setTicksPerTurn(encData->ticksPerTurnIntern, encData->tickDividerIntern);
-		setTicksPerTurnExtern(encData->ticksPerTurnExtern, encData->tickDividerExtern);
+		setTicksPerTurn(encData->encoderType, encData->ticksPerTurn, encData->tickDivider);
+                if(curMsg->StdId == PACKET_ID_ENCODER_CONFIG_INTERN) {
+                    state->internalEncoder = encData->encoderType;
+                } else {
+                    state->externalEncoder = encData->encoderType;
+                }
+                
 		clearErrors();
 		state->internalState = STATE_UNCONFIGURED;
                 //systick needs to run one time after new encoder values are set
@@ -205,7 +212,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    }
 	}
 	break;
-      default: 
+     default: 
 	{
 	  u16 id = curMsg->StdId;
 	  

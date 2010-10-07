@@ -35,12 +35,15 @@ enum packetIDs {
   PACKET_ID_SET_PID_SPEED = 8,
   PACKET_ID_SET_CONFIGURE = 9,
   PACKET_ID_SET_CONFIGURE2 = 10,
-  PACKET_ID_ENCODER_CONFIG = 11,
-  PACKET_ID_PID_DEBUG_POS = 12,
-  PACKET_ID_POS_DEBUG = 13,
-  PACKET_ID_PID_DEBUG_SPEED = 14,
-  PACKET_ID_SPEED_DEBUG = 15,
-  PACKET_ID_PIEZO = 16,
+  PACKET_ID_ENCODER_CONFIG_INTERN = 11,
+  PACKET_ID_ENCODER_CONFIG_EXTERN = 12,
+  PACKET_ID_PID_DEBUG_POS = 13,
+  PACKET_ID_POS_DEBUG = 14,
+  PACKET_ID_PID_DEBUG_SPEED = 15,
+  PACKET_ID_SPEED_DEBUG = 16,
+  PACKET_ID_PIEZO = 17,
+};
+
 #define NUM_ENCODERS 5
 enum encoderTypes {
     NO_ENCODER = 0,
@@ -129,10 +132,9 @@ struct setPidData {
 } __attribute__ ((packed)) __attribute__((__may_alias__)) ;
 
 struct encoderConfiguration {
-    unsigned ticksPerTurnIntern:24;
-    u8 tickDividerIntern;
-    unsigned ticksPerTurnExtern:24;
-    u8 tickDividerExtern;
+    enum encoderTypes encoderType:8;
+    u32 ticksPerTurn;
+    u8 tickDivider;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct configure1Data {
@@ -142,7 +144,8 @@ struct configure1Data {
   unsigned cascadedPositionController :1;
   unsigned enablePIDDebug :1;
   unsigned externalEncoder : 1;
-  unsigned unused : 10;
+  enum controllerInputEncoder controllerInputEncoder :1;
+  unsigned unused :9;
   u8 maxMotorTemp;
   u8 maxMotorTempCount;
   u8 maxBoardTemp;
