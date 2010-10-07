@@ -32,8 +32,10 @@ void initStateStruct(volatile struct ControllerState *cs) {
     cs->positionPIDValues.ki = 0;
     cs->positionPIDValues.kd = 0;
     cs->positionPIDValues.minMaxPidOutput = 0;
+    cs->internalEncoder = NO_ENCODER;
+    cs->externalEncoder = NO_ENCODER;
+    cs->controllerInputEncoder = INTERNAL;
     cs->enablePIDDebug = 0;
-    cs->ticksPerTurn = 0;
     cs->resetTimeoutCounter = 0;
 };
 

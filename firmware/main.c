@@ -70,9 +70,7 @@ int main(void)
 
   currentMeasurementInit();
 
-  encoderInit();
-  
-  encoderInitExtern();  
+  encodersInit();
   
   //init i2c to read out temperature sensor
   setupI2CForLM73CIMK();  
@@ -216,7 +214,20 @@ void SysTickHandler(void) {
     static u16 timeoutCounter = 0;
 
     s32 pwmValue = 0;
-    s32 wheelPos = getTicks();
+    s32 wheelPos = 0;
+    u32 ticksPerTurn = 0;
+
+    switch(activeCState->controllerInputEncoder) {
+        case INTERNAL:
+            wheelPos = getTicks(activeCState->internalEncoder);
+            ticksPerTurn = getTicksPerTurn(activeCState->internalEncoder);
+            break;
+        case EXTERNAL:
+            wheelPos = getTicks(activeCState->externalEncoder);
+            ticksPerTurn = getTicksPerTurn(activeCState->externalEncoder);
+            break;
+    }
+
 
     index++;
     if(index >= (1<<10))
@@ -277,16 +288,15 @@ void SysTickHandler(void) {
 		    break;
 		
 		case CONTROLLER_MODE_POSITION: {
-                    //FIXME activeCState->ticksPerTurn is deprecated get it from encoder.c
-		    if(activeCState->cascadedPositionController) {
-			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+                    if(activeCState->cascadedPositionController) {
+			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    } else {
-			pwmValue = positionController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+			pwmValue = positionController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    }
 		    break;
 		}   
 		case CONTROLLER_MODE_SPEED:
-		    pwmValue = speedController(activeCState->targetValue, wheelPos, activeCState->ticksPerTurn, activeCState->enablePIDDebug);
+		    pwmValue = speedController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    break; 
 		default:
 		    pwmValue = 0;
@@ -322,8 +332,8 @@ void SysTickHandler(void) {
 	struct statusData *sdata = (struct statusData *) statusMessage.Data;
 	
 	sdata->pwm = currentPwmValue;
-	sdata->externalPosition = getDividedTicksExtern();
-	sdata->position = getDividedTicks();    
+	sdata->externalPosition = getDividedTicks(activeCState->externalEncoder);
+	sdata->position = getDividedTicks(activeCState->internalEncoder);
 	sdata->currentValue = currentValue;
 	sdata->index = index;
 	
@@ -357,9 +367,9 @@ void SysTickHandler(void) {
 	    
 	    //TODO value from lm73cimk
 	    edata->temperature = 0;
-	    edata->position = getDividedTicks();
+	    edata->position = getDividedTicks(activeCState->internalEncoder);
 	    edata->index = index;
-	    edata->externalPosition = getDividedTicksExtern();
+	    edata->externalPosition = getDividedTicks(activeCState->externalEncoder);
 	    edata->motorOverheated = es->motorOverheated;
 	    edata->boardOverheated = es->boardOverheated;
 	    edata->overCurrent = es->overCurrent;

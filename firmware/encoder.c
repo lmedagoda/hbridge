@@ -5,6 +5,12 @@
 #include "inc/stm32f10x_nvic.h"
 #include <stdlib.h>
 #include "printf.h"
+#include "encoder.h"
+#include "protocol.h"
+
+struct EncoderInterface encoders[NUM_ENCODERS];
+
+enum encoderTypes externalEncoderType;
 
 struct encoderData {
     u16 ticksPerTurn;
@@ -23,7 +29,7 @@ u8 encodersConfigured() {
     return configured;
 }
 // incremental encoder
-void encoderInit() {
+void encoderInitQuadrature() {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
     
@@ -75,7 +81,7 @@ void encoderInit() {
     internalEncoderConfig.ticksPerTurn = 0;    
 }
 
-void setTicksPerTurn(u16 ticks, u8 tickDivider) {
+void setTicksPerTurnQuadrature(u32 ticks, u8 tickDivider) {
     if(configured && internalEncoderConfig.ticksPerTurn == ticks && internalEncoderConfig.tickDivider == tickDivider)
 	return;
     
@@ -106,7 +112,7 @@ void setTicksPerTurn(u16 ticks, u8 tickDivider) {
     configured = 1;
 }
 
-u32 getTicks()
+u32 getTicksQuadrature()
 {
   static s32 lastEncoderValue = 0;
   static s16 wrapCounter = 0;
@@ -139,12 +145,12 @@ u32 getTicks()
   return wheelPos;
 }
 
-u16 getDividedTicks() {
-    u32 ticks = getTicks();
+u16 getDividedTicksQuadrature() {
+    u32 ticks = getTicksQuadrature();
     return ticks / internalEncoderConfig.tickDivider;
 }
 
-void setTicksPerTurnExtern(u32 ticks, u8 tickDivider) {
+void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {
     if(configured && externalEncoderConfig.ticksPerTurn == ticks && externalEncoderConfig.tickDivider == tickDivider)
 	return;
     
@@ -158,7 +164,7 @@ vu32 ainIT = 0;
 vu32 binIT = 0;
 vs32 zeroIT = 0;
 
-u32 getTicksExtern() {
+u32 getTicksQuadratureWithZero() {
     if(zeroIT != -1) {
 	printf("Z: %li \n", zeroIT );
 	zeroIT = -1;
@@ -171,7 +177,7 @@ u32 getTicksExtern() {
     return externalEncoderValue;
 }
 
-u16 getDividedTicksExtern() {
+u16 getDividedTicksQuadratureWithZero() {
     if(!foundZero)
 	return 0;
     return externalEncoderValue / externalEncoderConfig.tickDivider;
@@ -236,7 +242,7 @@ void EXTI15_10_IRQHandler(void)
 }
 
 // incremental encoder with zero signal
-void encoderInitExtern() {
+void encoderInitQuadratureWithZero() {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
     
@@ -279,4 +285,68 @@ void encoderInitExtern() {
     externalEncoderValue = 0;
     externalEncoderConfig.ticksPerTurn = 0;
     externalEncoderConfig.tickDivider = 1;
+}
+
+void encodersInit() {
+    encoders[QUADRATURE].encoderInit = encoderInitQuadrature;
+    encoders[QUADRATURE].getTicks = getTicksQuadrature;
+    encoders[QUADRATURE].getDividedTicks = getDividedTicksQuadrature;
+    encoders[QUADRATURE].setTicksPerTurn = setTicksPerTurnQuadrature;
+    encoders[QUADRATURE].encoderDeInit = NULL;
+
+    encoders[IC_HOUSE_MH_Y].encoderInit = NULL;
+    encoders[IC_HOUSE_MH_Y].getTicks = NULL;
+    encoders[IC_HOUSE_MH_Y].getDividedTicks = NULL;
+    encoders[IC_HOUSE_MH_Y].setTicksPerTurn = NULL;
+    encoders[IC_HOUSE_MH_Y].encoderDeInit = NULL;
+
+    encoders[QUADRATURE_WITH_ZERO].encoderInit = encoderInitQuadratureWithZero;
+    encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZero;
+    encoders[QUADRATURE_WITH_ZERO].getDividedTicks = getDividedTicksQuadratureWithZero;
+    encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
+    encoders[QUADRATURE_WITH_ZERO].encoderDeInit = NULL;
+
+    encoders[BMMV30_SSI].encoderInit = NULL;
+    encoders[BMMV30_SSI].getTicks = NULL;
+    encoders[BMMV30_SSI].getDividedTicks = NULL;
+    encoders[BMMV30_SSI].setTicksPerTurn = NULL;
+    encoders[BMMV30_SSI].encoderDeInit = NULL;
+
+    encoders[ANALOG_VOLTAGE].encoderInit = NULL;
+    encoders[ANALOG_VOLTAGE].getTicks = NULL;
+    encoders[ANALOG_VOLTAGE].getDividedTicks = NULL;
+    encoders[ANALOG_VOLTAGE].setTicksPerTurn = NULL;
+    encoders[ANALOG_VOLTAGE].encoderDeInit = NULL;
+
+}
+
+void setExternalEncoder(enum encoderTypes type)
+{
+    if(externalEncoderType != NO_ENCODER)
+    {
+        encoders[type].encoderDeInit();
+    }
+
+    externalEncoderType = type;
+    encoders[type].encoderInit();
+}
+
+u32 getTicks(enum encoderTypes type)
+{
+    return encoders[type].getTicks();
+}
+
+u16 getDividedTicks(enum encoderTypes type)
+{
+    return encoders[type].getDividedTicks();
+}
+
+void setTicksPerTurn(enum encoderTypes type, u32 ticks, u8 tickDivider)
+{
+    encoders[type].setTicksPerTurn(ticks, tickDivider);
+}
+
+u32 getTicksPerTurn(enum encoderTypes type)
+{
+    return encoders[type].getTicksPerTurn();
 }

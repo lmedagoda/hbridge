@@ -41,6 +41,19 @@ enum packetIDs {
   PACKET_ID_PID_DEBUG_SPEED = 14,
   PACKET_ID_SPEED_DEBUG = 15,
   PACKET_ID_PIEZO = 16,
+#define NUM_ENCODERS 5
+enum encoderTypes {
+    NO_ENCODER = 0,
+    QUADRATURE = 1,
+    QUADRATURE_WITH_ZERO = 2,
+    IC_HOUSE_MH_Y = 3,
+    BMMV30_SSI = 4,
+    ANALOG_VOLTAGE = 5,
+};
+
+enum controllerInputEncoder {
+    INTERNAL,
+    EXTERNAL,
 };
 
 struct speedDebugData {

@@ -35,6 +35,9 @@ struct ControllerState {
   enum internalState internalState;
   struct PIDValues speedPIDValues;
   struct PIDValues positionPIDValues;
+  enum encoderTypes internalEncoder;
+  enum encoderTypes externalEncoder;
+  enum controllerInputEncoder controllerInputEncoder;
   u8 useOpenLoop;
   u8 enablePIDDebug;
   u8 cascadedPositionController;
@@ -48,7 +51,6 @@ struct ControllerState {
   u16 timeout;
   s32 targetValue;
   u8 resetTimeoutCounter;
-  u32 ticksPerTurn;
 };
 
 
