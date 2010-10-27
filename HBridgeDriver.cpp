@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
+#include <stdio.h>
 
 using namespace std;
 namespace hbridge
@@ -78,6 +79,9 @@ Ticks Encoder::getAbsolutPosition()
         states()
     {
 	reset();
+	for(int i=0;i< BOARD_COUNT; i++){
+		directions[i]   = 1;
+	}
 
         directions[MOTOR_REAR_LEFT]   = -1;
         directions[MOTOR_FRONT_LEFT]  = -1;
@@ -150,7 +154,7 @@ Ticks Encoder::getAbsolutPosition()
                 this->states[index].index   = data->index;
                 this->states[index].current = data->currentValue; // Current in [mA]
                 this->states[index].pwm     = directions[index] * static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
-
+		//printf("Current PWM Level for %i is: %f (%i) Direction: %i\n",index,this->states[index].pwm,data->pwm,directions[index]);
 		encoderIntern[index].setRawEncoderValue(data->position);
 		encoderExtern[index].setRawEncoderValue(data->externalPosition);
 
@@ -262,7 +266,7 @@ Ticks Encoder::getAbsolutPosition()
             reinterpret_cast<firmware::setValueData *>(msg.data);
 
         short int* values = &(data->board1Value);
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < BOARD_COUNT; ++i)
         {
             switch(current_modes[i])
             {
