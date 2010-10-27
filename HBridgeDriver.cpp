@@ -79,7 +79,7 @@ Ticks Encoder::getAbsolutPosition()
         states()
     {
 	reset();
-	for(int i=0;i< BOARD_COUNT; i++){
+	for(int i=0;i< 4; i++){
 		directions[i]   = 1;
 	}
 
@@ -232,16 +232,20 @@ Ticks Encoder::getAbsolutPosition()
         data->board2Mode = (firmware::controllerModes)board2;
         data->board3Mode = (firmware::controllerModes)board3;
         data->board4Mode = (firmware::controllerModes)board4;
-        current_modes[0] = board1;
-        current_modes[1] = board2;
-        current_modes[2] = board3;
-        current_modes[3] = board4;
 
 	switch(set) {
 	    case BOARDS_14:
+        	current_modes[0] = board1;
+	        current_modes[1] = board2;
+	        current_modes[2] = board3;
+	        current_modes[3] = board4;
 		msg.can_id = firmware::PACKET_ID_SET_MODE14;
 		break;
 	    case BOARDS_58:
+        	current_modes[4] = board1;
+	        current_modes[5] = board2;
+	        current_modes[6] = board3;
+	        current_modes[7] = board4;
 		msg.can_id = firmware::PACKET_ID_SET_MODE58;
 		break;
 	}
