@@ -270,7 +270,14 @@ Ticks Encoder::getAbsolutPosition()
             reinterpret_cast<firmware::setValueData *>(msg.data);
 
         short int* values = &(data->board1Value);
-        for (int i = 0; i < BOARD_COUNT; ++i)
+	int first = 0;
+	switch(set) {
+	case BOARDS_14: first = 0; break;
+	case BOARDS_58: first = 4; break;
+	default:
+	  throw std::runtime_error("setTargetValues called with bad set");
+	}
+        for (int i = first; i < first+3; ++i)
         {
             switch(current_modes[i])
             {
