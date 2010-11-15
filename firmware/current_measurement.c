@@ -8,7 +8,9 @@
 #include <stdlib.h>
 
 #define ADC1_DR_Address    ((u32)0x4001244C)
-#define AVERAGE_THRESHOLD 300 // [mA]
+#define AVERAGE_THRESHOLD 10
+#define SLOPE_1 1388
+#define SLOPE_2 1275
 
 vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
 
@@ -37,8 +39,9 @@ volatile struct adcValues *inActiveAdcValues = &avs2;
 extern vu8 actualDirection;
 vu8 oldDirection;
 
-vu32 hall1[USED_REGULAR_ADC_CHANNELS/2];
-vu32 hall2[USED_REGULAR_ADC_CHANNELS/2];
+// hall sensor values
+vu32 h1[USED_REGULAR_ADC_CHANNELS/2];
+vu32 h2[USED_REGULAR_ADC_CHANNELS/2];
 
 void requestNewADCValues() {
     switchAdcValues = 1;
@@ -85,6 +88,9 @@ void measureACS712BaseVoltage()
       acs712BaseVoltage += activeAdcValues->currentValues[i];
     }
     
+    // add factor to increase accuracy
+    acs712BaseVoltage = acs712BaseVoltage*100;
+
     //average filter, to reduce noise
     acs712BaseVoltage /= USED_REGULAR_ADC_CHANNELS;
 
@@ -101,7 +107,7 @@ void measureACS712BaseVoltage()
 }
 
 
-u32 calculateCurrent(s32 currentPwmValue) {
+u32 calculateCurrent() {
 
     /*
 	PWM period: 25000 ns
@@ -113,83 +119,90 @@ u32 calculateCurrent(s32 currentPwmValue) {
     u32 adcValueCount =  inActiveAdcValues->currentValueCount;
     vu32 *currentValues = inActiveAdcValues->currentValues;
 
-    // compute base voltage over all samples
-    u32 baseVoltage = acs712BaseVoltage*adcValueCount;
-
-    u32 rawCurrentValueHall1 = 0;
-    u32 rawCurrentValueHall2 = 0;
-    u32 currentValueHall1 = 0;
-    u32 currentValueHall2 = 0;
+    // init all used values
+    u32 rawCurrentValueH1 = 0;
+    u32 rawCurrentValueH2 = 0;
+    u32 currentValueH1 = 0;
+    u32 currentValueH2 = 0;
     u32 currentValue = 0;
-
-    int i,k;
+    u8 i = 0;
+    u8 k = 0;
+    u8 cntH1 = 0;
+    u8 cntH2 = 0;
 
     // sum up all values for hall-sensor 1 and 2
-    for(i = 0, k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; i=i+2, ++k) {
+    for(k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; k++) {
 	// copy values
-	hall1[k] = currentValues[i];
-	hall2[k] = currentValues[i+1];
+	h1[k] = currentValues[i++];
+	h2[k] = currentValues[i++];
 
-	// sum up values
-	rawCurrentValueHall1 += hall1[k];
-	rawCurrentValueHall2 += hall2[k];
+	// sum up values for raw average
+	rawCurrentValueH1 += h1[k];
+	rawCurrentValueH2 += h2[k];
     }
 
     // compute average of hall1 and hall2
-    rawCurrentValueHall1 = rawCurrentValueHall1 / (USED_REGULAR_ADC_CHANNELS / 2);
-    rawCurrentValueHall2 = rawCurrentValueHall2 / (USED_REGULAR_ADC_CHANNELS / 2);
+    rawCurrentValueH1 = rawCurrentValueH1 / (USED_REGULAR_ADC_CHANNELS / 2);
+    rawCurrentValueH2 = rawCurrentValueH2 / (USED_REGULAR_ADC_CHANNELS / 2);
 
-    //  set thresholds
+    //  set thresholds with respect to adcValueCount
     u32 threshold = AVERAGE_THRESHOLD * adcValueCount;
-    u32 hall1_threshold_min = rawCurrentValueHall1 - threshold;
-    u32 hall1_threshold_max = rawCurrentValueHall1 + threshold;
-    u32 hall2_threshold_min = rawCurrentValueHall2 - threshold;
-    u32 hall2_threshold_max = rawCurrentValueHall2 + threshold;
+    u32 thresholdMinH1 = rawCurrentValueH1 - threshold;
+    u32 thresholdMaxH1 = rawCurrentValueH1 + threshold;
+    u32 thresholdMinH2 = rawCurrentValueH2 - threshold;
+    u32 thresholdMaxH2 = rawCurrentValueH2 + threshold;
 
-    u8 hall1_cnt = 0;
-    u8 hall2_cnt = 0;
-
-    // search for corrupted values
-    for(k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; ++k) {
-	// sum up only usable values
-	if (hall1[k] > hall1_threshold_min && hall1[k] < hall1_threshold_max) {
-	    currentValueHall1 += hall1[k];
-	    ++hall1_cnt;
+    // search for corrupted values and sum up only usable values
+    for(k = 0; k < (USED_REGULAR_ADC_CHANNELS / 2); k++) {
+	// hall sensor 1
+	if (h1[k] > thresholdMinH1 && h1[k] < thresholdMaxH1) {
+	    currentValueH1 += h1[k];
+	    cntH1++;
 	}
-	if (hall2[k] > hall2_threshold_min && hall2[k] < hall2_threshold_max) {
-	    currentValueHall2 += hall2[k];
-	    ++hall2_cnt;
+	// hall sensor 2
+	if (h2[k] > thresholdMinH2 && h2[k] < thresholdMaxH2) {
+	    currentValueH2 += h2[k];
+	    cntH2++;
 	}
     }
 
-    // compute average
-    if (hall1_cnt > 0)
-	currentValueHall1 = currentValueHall1 / hall1_cnt;
+    // compute average with accuracy factor
+    if (cntH1 > 0)
+	currentValueH1 = (currentValueH1*100) / cntH1;
     else 
-	currentValueHall1 = 0;
+	currentValueH1 = 0;
 
-    if (hall2_cnt > 0)
-	currentValueHall2 = currentValueHall2 / hall2_cnt;
-    else 
-	currentValueHall2 = 0;
-
-    // compute delta current
-    if ( (currentValueHall1 + currentValueHall2) < (baseVoltage*2) )
-	currentValue = 0; // negative current, something is wrong
+    if (cntH2 > 0)
+	currentValueH2 = (currentValueH2*100) / cntH2;
     else
-	currentValue = (currentValueHall1 + currentValueHall2) - (baseVoltage*2);
+	currentValueH2 = 0;
+
+    currentValue = currentValueH1 + currentValueH2;
 
     // compute average over all adc samples
     currentValue = currentValue / adcValueCount;
 
-    // multiply by 10 to get mV -> mA
-    currentValue = currentValue*10;
+    // debug: uncomment for calibration 
+    //return (currentValue/100);
 
-    // voltage divider
-    currentValue = (currentValue * 51) / 33;
-    
-    // adc voltage to real value
-    currentValue = (currentValue * 3300) / 4096;
+    // calculate offsets with respect to base voltage
+    u32 offset1 = SLOPE_1 * 2 * acs712BaseVoltage;
+    u32 offset2 = SLOPE_2 * 2 * acs712BaseVoltage;
+
+    if (currentValueH1 < currentValueH2) {
+	if ((currentValue * SLOPE_1) > offset1)
+	    currentValue = (currentValue * SLOPE_1) - offset1; 
+	else 
+	    currentValue = 0;
+    } else {
+	if ((currentValue * SLOPE_2) >  offset2)
+	    currentValue = (currentValue * SLOPE_2) - offset2;
+	else 
+	    currentValue = 0;
+    }
+
+    // divide by accuracy factor 100*100
+    currentValue = currentValue / 10000;
 
     //set all values to zero
     for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
@@ -197,8 +210,12 @@ u32 calculateCurrent(s32 currentPwmValue) {
     }
 
     // reset value count
-    inActiveAdcValues->currentValueCount = 0;
-    
+    inActiveAdcValues->currentValueCount = 0; 
+
+    // truncate value if maximum size is reached (14Bit in CAN-package)
+    if (currentValue > 16384)
+	currentValue = 16384;
+
     return currentValue;
 }
 
@@ -236,7 +253,7 @@ void currentMeasurementInit()
   DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
 
   //disable interrupt when dma half finished
-  DMA_ITConfig(DMA1_Channel1, DMA_IT_HT, ENABLE);
+  DMA_ITConfig(DMA1_Channel1, DMA_IT_HT, DISABLE);
 
   //Enable DMA1 channel1
   DMA_Cmd(DMA1_Channel1, ENABLE);
@@ -294,27 +311,10 @@ void DMA1_Channel1_IRQHandler(void) {
   // set pointer to converted value struct
   vu16 *avp = adc_values;
 
-  if(DMA1->ISR & DMA1_IT_HT1) {
-  
-    // copy the first values to active struct
-    for(i = 0; i < (USED_REGULAR_ADC_CHANNELS/2); ++i) {
-      *cvp += *avp;
-      ++cvp;
-      ++avp;
-    }
-
-    //clear DMA interrupt pending bit
-    DMA1->IFCR = DMA1_FLAG_HT1;
-  };
-
   // all channels are sampled
   if(DMA1->ISR & DMA1_IT_TC1) {
 
-    cvp += (USED_REGULAR_ADC_CHANNELS/2);
-    avp += (USED_REGULAR_ADC_CHANNELS/2);
-  
-    // copy adc values to active struct
-    for(i = (USED_REGULAR_ADC_CHANNELS/2); i < USED_REGULAR_ADC_CHANNELS; ++i) {
+    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
       *cvp += *avp;
       ++cvp;
       ++avp;
@@ -330,13 +330,14 @@ void DMA1_Channel1_IRQHandler(void) {
       tempAdcValues = activeAdcValues;
       activeAdcValues = inActiveAdcValues;
       inActiveAdcValues = tempAdcValues;
-      switchAdcValues = 0;
       
       //set rest to zero
       for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
         activeAdcValues->currentValues[i] = 0;
       }
       activeAdcValues->currentValueCount = 0;
+
+      switchAdcValues = 0;
     }
   
     //clear DMA interrupt pending bit

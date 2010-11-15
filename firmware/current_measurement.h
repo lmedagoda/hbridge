@@ -10,7 +10,7 @@ extern vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
 void requestNewADCValues();
 void waitForNewADCValues();
 void currentMeasurementInit();
-u32 calculateCurrent(s32 currentPwmValue);
+u32 calculateCurrent();
 void measureACS712BaseVoltage();
 
 
