@@ -48,6 +48,15 @@ namespace hbridge
         {}
 #endif
     };
+    
+    enum ENCODER_TYPE {
+        ENCODER_NONE = 0,
+        ENCODER_QUADRATURE = 1,
+        ENCODER_QUADRATURE_WITH_ZERO = 2,
+        ENCODER_IC_HOUSE_MH_Y = 3,
+        ENCODER_BMMV30_SSI = 4,
+        ENCODER_ANALOG_VOLTAGE = 5
+    };
 
     struct EncoderConfiguration
     {
@@ -55,16 +64,17 @@ namespace hbridge
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnDivided;
 	Ticks zeroPosition;
+	enum ENCODER_TYPE type;
 #ifndef __orogen
         /**
          * Initialise with sane values
          */
         EncoderConfiguration() :
-            ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0)
+            ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
-        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider) :
-	    ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), zeroPosition(0)
+        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider, ENCODER_TYPE type) :
+	    ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), zeroPosition(0), type(type)
 	{
 	    validate();
 	}

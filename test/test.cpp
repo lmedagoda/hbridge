@@ -221,17 +221,15 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     can::Message msg;
 
     std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
-    hbridge::EncoderConfiguration encConfInt;
-    hbridge::EncoderConfiguration encConfExt;
-    encConfInt.tickDivider = 4;
-    encConfInt.ticksPerTurn = ticksPerTurnIntern * 4;
-
-    encConfExt.tickDivider = 1;
-    encConfExt.ticksPerTurn = ticksPerTurnExtern;
+    hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, 4, hbridge::ENCODER_QUADRATURE);
+    hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, 1, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
     
-    can::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConfInt, encConfExt);
+    can::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);
 
+    encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfExt);
+    driver->write(encConfMsg);
+    
     //now reconfigure
     hbridge::Configuration config = getDefaultConfig();
     hbridge::MessagePair config_msgs;

@@ -351,34 +351,51 @@ Ticks Encoder::getAbsolutPosition()
         return msgs;
     }
 
-    can::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration &interncfg, const EncoderConfiguration &externcfg)
+    can::Message Driver::setInternalEncoderConfiguration(int board, const EncoderConfiguration &cfg)
+    {      
+	can::Message msg = setEncoderConfiguration(board, cfg);
+
+	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
+        msg.size = sizeof(firmware::encoderConfiguration);
+
+	encoderIntern[board].setWrapValue(cfg.ticksPerTurnDivided);
+	encoderIntern[board].setZeroPosition(cfg.zeroPosition * directions[board]);
+		
+	return msg;
+    }
+    
+    can::Message Driver::setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
+    {
+	can::Message msg = setEncoderConfiguration(board, cfg);
+
+	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
+        msg.size = sizeof(firmware::encoderConfiguration);
+
+	encoderExtern[board].setWrapValue(cfg.ticksPerTurnDivided);
+	encoderExtern[board].setZeroPosition(cfg.zeroPosition * directions[board]);
+		
+	return msg;
+    }
+
+    
+    can::Message Driver::Driver::setEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
     {
 	can::Message msg;
         bzero(&msg, sizeof(can::Message));
 	
-	EncoderConfiguration icfg = interncfg;
-	EncoderConfiguration ecfg = externcfg;
+	EncoderConfiguration icfg = cfg;
 	
 	icfg.validate();
-	ecfg.validate();
 
         firmware::encoderConfiguration *data =
             reinterpret_cast<firmware::encoderConfiguration *>(msg.data);
 
-	data->ticksPerTurnIntern = icfg.ticksPerTurnDivided;
-	data->tickDividerIntern = icfg.tickDivider;
-	data->ticksPerTurnExtern = ecfg.ticksPerTurnDivided;
-	data->tickDividerExtern = ecfg.tickDivider;
+	data->encoderType = static_cast<firmware::encoderTypes>(icfg.type);    
+	data->ticksPerTurn = icfg.ticksPerTurnDivided;
+	data->tickDivider = icfg.tickDivider;
 
-	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG;
         msg.size = sizeof(firmware::encoderConfiguration);
 
-	encoderIntern[board].setWrapValue(icfg.ticksPerTurnDivided);
-	encoderIntern[board].setZeroPosition(icfg.zeroPosition * directions[board]);
-	
-	encoderExtern[board].setWrapValue(ecfg.ticksPerTurnDivided);
-	encoderExtern[board].setZeroPosition(ecfg.zeroPosition * directions[board]);
-	
 	return msg;
     }
     
