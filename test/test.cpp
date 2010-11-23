@@ -157,6 +157,9 @@ BOOST_AUTO_TEST_CASE(static_tests) {
     hbridge::MessagePair config_msgs;
     std::cout << "Testing packet building" << std::endl;
 
+    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
+    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
+
     for (int i = 0; i < 4; ++i)
     {
         hbridge::MessagePair config_msgs = hbd.setConfiguration(i, config);
@@ -169,9 +172,6 @@ BOOST_AUTO_TEST_CASE(static_tests) {
         can::Message pidmsg = hbd.setSpeedPID(i, 400.0, 5.0, 0.0, 1800.0);
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
     }
-
-    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
-    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
 
     can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE14, value1Data, valueDataSize, msg));
@@ -315,6 +315,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 // 	    gotmsg = true;
 // 	}
 //     }
+
 
     int speed = 200;
     std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
