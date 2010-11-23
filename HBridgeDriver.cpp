@@ -144,6 +144,7 @@ Ticks Encoder::getAbsolutPosition()
 		
 		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
 		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
+                this->states[index].can_time = msg.can_time;
 	    }
 	    break;
             case firmware::PACKET_ID_STATUS:
