@@ -122,7 +122,7 @@ namespace hbridge
 	    std::cout << "hardwareShutdown     :" << hardwareShutdown << std::endl;
 	}
 	
-	ErrorState operator + (ErrorState const& es) const
+	ErrorState operator | (ErrorState const& es) const
 	{
 	    ErrorState ret;
 	    ret.motorOverheated = this->motorOverheated || es.motorOverheated;
