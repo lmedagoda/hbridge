@@ -8,6 +8,7 @@
 #endif
 
 #include <base/time.h>
+#include <base/actuators/commands.h>
 
 namespace hbridge
 {
@@ -149,13 +150,7 @@ namespace hbridge
     /**
      * Drive mode constants for the hbridges
      */
-    enum DRIVE_MODE
-    {
-        DM_PWM = 0,
-        DM_SPEED = 1,
-        DM_POSITION = 2,
-        DM_UNINITIALIZED = 3
-    };
+    typedef base::actuators::DRIVE_MODE DRIVE_MODE;
 
     struct BoardState
     {
