@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(static_tests) {
     hbridge::MessagePair config_msgs;
     std::cout << "Testing packet building" << std::endl;
 
-    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
+    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_SPEED);
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
 
     for (int i = 0; i < 4; ++i)
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     driver->write(config_msgs.second);
     can::Message msg;
 
-    msg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_PWM);
+    msg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_PWM);
     driver->write(msg);
     
     hbridge::Ticks posInternStart; 
@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     msg = hbd.setSpeedPID(hbridge_id, 400.0, 5.0, 0.0, 500.0);
     driver->write(msg);
     
-    msg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_SPEED);
+    msg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_SPEED);
     driver->write(msg);
 
     //wait for hbridge to process messages

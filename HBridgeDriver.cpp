@@ -88,7 +88,7 @@ Ticks Encoder::getAbsolutPosition()
         directions[MOTOR_REAR_RIGHT]  = 1;
         directions[MOTOR_FRONT_RIGHT] = 1;
         for (int i = 0; i < BOARD_COUNT; ++i)
-            current_modes[i] = DM_UNINITIALIZED;
+            current_modes[i] = base::actuators::DM_UNINITIALIZED;
     }
 
     Driver::~Driver()
@@ -282,11 +282,11 @@ Ticks Encoder::getAbsolutPosition()
         {
             switch(current_modes[i])
             {
-            case DM_SPEED:
-            case DM_PWM:
+            case base::actuators::DM_SPEED:
+            case base::actuators::DM_PWM:
                 values[i] = directions[i] * targets[i];
                 break;
-            case DM_POSITION:
+            case base::actuators::DM_POSITION:
                 values[i] = targets[i];
                 if (directions[i] < 0)
                     values[i] = TICKS_PER_TURN - values[i];
