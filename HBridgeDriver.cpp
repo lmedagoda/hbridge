@@ -133,7 +133,7 @@ Ticks Encoder::getAbsolutPosition()
 		states[index].pwm = 0;
 		states[index].error.badConfig = edata->badConfig;
 		states[index].error.boardOverheated = edata->boardOverheated;
-		states[index].error.encodersNotInitalized = edata->encodersNotInitalized;
+		states[index].error.encodersNotInitialized = edata->encodersNotInitalized;
 		states[index].error.motorOverheated = edata->motorOverheated;
 		states[index].error.overCurrent = edata->overCurrent;
 		states[index].error.timeout = edata->timeout;
