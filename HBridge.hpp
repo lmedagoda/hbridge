@@ -97,17 +97,17 @@ namespace hbridge
 	bool overCurrent;
 	bool timeout;
 	bool badConfig;
-	bool encodersNotInitalized;
+	bool encodersNotInitialized;
         bool hardwareShutdown;
 #ifndef __orogen
 
 	ErrorState() :
-            motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitalized(false), hardwareShutdown(false)
+            motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitialized(false), hardwareShutdown(false)
         {}
         
         bool hasError() 
         {
-	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitalized || hardwareShutdown);
+	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitialized || hardwareShutdown);
 	}
 		
 	void printError()
@@ -117,7 +117,7 @@ namespace hbridge
 	    std::cout << "overCurrent          :" << overCurrent << std::endl;
 	    std::cout << "timeout              :" << timeout << std::endl;
 	    std::cout << "badConfig            :" << badConfig << std::endl;
-	    std::cout << "encodersNotInitalized:" << encodersNotInitalized << std::endl;
+	    std::cout << "encodersNotInitialized:" << encodersNotInitialized << std::endl;
 	    std::cout << "hardwareShutdown     :" << hardwareShutdown << std::endl;
 	}
 	
@@ -129,7 +129,7 @@ namespace hbridge
 	    ret.overCurrent     = this->overCurrent || es.overCurrent;
 	    ret.timeout         = this->timeout || es.timeout;
 	    ret.badConfig       = this->badConfig || es.badConfig;
-	    ret.encodersNotInitalized = this->encodersNotInitalized || es.encodersNotInitalized;
+	    ret.encodersNotInitialized = this->encodersNotInitialized || es.encodersNotInitialized;
 	    ret.hardwareShutdown = this->hardwareShutdown || es.hardwareShutdown;
 	    return ret;
 	}

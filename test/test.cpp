@@ -50,8 +50,8 @@ bool checkPrintError(struct hbridge::ErrorState &error) {
 	std::cout << "HBridge reported error:boardOverheated" << std::endl;
 	ret = true;
     }
-    if(error.encodersNotInitalized) {
-	std::cout << "HBridge reported error:encodersNotInitalized" << std::endl;
+    if(error.encodersNotInitialized) {
+	std::cout << "HBridge reported error:encodersNotInitialized" << std::endl;
 	ret = true;
     }
     if(error.hardwareShutdown) {
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    checkPrintError(state.error);
 	    
-	    if(state.error.encodersNotInitalized) {
+	    if(state.error.encodersNotInitialized) {
 		std::cout << "Correct: HBridge reportet encoderNotInitalized Error " << std::endl;
 		break;
 	    }
