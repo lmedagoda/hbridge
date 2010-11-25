@@ -1,24 +1,18 @@
 #ifndef HBRIDGE_HPP
 #define HBRIDGE_HPP
 
-#ifndef __orogen
 #include <stdint.h>
 #include <stdexcept>
 #include <iostream>
-#endif
 
 #include <base/time.h>
 #include <base/actuators/commands.h>
 
 namespace hbridge
 {
-#define HBRIGE_MAXIMUM_BOARDS 8
-#ifndef __orogen
     const int TICKS_PER_TURN = 512 * 729 / 16;
-    const int BOARD_COUNT = HBRIGE_MAXIMUM_BOARDS;
+    const int BOARD_COUNT = 8;
     
-#endif /* __orogen */
-
     typedef int64_t Ticks;
 
     struct Configuration
@@ -37,7 +31,6 @@ namespace hbridge
         unsigned char maxCurrentCount;
         unsigned short pwmStepPerMs;
 
-#ifndef __orogen
         /**
          * Initialise all fields of the configuration structure with 0
          */
@@ -47,7 +40,6 @@ namespace hbridge
             maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
             timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0)
         {}
-#endif
     };
 
     struct EncoderConfiguration
@@ -56,7 +48,6 @@ namespace hbridge
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnDivided;
 	Ticks zeroPosition;
-#ifndef __orogen
         /**
          * Initialise with sane values
          */
@@ -82,15 +73,7 @@ namespace hbridge
 	    
 	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
 	}
-#endif
     };    
-    enum MOTOR_ID
-    {
-        MOTOR_REAR_LEFT  = 0,
-        MOTOR_REAR_RIGHT = 1,
-        MOTOR_FRONT_RIGHT = 2,
-        MOTOR_FRONT_LEFT = 3
-    };
     
     struct ErrorState {
 	bool motorOverheated;
@@ -100,7 +83,6 @@ namespace hbridge
 	bool badConfig;
 	bool encodersNotInitialized;
         bool hardwareShutdown;
-#ifndef __orogen
 
 	ErrorState() :
             motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitialized(false), hardwareShutdown(false)
@@ -134,7 +116,6 @@ namespace hbridge
 	    ret.hardwareShutdown = this->hardwareShutdown || es.hardwareShutdown;
 	    return ret;
 	}
-#endif
     };
     
     /**
