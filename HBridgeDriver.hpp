@@ -40,7 +40,6 @@ namespace hbridge
 
         BoardState states[BOARD_COUNT];
 	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
-        int directions[BOARD_COUNT];
         hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
 	
 	Encoder encoderIntern[BOARD_COUNT];
