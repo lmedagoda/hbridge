@@ -79,14 +79,6 @@ Ticks Encoder::getAbsolutPosition()
         states()
     {
 	reset();
-	for(int i=0;i< 4; i++){
-		directions[i]   = 1;
-	}
-
-        directions[MOTOR_REAR_LEFT]   = -1;
-        directions[MOTOR_FRONT_LEFT]  = -1;
-        directions[MOTOR_REAR_RIGHT]  = 1;
-        directions[MOTOR_FRONT_RIGHT] = 1;
         for (int i = 0; i < BOARD_COUNT; ++i)
             current_modes[i] = base::actuators::DM_UNINITIALIZED;
     }
@@ -142,8 +134,8 @@ Ticks Encoder::getAbsolutPosition()
 		encoderIntern[index].setRawEncoderValue(edata->position);
 		encoderExtern[index].setRawEncoderValue(edata->externalPosition);
 		
-		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
-		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
+		this->states[index].position = encoderIntern[index].getAbsolutPosition();
+		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition();
                 this->states[index].can_time = msg.can_time;
 	    }
 	    break;
@@ -154,13 +146,13 @@ Ticks Encoder::getAbsolutPosition()
 
                 this->states[index].index   = data->index;
                 this->states[index].current = data->currentValue; // Current in [mA]
-                this->states[index].pwm     = directions[index] * static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
+                this->states[index].pwm     = static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
 		//printf("Current PWM Level for %i is: %f (%i) Direction: %i\n",index,this->states[index].pwm,data->pwm,directions[index]);
 		encoderIntern[index].setRawEncoderValue(data->position);
 		encoderExtern[index].setRawEncoderValue(data->externalPosition);
 
-		this->states[index].position = encoderIntern[index].getAbsolutPosition() * directions[index];
-		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition() * directions[index];
+		this->states[index].position = encoderIntern[index].getAbsolutPosition();
+		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition();
 
 		//FIXME, What is this ?
 // 		this->states[index].delta = diff;
@@ -284,12 +276,10 @@ Ticks Encoder::getAbsolutPosition()
             {
             case base::actuators::DM_SPEED:
             case base::actuators::DM_PWM:
-                values[i] = directions[i] * targets[i];
+                values[i] = targets[i];
                 break;
             case base::actuators::DM_POSITION:
                 values[i] = targets[i];
-                if (directions[i] < 0)
-                    values[i] = TICKS_PER_TURN - values[i];
                 break;
             default:
                 throw std::runtime_error("setTargetValues called before setDriveMode");
