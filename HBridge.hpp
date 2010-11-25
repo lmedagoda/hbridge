@@ -103,6 +103,21 @@ namespace hbridge
         {
 	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitialized || hardwareShutdown);
 	}
+
+        bool operator != (ErrorState const& other) const
+        {
+            return
+                motorOverheated        != other.motorOverheated ||
+                boardOverheated        != other.boardOverheated ||
+                overCurrent            != other.overCurrent ||
+                timeout                != other.timeout ||
+                badConfig              != other.badConfig ||
+                encodersNotInitialized != other.encodersNotInitialized ||
+                hardwareShutdown       != other.hardwareShutdown;
+        }
+
+        bool operator == (ErrorState const& other) const
+        { return !(other != *this); }
 		
 	void printError()
 	{
