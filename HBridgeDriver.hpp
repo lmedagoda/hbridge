@@ -9,7 +9,7 @@
 
 namespace hbridge
 {
-    typedef std::pair<can::Message, can::Message> MessagePair;
+    typedef std::pair<canbus::Message, canbus::Message> MessagePair;
 
     enum BOARD_SET {
 	BOARDS_14,
@@ -53,7 +53,7 @@ namespace hbridge
 	* Extracts and returns the board id from the given message.
 	* Note, this method does not perform range checks.
 	**/
-	int getBoardIdFromMessage(const can::Message &msg) const;
+	int getBoardIdFromMessage(const canbus::Message &msg) const;
 	
         /**
          * Resets the internal state of the driver. This has to be called upon
@@ -69,7 +69,7 @@ namespace hbridge
          * @return True if the message updated the internal state. False if it did not.
 	 * @throw std::invalid_argument if a protocoll error was detected 
          */
-        bool updateFromCAN(const can::Message &msg);
+        bool updateFromCAN(const canbus::Message &msg);
 
         /**
          * Query the board state (current [mA], position [ticks], errors) for the given board (hbridge)
@@ -85,7 +85,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_EMERGENCY_STOP)
          */
-        can::Message emergencyShutdown() const;
+        canbus::Message emergencyShutdown() const;
 
         /**
          * Generate a CAN message for setting the drive mode for all
@@ -95,7 +95,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
-        can::Message setDriveMode(BOARD_SET set, DRIVE_MODE mode);
+        canbus::Message setDriveMode(BOARD_SET set, DRIVE_MODE mode);
 
         /**
          * Generate a CAN message for setting the drive mode fpr every
@@ -108,7 +108,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_MODE)
          */
-        can::Message setDriveMode(BOARD_SET set ,DRIVE_MODE board1, DRIVE_MODE board2,
+        canbus::Message setDriveMode(BOARD_SET set ,DRIVE_MODE board1, DRIVE_MODE board2,
                              DRIVE_MODE board3, DRIVE_MODE board4);
 
         /**
@@ -134,12 +134,12 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_NEW_VALUE)
          */
-        can::Message setTargetValues(BOARD_SET set, short int* targets) const;
+        canbus::Message setTargetValues(BOARD_SET set, short int* targets) const;
 
         /**
          * \overloaded
          */
-        can::Message setTargetValues(BOARD_SET set, short int value1, short int value2,
+        canbus::Message setTargetValues(BOARD_SET set, short int value1, short int value2,
                                      short int value3, short int value4) const;
 
         /**
@@ -154,7 +154,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_PID_POS)
          */
-        can::Message setSpeedPID(int board,
+        canbus::Message setSpeedPID(int board,
                             double kp, double ki, double kd,
                             double minMaxValue) const;
 
@@ -170,7 +170,7 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_PID_SPEED)
          */
-        can::Message setPositionPID(int board,
+        canbus::Message setPositionPID(int board,
                                double kp, double ki, double kd,
                                double minMaxValue) const;
 
@@ -194,7 +194,7 @@ namespace hbridge
 	*
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
-	can::Message setInternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
+	canbus::Message setInternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
 
 	/**
 	* Generates a CAN message for configuraing encoder parameters.
@@ -205,7 +205,7 @@ namespace hbridge
 	*
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
-	can::Message setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
+	canbus::Message setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
 	
     protected:
         /**
@@ -218,13 +218,13 @@ namespace hbridge
         /**
          * Generate a CAN message for PID values but with no id set.
          *
-         * @param msg A reference to a can::Message structure
+         * @param msg A reference to a canbus::Message structure
          * @param kp Proportial term parameter
          * @param ki Integral term parameter
          * @param kd Differential term parameter
          * @param minMaxValue Min-Max value
          */
-        void setPID(can::Message &msg,
+        void setPID(canbus::Message &msg,
                            double kp, double ki, double kd,
                            double minMaxValue) const;
 

@@ -15,7 +15,7 @@
 #include "../protocol.hpp"
 #include "../HBridge.hpp"
 
-can::Driver *driver = 0;
+canbus::Driver *driver = 0;
 hbridge::Driver hbd;
 int hbridge_id = 0;
 
@@ -78,7 +78,7 @@ bool checkMessage(
         firmware::packetIDs  pid,
         const unsigned char *testData,
         size_t               testDataSize,
-        can::Message        &msg)
+        canbus::Message        &msg)
 {
     unsigned int reqID = (board_index << 5) | pid;
 
@@ -127,9 +127,9 @@ void initDriver() {
 
     std::cout << "Trying to open CAN device " << can_device << std::endl;
 #if CANBUS_VERSION >= 101
-    BOOST_CHECK(driver = can::openCanDevice(can_device));
+    BOOST_CHECK(driver = canbus::openCanDevice(can_device));
 #else
-    BOOST_CHECK(driver = new can::Driver());
+    BOOST_CHECK(driver = new canbus::Driver());
     BOOST_CHECK(driver->open(can_device));
 #endif
 
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(static_tests) {
     hbridge::MessagePair config_msgs;
     std::cout << "Testing packet building" << std::endl;
 
-    can::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_SPEED);
+    canbus::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_SPEED);
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
 
     for (int i = 0; i < 4; ++i)
@@ -169,11 +169,11 @@ BOOST_AUTO_TEST_CASE(static_tests) {
 
     for (int i = 0; i < 4; ++i)
     {
-        can::Message pidmsg = hbd.setSpeedPID(i, 400.0, 5.0, 0.0, 1800.0);
+        canbus::Message pidmsg = hbd.setSpeedPID(i, 400.0, 5.0, 0.0, 1800.0);
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
     }
 
-    can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
+    canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE14, value1Data, valueDataSize, msg));
 
 
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
     hbridge::Configuration config = getDefaultConfig();
     config.timeout = 0;
     hbridge::MessagePair config_msgs;
-    can::Message msg;
+    canbus::Message msg;
 
     config_msgs = hbd.setConfiguration(hbridge_id, config);
 
@@ -218,13 +218,13 @@ BOOST_AUTO_TEST_CASE(encoder_not_initalized) {
 
 BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     initDriver();
-    can::Message msg;
+    canbus::Message msg;
 
     std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
     hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, 4, hbridge::ENCODER_QUADRATURE);
     hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, 1, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
     
-    can::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
+    canbus::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);
 
     encConfMsg = hbd.setExternalEncoderConfiguration(hbridge_id, encConfExt);
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
-    can::Message msg;
+    canbus::Message msg;
 
     msg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_PWM);
     driver->write(msg);
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     
     //get inital position
     while(true) {	
-    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 0, 0, 0, 0);
+    	canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 0, 0, 0, 0);
         driver->write(msg);
 	usleep(10000);
 	bool gotmsg = false;
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 
 //     while(!checkPrintError(state.error)) {	
 //     	usleep(10000);
-// 	can::Message msg = hbd.setTargetValues(1800, 0, 0, 0);
+// 	canbus::Message msg = hbd.setTargetValues(1800, 0, 0, 0);
 //         driver->write(msg);
 // 	bool gotmsg = false;
 //     	while(driver->getPendingMessagesCount() > 0) {
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
     while(!checkPrintError(state.error)) {	
     	usleep(10000);
-	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
+	canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
         driver->write(msg);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
     std::cout << "Rotate wheel "<<(hbridge_id+1)<<" for 1/2 turn(forward)" << std::endl;
     while(!checkPrintError(state.error)) {	
     	usleep(10000);
-	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
+	canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, speed, 0, 0, 0);
         driver->write(msg);
 	bool gotmsg = false;
     	while(driver->getPendingMessagesCount() > 0) {
@@ -388,7 +388,7 @@ BOOST_AUTO_TEST_CASE(timeout_test) {
     config_msgs = hbd.setConfiguration(hbridge_id, config);
     driver->write(config_msgs.first);
     driver->write(config_msgs.second);
-    can::Message msg;    
+    canbus::Message msg;    
     usleep(1000);
     
     //flush messages
@@ -436,7 +436,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     // Still needs configuration (where are the config values stored?)
     hbridge::Configuration config = getDefaultConfig();
     hbridge::MessagePair config_msgs;
-    can::Message msg;
+    canbus::Message msg;
     
     std::cout << "Configuring hbridge " << (hbridge_id+1) << std::endl;
     config_msgs = hbd.setConfiguration(hbridge_id, config);
@@ -493,7 +493,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     hbridge::BoardState state = hbd.getState(hbridge_id);
     while(!checkPrintError(state.error))
     {
-    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
+    	canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
         driver->write(msg);
         usleep(5000);
 
@@ -522,7 +522,7 @@ BOOST_AUTO_TEST_CASE(test_case)
 
     for (i = 0; i < 500; i++)
     {
-    	can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, -20, 0, 0, 0);
+    	canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, -20, 0, 0, 0);
         driver->write(msg);
         usleep(10000);
 
@@ -539,7 +539,7 @@ BOOST_AUTO_TEST_CASE(test_case)
     }
     BOOST_CHECK(i < 500);
 
-    can::Message reset = hbd.emergencyShutdown();
+    canbus::Message reset = hbd.emergencyShutdown();
     driver->write(reset);
     delete driver;
 };

@@ -92,13 +92,13 @@ Ticks Encoder::getAbsolutPosition()
         bzero(&this->states, BOARD_COUNT * sizeof(BoardState));
     }
 
-    int Driver::getBoardIdFromMessage(const can::Message& msg) const
+    int Driver::getBoardIdFromMessage(const canbus::Message& msg) const
     {
 	int index = ((msg.can_id & 0xE0) >> 5) - 1;
 	return index;
     }
 
-    bool Driver::updateFromCAN(const can::Message& msg)
+    bool Driver::updateFromCAN(const canbus::Message& msg)
     {
 	int index = getBoardIdFromMessage(msg);
 	
@@ -194,11 +194,11 @@ Ticks Encoder::getAbsolutPosition()
         return this->states[board];
     }
 
-    can::Message Driver::emergencyShutdown() const
+    canbus::Message Driver::emergencyShutdown() const
     {
-        can::Message msg;
+        canbus::Message msg;
 
-        bzero(&msg, sizeof(can::Message));
+        bzero(&msg, sizeof(canbus::Message));
 
         msg.can_id = firmware::PACKET_ID_EMERGENCY_STOP;
         msg.size = 0;
@@ -206,17 +206,17 @@ Ticks Encoder::getAbsolutPosition()
         return msg;
     }
 
-    can::Message Driver::setDriveMode(hbridge::BOARD_SET set, hbridge::DRIVE_MODE mode)
+    canbus::Message Driver::setDriveMode(hbridge::BOARD_SET set, hbridge::DRIVE_MODE mode)
     {
         return setDriveMode(set, mode, mode, mode, mode);
     }
 
-    can::Message Driver::setDriveMode(BOARD_SET set, DRIVE_MODE board1, DRIVE_MODE board2,
+    canbus::Message Driver::setDriveMode(BOARD_SET set, DRIVE_MODE board1, DRIVE_MODE board2,
                                       DRIVE_MODE board3, DRIVE_MODE board4)
     {
-        can::Message msg;
+        canbus::Message msg;
 
-        bzero(&msg, sizeof(can::Message));
+        bzero(&msg, sizeof(canbus::Message));
 
         firmware::setModeData *data =
             reinterpret_cast<firmware::setModeData *>(msg.data);
@@ -247,17 +247,17 @@ Ticks Encoder::getAbsolutPosition()
         return msg;
     }
 
-    can::Message Driver::setTargetValues(BOARD_SET set, short int value1, short int value2,
+    canbus::Message Driver::setTargetValues(BOARD_SET set, short int value1, short int value2,
                                          short int value3, short int value4) const
     {
         short int value_array[4] = { value1, value2, value3, value4 };
         return setTargetValues(set, value_array);
     }
-    can::Message Driver::setTargetValues(BOARD_SET set, short int* targets) const
+    canbus::Message Driver::setTargetValues(BOARD_SET set, short int* targets) const
     {
-        can::Message msg;
+        canbus::Message msg;
 
-        bzero(&msg, sizeof(can::Message));
+        bzero(&msg, sizeof(canbus::Message));
 
         firmware::setValueData *data =
             reinterpret_cast<firmware::setValueData *>(msg.data);
@@ -300,23 +300,23 @@ Ticks Encoder::getAbsolutPosition()
         return msg;
     }
 
-    can::Message Driver::setSpeedPID(int board,
+    canbus::Message Driver::setSpeedPID(int board,
                                      double kp, double ki, double kd,
                                      double minMaxValue) const
     {
-        can::Message msg;
-        bzero(&msg, sizeof(can::Message));
+        canbus::Message msg;
+        bzero(&msg, sizeof(canbus::Message));
         setPID(msg, kp, ki, kd, minMaxValue);
         msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_PID_SPEED;
         return msg;
     }
 
-    can::Message Driver::setPositionPID(int board,
+    canbus::Message Driver::setPositionPID(int board,
                                         double kp, double ki, double kd,
                                         double minMaxValue) const
     {
-        can::Message msg;
-        bzero(&msg, sizeof(can::Message));
+        canbus::Message msg;
+        bzero(&msg, sizeof(canbus::Message));
         setPID(msg, kp, ki, kd, minMaxValue);
         msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_PID_POS;
         return msg;
@@ -357,7 +357,7 @@ Ticks Encoder::getAbsolutPosition()
         return msgs;
     }
 
-    can::Message Driver::setInternalEncoderConfiguration(int board, const EncoderConfiguration &cfg)
+    canbus::Message Driver::setInternalEncoderConfiguration(int board, const EncoderConfiguration &cfg)
     {      
 	can::Message msg = setEncoderConfiguration(board, cfg);
 
@@ -370,7 +370,7 @@ Ticks Encoder::getAbsolutPosition()
 	return msg;
     }
     
-    can::Message Driver::setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
+    canbus::Message Driver::setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
     {
 	can::Message msg = setEncoderConfiguration(board, cfg);
 
@@ -384,10 +384,10 @@ Ticks Encoder::getAbsolutPosition()
     }
 
     
-    can::Message Driver::Driver::setEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
+    canbus::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration &interncfg, const EncoderConfiguration &externcfg)
     {
-	can::Message msg;
-        bzero(&msg, sizeof(can::Message));
+	canbus::Message msg;
+        bzero(&msg, sizeof(canbus::Message));
 	
 	EncoderConfiguration icfg = cfg;
 	
@@ -405,7 +405,7 @@ Ticks Encoder::getAbsolutPosition()
 	return msg;
     }
     
-    void Driver::setPID(can::Message &msg,
+    void Driver::setPID(canbus::Message &msg,
                        double kp, double ki, double kd,
                        double minMaxValue) const
     {
