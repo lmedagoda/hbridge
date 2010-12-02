@@ -8,6 +8,11 @@ if (Boost_FOUND)
     ADD_EXECUTABLE(hbridge-test test.cpp)
     include_directories(${Boost_INCLUDE_DIRS})
     TARGET_LINK_LIBRARIES(hbridge-test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
+
+    ADD_EXECUTABLE(pwm_test pwm_test.cpp)
+    include_directories(${Boost_INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES(pwm_test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
+
 else(Boost_FOUND)
     message(STATUS "boost/unit not found, disabled unit test")
 endif (Boost_FOUND)
