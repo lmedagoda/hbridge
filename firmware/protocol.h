@@ -44,7 +44,7 @@ enum packetIDs {
   PACKET_ID_PIEZO = 17,
 };
 
-#define NUM_ENCODERS 5
+#define NUM_ENCODERS 6
 enum encoderTypes {
     NO_ENCODER = 0,
     QUADRATURE = 1,

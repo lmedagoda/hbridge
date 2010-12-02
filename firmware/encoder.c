@@ -25,6 +25,23 @@ static vu8 foundZero = 0;
 struct encoderData internalEncoderConfig;
 struct encoderData externalEncoderConfig;
 
+void defaultEncoderInit(void) {}
+void defaultSetTicksPerTurn(u32 ticks, u8 tickDivider) {}
+u32 defaultGetTicks(void) {return 0;}
+u16 defaultGetDividedTicks(void) {return 0;}
+u32 defaultGetTicksPerTurn(void) {return 0;}
+void defaultEncoderDeInit(void) {}
+
+void defaultInitEncoder(struct EncoderInterface *encoder)
+{
+    encoder->encoderInit = defaultEncoderInit;
+    encoder->getTicks = defaultGetTicks;
+    encoder->getDividedTicks = defaultGetDividedTicks;
+    encoder->getTicksPerTurn = defaultGetTicksPerTurn;
+    encoder->setTicksPerTurn = defaultSetTicksPerTurn;
+    encoder->encoderDeInit = defaultEncoderDeInit;
+}
+
 u8 encodersConfigured() {
     return configured;
 }
@@ -287,49 +304,25 @@ void encoderInitQuadratureWithZero() {
     externalEncoderConfig.tickDivider = 1;
 }
 
-void encodersInit() {
+void encodersInit()
+{
+    int i;
+    for(i = 0; i < NUM_ENCODERS; i++)
+    {
+    	defaultInitEncoder(encoders + i);
+    }
+
     encoders[QUADRATURE].encoderInit = encoderInitQuadrature;
     encoders[QUADRATURE].getTicks = getTicksQuadrature;
     encoders[QUADRATURE].getDividedTicks = getDividedTicksQuadrature;
     encoders[QUADRATURE].setTicksPerTurn = setTicksPerTurnQuadrature;
-    encoders[QUADRATURE].encoderDeInit = NULL;
-
-    encoders[IC_HOUSE_MH_Y].encoderInit = NULL;
-    encoders[IC_HOUSE_MH_Y].getTicks = NULL;
-    encoders[IC_HOUSE_MH_Y].getDividedTicks = NULL;
-    encoders[IC_HOUSE_MH_Y].setTicksPerTurn = NULL;
-    encoders[IC_HOUSE_MH_Y].encoderDeInit = NULL;
 
     encoders[QUADRATURE_WITH_ZERO].encoderInit = encoderInitQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].getDividedTicks = getDividedTicksQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
-    encoders[QUADRATURE_WITH_ZERO].encoderDeInit = NULL;
-
-    encoders[BMMV30_SSI].encoderInit = NULL;
-    encoders[BMMV30_SSI].getTicks = NULL;
-    encoders[BMMV30_SSI].getDividedTicks = NULL;
-    encoders[BMMV30_SSI].setTicksPerTurn = NULL;
-    encoders[BMMV30_SSI].encoderDeInit = NULL;
-
-    encoders[ANALOG_VOLTAGE].encoderInit = NULL;
-    encoders[ANALOG_VOLTAGE].getTicks = NULL;
-    encoders[ANALOG_VOLTAGE].getDividedTicks = NULL;
-    encoders[ANALOG_VOLTAGE].setTicksPerTurn = NULL;
-    encoders[ANALOG_VOLTAGE].encoderDeInit = NULL;
-
 }
 
-void setExternalEncoder(enum encoderTypes type)
-{
-    if(externalEncoderType != NO_ENCODER)
-    {
-        encoders[type].encoderDeInit();
-    }
-
-    externalEncoderType = type;
-    encoders[type].encoderInit();
-}
 
 u32 getTicks(enum encoderTypes type)
 {
