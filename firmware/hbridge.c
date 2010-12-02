@@ -156,7 +156,7 @@ void initHbridgeTimers()
     TIM_SelectInputTrigger(TIM3, TIM_TS_ITR0);
 
     //enable interrupts
-    TIM_ITConfig(TIM2, TIM_IT_CC3, ENABLE);
+    TIM_ITConfig(TIM2, TIM_IT_CC3, DISABLE);
 
     //interrupt for atomar config change
     TIM_ITConfig(TIM1, TIM_IT_CC4, ENABLE);
