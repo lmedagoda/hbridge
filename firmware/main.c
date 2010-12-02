@@ -76,7 +76,7 @@ int main(void)
   setupI2CForLM73CIMK();  
 
   //wait until 5V rail get's stable
-  delay = 72000000;
+  delay = 20000000;
   while(delay)
     delay--;
 
