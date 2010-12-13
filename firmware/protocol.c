@@ -196,15 +196,25 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 		//do not allow to configure encoders while PID might be active
 		getErrorState()->badConfig = 1;
 	    } else {
-		print("configuring encoders \n");
+	      
 		struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
-		setTicksPerTurn(encData->encoderType, encData->ticksPerTurn, encData->tickDivider);
+		printf("configuring encoders %du \n",encData->ticksPerTurn);		
                 if(curMsg->StdId == PACKET_ID_ENCODER_CONFIG_INTERN) {
-                    state->internalEncoder = encData->encoderType;
+		    if (state->internalEncoder != encData->encoderType)
+		    {
+		        deinitEncoder(state->internalEncoder);
+			initEncoder(encData->encoderType);
+		        state->internalEncoder = encData->encoderType;
+		    }
                 } else {
-                    state->externalEncoder = encData->encoderType;
-                }
-                
+		    if (state->externalEncoder != encData->encoderType)
+		    {
+		        deinitEncoder(state->externalEncoder);
+			initEncoder(encData->encoderType);
+			state->externalEncoder = encData->encoderType;
+		    }
+                }      
+		setTicksPerTurn(encData->encoderType, encData->ticksPerTurn, encData->tickDivider);
 		clearErrors();
 		state->internalState = STATE_UNCONFIGURED;
                 //systick needs to run one time after new encoder values are set

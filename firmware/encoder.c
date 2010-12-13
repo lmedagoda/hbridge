@@ -343,3 +343,13 @@ u32 getTicksPerTurn(enum encoderTypes type)
 {
     return encoders[type].getTicksPerTurn();
 }
+
+void initEncoder(enum encoderTypes type) 
+{
+  encoders[type].encoderInit();
+}
+
+void deinitEncoder(enum encoderTypes type) 
+{
+  encoders[type].encoderDeInit();
+}

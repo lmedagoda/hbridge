@@ -19,6 +19,8 @@ u32 getTicks(enum encoderTypes type);
 u16 getDividedTicks(enum encoderTypes type);
 u32 getTicksPerTurn(enum encoderTypes type);
 void setTicksPerTurn(enum encoderTypes type, u32 ticks, u8 tickDivider);
+void initEncoder(enum encoderTypes type);
+void deinitEncoder(enum encoderTypes type);
 
 void encodersInit();
 
