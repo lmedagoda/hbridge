@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     can::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);
 
-    encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfExt);
+    encConfMsg = hbd.setExternalEncoderConfiguration(hbridge_id, encConfExt);
     driver->write(encConfMsg);
     
     //now reconfigure
