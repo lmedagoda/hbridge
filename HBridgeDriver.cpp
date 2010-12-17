@@ -270,7 +270,7 @@ Ticks Encoder::getAbsolutPosition()
 	default:
 	  throw std::runtime_error("setTargetValues called with bad set");
 	}
-        for (int i = first; i < first+3; ++i)
+        for (int i = first; i < first + 4; ++i)
         {
             switch(current_modes[i])
             {
