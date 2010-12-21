@@ -30,6 +30,7 @@ void SysTick_Configuration(void);
 
 volatile enum hostIDs ownHostId;
 
+unsigned int systemTick;
 
 /*******************************************************************************
 * Function Name  : main
@@ -41,7 +42,7 @@ volatile enum hostIDs ownHostId;
 int main(void)
 {
   vu32 delay;
-
+  systemTick = 0;
   //Enable peripheral clock for GPIO
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
@@ -205,6 +206,7 @@ int main(void)
 }
 
 void SysTickHandler(void) {  
+    ++systemTick;
     //request switch of adc value struct
     requestNewADCValues();
 

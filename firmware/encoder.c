@@ -17,6 +17,8 @@ struct encoderData {
     u8 tickDivider;
 };
 
+extern unsigned int systemTick;
+
 vs32 externalEncoderValue = 0;
 
 static vu8 configured = 0;
