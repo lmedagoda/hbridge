@@ -7,6 +7,7 @@
 #include "printf.h"
 #include "encoder.h"
 #include "protocol.h"
+#include "stm32f10x_spi.h"
 
 struct EncoderInterface encoders[NUM_ENCODERS];
 
@@ -202,6 +203,101 @@ u16 getDividedTicksQuadratureWithZero() {
     return externalEncoderValue / externalEncoderConfig.tickDivider;
 }
 
+// Baumer multiturn absolute encoder
+void encoderInitBMMV()
+{
+    print("encoderInitBMMV\n");
+    /* SPI2 clock enable */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+
+    SPI_InitTypeDef SPI_InitStructure;
+
+    /* Disable SPI2 for configuration */
+    SPI_Cmd(SPI2, DISABLE);
+
+    /* SPI2 Master */
+    /* SPI2 Config -----------------------------------------------------------*/
+    SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+    SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
+    SPI_InitStructure.SPI_DataSize = SPI_DataSize_16b;
+    SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+    SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+    SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
+    SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_32; // maybe change to 64 for stability
+    SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
+    SPI_InitStructure.SPI_CRCPolynomial = 7;
+    SPI_Init(SPI2, &SPI_InitStructure);
+
+
+    /* Enable SPI2 */
+    SPI_Cmd(SPI2, ENABLE);
+
+     // TODO: Must something be changed here?
+    internalEncoderConfig.tickDivider = 1;
+    internalEncoderConfig.ticksPerTurn = 0;
+
+  
+}
+
+void setTicksPerTurnBMMV(u32 ticks, u8 tickDivider)
+{
+    // TODO: Implement me
+}
+
+u32 getTicksBMMV()
+{
+    static unsigned int lastTick = 0;
+    static u32 lastValue = 0;
+    
+    if(lastTick == systemTick) // if sensor was already polled in this system tick
+    {
+        return lastValue;
+    }
+    
+    /* Wait for SPI1 Tx buffer empty */
+    while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET)
+    {
+  //      print("*");
+    }
+
+    GPIO_ResetBits(GPIOB, GPIO_Pin_12);
+
+    u16 dataArray[2] = {0,0};
+    SPI_I2S_SendData(SPI2, 0);
+
+    /* Wait for SPI2 data reception */
+    while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET)
+    {
+  //      print(".");
+    }
+
+    //read current data from data register
+    dataArray[1] = SPI_I2S_ReceiveData(SPI2) & ~0x8000; // first bit is not from encoder, discard it
+
+    SPI_I2S_SendData(SPI2, 0);
+
+    /* Wait for SPI2 data reception */
+    while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET)
+    {
+ //       print("_");
+    }
+
+    //read current data from data register
+    dataArray[0] = SPI_I2S_ReceiveData(SPI2);
+
+    u32 value = (dataArray[1] << 16) | dataArray[0];
+    value = value >> 6; // align the 25 data bits
+
+    lastTick = systemTick;
+    return lastValue = value;
+}
+
+u16 getDividedTicksBMMV()
+{
+     // TODO: Implement more useful algorithm?
+    u32 ticks = getTicksBMMV();
+    return ticks / internalEncoderConfig.tickDivider;
+}
 
 void EXTI15_10_IRQHandler(void)
 {
@@ -323,6 +419,11 @@ void encodersInit()
     encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].getDividedTicks = getDividedTicksQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
+
+    encoders[BMMV30_SSI].encoderInit = encoderInitBMMV;
+    encoders[BMMV30_SSI].getTicks = getTicksBMMV;
+    encoders[BMMV30_SSI].getDividedTicks = getDividedTicksBMMV;
+    encoders[BMMV30_SSI].setTicksPerTurn = setTicksPerTurnBMMV;
 }
 
 
