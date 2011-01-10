@@ -214,6 +214,7 @@ void SysTickHandler(void) {
     static u16 index = 0;
     static u16 overCurrentCounter = 0;
     static u16 timeoutCounter = 0;
+    static u32 temperature = 0;
 
     s32 pwmValue = 0;
     s32 wheelPos = 0;
@@ -242,6 +243,9 @@ void SysTickHandler(void) {
     waitForNewADCValues();
 
     u32 currentValue = calculateCurrent(currentPwmValue);
+
+    // get temperature
+    getTemperature(LM73_SENSOR_1,&temperature);    
 
     //reset timeout, if "userspace" requested it
     if(activeCState->resetTimeoutCounter) {
@@ -366,9 +370,8 @@ void SysTickHandler(void) {
 	    struct errorData *edata = (struct errorData *) errorMessage.Data;
 
 	    volatile struct ErrorState *es = getErrorState();
-	    
-	    //TODO value from lm73cimk
-	    edata->temperature = 0;
+
+	    edata->temperature = temperature;
 	    edata->position = getDividedTicks(activeCState->internalEncoder);
 	    edata->index = index;
 	    edata->externalPosition = getDividedTicks(activeCState->externalEncoder);
@@ -480,15 +483,6 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   */
-
-  /* setupI2CForLM73CIMK initialises I2C1 pins */
-  // Configure I2C2 pins: SCL and SDA 
-  /*
-  GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10 | GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-  */
-
   //Configure GPIOB Pin 11 as input pull up for emergency switch off
   GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_11;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
@@ -534,16 +528,6 @@ void NVIC_Configuration(void)
 
   /* 2 bit for pre-emption priority, 2 bits for subpriority */
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
-
-  /* Configure and enable I2C2 interrupt ------------------------------------*/
-  /*NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-
-  NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQChannel;
-  NVIC_Init(&NVIC_InitStructure);*/
 
   //Configure and enable TIM1 Update interrupt
   NVIC_InitStructure.NVIC_IRQChannel = TIM1_UP_IRQChannel;

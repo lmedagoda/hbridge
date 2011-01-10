@@ -3,6 +3,8 @@
 
 #include "inc/stm32f10x_type.h"
 
+#define LM73_SENSOR_1 156 // 1001110 + r/w bit
+
 enum lm73cimkStates {
   LM73_IDLE,
   LM73_TRIGGERED,
