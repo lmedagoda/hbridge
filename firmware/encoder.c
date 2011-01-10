@@ -358,13 +358,13 @@ void EXTI15_10_IRQHandler(void)
 	    s32 diff = zeroStart - externalEncoderValue;
 	    u8 valid = 1;
 	    
-	    if(zeroStart != -1)
+	    if(zeroStart == -1)
 	    {
 		valid = 0;
 	    }
 	    
 	    //handle wrap arounds
-	    if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5)
+	    if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5 * 4)
 	    {
 		if(diff < 0)
 		    diff += externalEncoderConfig.ticksPerTurn;
@@ -389,6 +389,8 @@ void EXTI15_10_IRQHandler(void)
 		if(configured)
 		    foundZero = 1;	  
 	    }    
+
+	    zeroStart = -1; 
 	}
 	EXTI_ClearITPendingBit(EXTI_Line12);
     }
