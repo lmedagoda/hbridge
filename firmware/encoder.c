@@ -304,6 +304,7 @@ void EXTI15_10_IRQHandler(void)
     u16 ain = GPIOB->IDR & GPIO_Pin_13; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13);
     u16 bin = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
 
+    static s32 zeroStart = -1;
    
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
 	ainIT++;
@@ -346,14 +347,51 @@ void EXTI15_10_IRQHandler(void)
 	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
-	if(zeroIT == -1)
-	    zeroIT = externalEncoderValue;
-	externalEncoderValue = 0;
-	if(configured)
-	    foundZero = 1;
+	u16 zero = GPIOB->IDR & GPIO_Pin_12; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12);
+
+	//raising edge
+	if(zero) 
+	{
+	    zeroStart = externalEncoderValue;
+	} else {
+	    //falling edge
+	    s32 diff = zeroStart - externalEncoderValue;
+	    u8 valid = 1;
+	    
+	    if(zeroStart != -1)
+	    {
+		valid = 0;
+	    }
+	    
+	    //handle wrap arounds
+	    if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5)
+	    {
+		if(diff < 0)
+		    diff += externalEncoderConfig.ticksPerTurn;
+		
+		if(diff > 0)
+		    diff = externalEncoderConfig.ticksPerTurn - diff;
+	    }
+
+	    //if a zero marker took less than 3 or more than 5 encoder ticks, 
+	    //it is not a valid zero mark and will be discarded
+	    //note a zero tick takes 4 ticks, but we give some space for measurement errors 
+	    if(abs(diff) < 3 || abs(diff) > 5)
+		valid = 0;
+
+	    if(valid) 
+	    {
+		if(zeroIT == -1)
+		    zeroIT = externalEncoderValue;
+	    
+		externalEncoderValue = 0;
+	    
+		if(configured)
+		    foundZero = 1;	  
+	    }    
+	}
 	EXTI_ClearITPendingBit(EXTI_Line12);
     }
-
 }
 
 // incremental encoder with zero signal
