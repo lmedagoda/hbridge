@@ -232,7 +232,7 @@ void encoderInitBMMV()
     /* Enable SPI2 */
     SPI_Cmd(SPI2, ENABLE);
 
-     // TODO: Must something be changed here?
+     // TODO: Does something need be changed here?
     internalEncoderConfig.tickDivider = 1;
     internalEncoderConfig.ticksPerTurn = 0;
 
@@ -241,7 +241,12 @@ void encoderInitBMMV()
 
 void setTicksPerTurnBMMV(u32 ticks, u8 tickDivider)
 {
-    // TODO: Implement me
+    if(configured && externalEncoderConfig.ticksPerTurn == ticks && externalEncoderConfig.tickDivider == tickDivider)
+	return;
+
+    externalEncoderConfig.tickDivider = tickDivider;
+    externalEncoderConfig.ticksPerTurn = ticks;
+    configured = 1;
 }
 
 u32 getTicksBMMV()
@@ -295,8 +300,8 @@ u32 getTicksBMMV()
 u16 getDividedTicksBMMV()
 {
      // TODO: Implement more useful algorithm?
-    u32 ticks = getTicksBMMV();
-    return ticks / internalEncoderConfig.tickDivider;
+    u32 ticks = getTicksBMMV() / externalEncoderConfig.tickDivider;
+    return ticks & 4095; // limit to 12 bit
 }
 
 void EXTI15_10_IRQHandler(void)
