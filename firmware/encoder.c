@@ -7,7 +7,8 @@
 #include "printf.h"
 #include "encoder.h"
 #include "protocol.h"
-#include "stm32f10x_spi.h"
+#include "inc/stm32f10x_spi.h"
+#include "encoder_adc.h"
 
 struct EncoderInterface encoders[NUM_ENCODERS];
 
@@ -466,6 +467,13 @@ void encodersInit()
     encoders[BMMV30_SSI].getTicks = getTicksBMMV;
     encoders[BMMV30_SSI].getDividedTicks = getDividedTicksBMMV;
     encoders[BMMV30_SSI].setTicksPerTurn = setTicksPerTurnBMMV;
+    
+    encoders[ANALOG_VOLTAGE].encoderInit = encoderInitADC;
+    encoders[ANALOG_VOLTAGE].encoderDeInit = encoderDeInitADC;
+    encoders[ANALOG_VOLTAGE].getDividedTicks = getDividedTicksADC;
+    encoders[ANALOG_VOLTAGE].getTicks = getTicksADC;
+    encoders[ANALOG_VOLTAGE].getTicksPerTurn = getTicksPerTurnADC;
+    encoders[ANALOG_VOLTAGE].setTicksPerTurn = setTicksPerTurnADC;
 }
 
 
