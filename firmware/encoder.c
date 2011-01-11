@@ -180,17 +180,7 @@ void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {
     foundZero = 0;
 }
 
-vu32 ainIT = 0;
-vu32 binIT = 0;
-vs32 zeroIT = 0;
-
 u32 getTicksQuadratureWithZero() {
-    if(zeroIT != -1) {
-	printf("Z: %li \n", zeroIT );
-	zeroIT = -1;
-    }
-/*    printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
-    printf("Enc : %l \n", externalEncoderValue);*/
     if(!foundZero)
 	return 0;
 
@@ -307,7 +297,6 @@ void EXTI15_10_IRQHandler(void)
     static s32 zeroStart = -1;
    
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
-	ainIT++;
 	//impicit ain != lastAin
 	if(ain) {
 	    if(bin)
@@ -324,7 +313,6 @@ void EXTI15_10_IRQHandler(void)
     }
 
     if(EXTI_GetITStatus(EXTI_Line14) != RESET) {
-	binIT++;
 	if(bin) {
 	    if(ain)
 		externalEncoderValue--;
