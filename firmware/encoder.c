@@ -180,17 +180,7 @@ void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {
     foundZero = 0;
 }
 
-vu32 ainIT = 0;
-vu32 binIT = 0;
-vs32 zeroIT = 0;
-
 u32 getTicksQuadratureWithZero() {
-    if(zeroIT != -1) {
-	printf("Z: %li \n", zeroIT );
-	zeroIT = -1;
-    }
-/*    printf("A: %lu, B:%lu, Z: %lu\n", ainIT, binIT, zeroIT);
-    printf("Enc : %l \n", externalEncoderValue);*/
     if(!foundZero)
 	return 0;
 
@@ -309,9 +299,9 @@ void EXTI15_10_IRQHandler(void)
     u16 ain = GPIOB->IDR & GPIO_Pin_13; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13);
     u16 bin = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
 
+    static s32 zeroStart = -1;
    
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
-	ainIT++;
 	//impicit ain != lastAin
 	if(ain) {
 	    if(bin)
@@ -328,7 +318,6 @@ void EXTI15_10_IRQHandler(void)
     }
 
     if(EXTI_GetITStatus(EXTI_Line14) != RESET) {
-	binIT++;
 	if(bin) {
 	    if(ain)
 		externalEncoderValue--;
@@ -351,14 +340,62 @@ void EXTI15_10_IRQHandler(void)
 	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
-	if(zeroIT == -1)
-	    zeroIT = externalEncoderValue;
-	externalEncoderValue = 0;
-	if(configured)
-	    foundZero = 1;
+	u16 zero = GPIOB->IDR & GPIO_Pin_12; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12);
+
+	//raising edge
+        //a valid zero mark starts with ain and bin low
+	if(zero && !ain && !bin) 
+	{
+	    zeroStart = externalEncoderValue;
+	} else {
+	    //falling edge
+	    
+	    //caluclate tick diff
+	    s32 diff = zeroStart - externalEncoderValue;
+            
+            //handle wrap arounds
+            if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5 * 4)
+            {
+                if(diff < 0)
+                    diff += externalEncoderConfig.ticksPerTurn;
+                
+                if(diff > 0)
+                    diff = externalEncoderConfig.ticksPerTurn - diff;
+            }
+            
+	    u8 valid = 1;
+	    
+            //if the zero mark was not long enough for detecting
+            //the start, it was noise, or we have a serious problem anyway
+	    if(zeroStart == -1)
+            {
+		valid = 0;
+            }
+            
+	    //a valid end mark has one encoder line high
+            if(!((!ain && bin) || (ain && !bin)))
+            {
+                valid = 0;
+            }
+            
+            //a valid zero mark is exactly one tick long
+	    if(abs(diff) != 1)
+            {
+		valid = 0;
+            }
+            
+	    if(valid) 
+	    {                
+		externalEncoderValue = 0;
+	    
+		if(configured)
+		    foundZero = 1;	  
+	    }    
+
+	    zeroStart = -1; 
+	}
 	EXTI_ClearITPendingBit(EXTI_Line12);
     }
-
 }
 
 // incremental encoder with zero signal

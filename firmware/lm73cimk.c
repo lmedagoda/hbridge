@@ -199,14 +199,14 @@ void setupI2CForLM73CIMK() {
   /* I2C1 configuration ----------------------------------------------------*/
   I2C_StructInit(&I2C_InitStructure);
   I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
-  //I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
-  I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9; // for > 100 kHz
+  I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
+  //I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9; // for > 100 kHz
   //we are master, no address
   I2C_InitStructure.I2C_OwnAddress1 = 0xA0;
   I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
   I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-  //I2C_InitStructure.I2C_ClockSpeed = 50000;
-  I2C_InitStructure.I2C_ClockSpeed = 400000;
+  I2C_InitStructure.I2C_ClockSpeed = 100000; // tested with no errors
+  //I2C_InitStructure.I2C_ClockSpeed = 400000; // tested with some errors
 
   /* Enable I2C1 and I2C2 --------------------------------------------------*/
   I2C_Cmd(I2C1, ENABLE);
