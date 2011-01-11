@@ -179,7 +179,7 @@ void EXTI15_10_IRQHandler(void)
 {
     u16 ain = GPIOB->IDR & GPIO_Pin_13; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13);
     u16 bin = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
-
+    static s32 zeroStart;
    
     if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
 	ainIT++;
@@ -222,14 +222,62 @@ void EXTI15_10_IRQHandler(void)
 	externalEncoderValue -= externalEncoderConfig.ticksPerTurn;
 
     if(EXTI_GetITStatus(EXTI_Line12) != RESET) {
-	if(zeroIT == -1)
-	    zeroIT = externalEncoderValue;
-	externalEncoderValue = 0;
-	if(configured)
-	    foundZero = 1;
-	EXTI_ClearITPendingBit(EXTI_Line12);
-    }
+        u16 zero = GPIOB->IDR & GPIO_Pin_12; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12);
 
+        //raising edge
+        //a valid zero mark starts with ain and bin low
+        if(zero && !ain && !bin) 
+        {
+            zeroStart = externalEncoderValue;
+        } else {
+            //falling edge
+            
+            //caluclate tick diff
+            s32 diff = zeroStart - externalEncoderValue;
+            
+            //handle wrap arounds
+            if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5 * 4)
+            {
+                if(diff < 0)
+                    diff += externalEncoderConfig.ticksPerTurn;
+                
+                if(diff > 0)
+                    diff = externalEncoderConfig.ticksPerTurn - diff;
+            }
+            
+            u8 valid = 1;
+            
+            //if the zero mark was not long enough for detecting
+            //the start, it was noise, or we have a serious problem anyway
+            if(zeroStart == -1)
+            {
+                valid = 0;
+            }
+            
+            //a valid end mark has one encoder line high
+            if(!((!ain && bin) || (ain && !bin)))
+            {
+                valid = 0;
+            }
+            
+            //a valid zero mark is exactly one tick long
+            if(abs(diff) != 1)
+            {
+                valid = 0;
+            }
+            
+            if(valid) 
+            {                
+                externalEncoderValue = 0;
+            
+                if(configured)
+                    foundZero = 1;        
+            }    
+
+            zeroStart = -1; 
+        }
+        EXTI_ClearITPendingBit(EXTI_Line12);
+    }
 }
 
 
