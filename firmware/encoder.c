@@ -350,40 +350,49 @@ void EXTI15_10_IRQHandler(void)
 	u16 zero = GPIOB->IDR & GPIO_Pin_12; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12);
 
 	//raising edge
-	if(zero) 
+        //a valid zero mark starts with ain and bin low
+	if(zero && !ain && !bin) 
 	{
 	    zeroStart = externalEncoderValue;
 	} else {
 	    //falling edge
+	    
+	    //caluclate tick diff
 	    s32 diff = zeroStart - externalEncoderValue;
+            
+            //handle wrap arounds
+            if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5 * 4)
+            {
+                if(diff < 0)
+                    diff += externalEncoderConfig.ticksPerTurn;
+                
+                if(diff > 0)
+                    diff = externalEncoderConfig.ticksPerTurn - diff;
+            }
+            
 	    u8 valid = 1;
 	    
+            //if the zero mark was not long enough for detecting
+            //the start, it was noise, or we have a serious problem anyway
 	    if(zeroStart == -1)
-	    {
+            {
 		valid = 0;
-	    }
-	    
-	    //handle wrap arounds
-	    if(abs(diff) > externalEncoderConfig.ticksPerTurn / 5 * 4)
-	    {
-		if(diff < 0)
-		    diff += externalEncoderConfig.ticksPerTurn;
-		
-		if(diff > 0)
-		    diff = externalEncoderConfig.ticksPerTurn - diff;
-	    }
-
-	    //if a zero marker took less than 3 or more than 5 encoder ticks, 
-	    //it is not a valid zero mark and will be discarded
-	    //note a zero tick takes 4 ticks, but we give some space for measurement errors 
-	    if(abs(diff) < 3 || abs(diff) > 5)
+            }
+            
+	    //a valid end mark has one encoder line high
+            if(!((!ain && bin) || (ain && !bin)))
+            {
+                valid = 0;
+            }
+            
+            //a valid zero mark is exactly one tick long
+	    if(abs(diff) != 1)
+            {
 		valid = 0;
-
+            }
+            
 	    if(valid) 
-	    {
-		if(zeroIT == -1)
-		    zeroIT = externalEncoderValue;
-	    
+	    {                
 		externalEncoderValue = 0;
 	    
 		if(configured)
