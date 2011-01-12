@@ -212,7 +212,7 @@ namespace hbridge
 	* Internal method to generate set encoder message without packet id 
 	*
 	**/
-	can::Message setEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
+	canbus::Message setEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
       
       
         /**

@@ -10,7 +10,7 @@
 #include "../protocol.hpp"
 #include "../HBridge.hpp"
 
-can::Driver *driver = 0;
+canbus::Driver *driver = 0;
 hbridge::Driver hbd;
 int hbridge_id;
 
@@ -25,9 +25,9 @@ void initDriver() {
 
     std::cerr << "Trying to open CAN device " << can_device << std::endl;
 #if CANBUS_VERSION >= 101
-    driver = can::openCanDevice(can_device);
+    driver = canbus::openCanDevice(can_device);
 #else
-    driver = new can::Driver();
+    driver = new canbus::Driver();
     driver->open(can_device);
 #endif
 
@@ -78,13 +78,13 @@ int main(int argc, char *argv[]) {
     }
 
     initDriver();
-    can::Message msg;
+    canbus::Message msg;
 
     std::cerr << "Configuring Encoders " << (hbridge_id +1) << std::endl;
     hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, 4, hbridge::ENCODER_QUADRATURE);
     hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, 1, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
     
-    can::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
+    canbus::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);
 
     encConfMsg = hbd.setExternalEncoderConfiguration(hbridge_id, encConfExt);
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
     driver->write(config_msgs.second);
 
     std::cerr << "Set drive mode " << std::endl;
-    msg = hbd.setDriveMode(hbridge::BOARDS_14, hbridge::DM_PWM);
+    msg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_PWM);
     driver->write(msg);
     
     int msg_cnt = 0;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     std::cerr << "Start hbridge... " << std::endl;
 
       while(1) {
-        can::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, pwm, pwm, pwm, pwm);
+        canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, pwm, pwm, pwm, pwm);
 
         driver->write(msg);
         //usleep(10000); // 10ms

@@ -359,32 +359,32 @@ Ticks Encoder::getAbsolutPosition()
 
     canbus::Message Driver::setInternalEncoderConfiguration(int board, const EncoderConfiguration &cfg)
     {      
-	can::Message msg = setEncoderConfiguration(board, cfg);
+	canbus::Message msg = setEncoderConfiguration(board, cfg);
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
         msg.size = sizeof(firmware::encoderConfiguration);
 
 	encoderIntern[board].setWrapValue(cfg.ticksPerTurnDivided);
-	encoderIntern[board].setZeroPosition(cfg.zeroPosition * directions[board]);
+	encoderIntern[board].setZeroPosition(cfg.zeroPosition);
 		
 	return msg;
     }
     
     canbus::Message Driver::setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
     {
-	can::Message msg = setEncoderConfiguration(board, cfg);
+	canbus::Message msg = setEncoderConfiguration(board, cfg);
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
         msg.size = sizeof(firmware::encoderConfiguration);
 
 	encoderExtern[board].setWrapValue(cfg.ticksPerTurnDivided);
-	encoderExtern[board].setZeroPosition(cfg.zeroPosition * directions[board]);
+	encoderExtern[board].setZeroPosition(cfg.zeroPosition);
 		
 	return msg;
     }
 
     
-    canbus::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration &interncfg, const EncoderConfiguration &externcfg)
+    canbus::Message Driver::setEncoderConfiguration(int board, const EncoderConfiguration &cfg)
     {
 	canbus::Message msg;
         bzero(&msg, sizeof(canbus::Message));
