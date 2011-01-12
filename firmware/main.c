@@ -219,15 +219,18 @@ void SysTickHandler(void) {
     s32 pwmValue = 0;
     s32 wheelPos = 0;
     u32 ticksPerTurn = 0;
-
+    u8 tickDivider = 0;
+    
     switch(activeCState->controllerInputEncoder) {
         case INTERNAL:
             wheelPos = getTicks(activeCState->internalEncoder);
             ticksPerTurn = getTicksPerTurn(activeCState->internalEncoder);
+            tickDivider = getTickDivider(activeCState->internalEncoder);
             break;
         case EXTERNAL:
             wheelPos = getTicks(activeCState->externalEncoder);
             ticksPerTurn = getTicksPerTurn(activeCState->externalEncoder);
+            tickDivider = getTickDivider(activeCState->externalEncoder);
             break;
     }
 
@@ -294,10 +297,16 @@ void SysTickHandler(void) {
 		    break;
 		
 		case CONTROLLER_MODE_POSITION: {
+                    //the target value needs to be multiplied by the tickDivider
+                    //in case of position mode, as the "external" and "internal" ticks 
+                    //differ by the factor of tickDivider
+                    //TargetValue is divided by TickDivider
+                    //wheelPos is not divided
+                    u32 targetPositionValue = activeCState->targetValue * tickDivider;
                     if(activeCState->cascadedPositionController) {
-			pwmValue = cascadedPositionController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
+			pwmValue = cascadedPositionController(targetPositionValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    } else {
-			pwmValue = positionController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
+			pwmValue = positionController(targetPositionValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    }
 		    break;
 		}   
