@@ -343,6 +343,15 @@ Ticks Encoder::getAbsolutPosition()
         cfg1->maxBoardTemp               = cfg.maxBoardTemp;
         cfg1->maxBoardTempCount          = cfg.maxBoardTempCount;
         cfg1->timeout                    = cfg.timeout;
+	switch(cfg.controllerInputEncoder)
+	{
+	    case hbridge::INTERNAL:
+		cfg1->controllerInputEncoder = firmware::INTERNAL;
+		break;
+	    case hbridge::EXTERNAL:
+		cfg1->controllerInputEncoder = firmware::EXTERNAL;
+		break;
+	}
         
         cfg2->maxCurrent                 = cfg.maxCurrent;
         cfg2->maxCurrentCount            = cfg.maxCurrentCount;

@@ -14,6 +14,11 @@ namespace hbridge
     
     typedef int64_t Ticks;
 
+    enum CONTORLLER_INPUT_ENCODER {
+	INTERNAL = 1,
+	EXTERNAL = 2
+    };
+    
     struct Configuration
     {
         unsigned char openCircuit;
@@ -29,7 +34,7 @@ namespace hbridge
         unsigned short maxCurrent;
         unsigned char maxCurrentCount;
         unsigned short pwmStepPerMs;
-
+	CONTORLLER_INPUT_ENCODER controllerInputEncoder;
         /**
          * Initialise all fields of the configuration structure with 0
          */
@@ -37,7 +42,7 @@ namespace hbridge
             openCircuit(0), activeFieldCollapse(0), externalTempSensor(0),
             cascadedPositionController(0), pidDebugActive(0), maxMotorTemp(0),
             maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
-            timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0)
+            timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0), controllerInputEncoder(INTERNAL)
         {}
     };
     

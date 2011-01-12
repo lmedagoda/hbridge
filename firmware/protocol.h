@@ -55,8 +55,8 @@ enum encoderTypes {
 };
 
 enum controllerInputEncoder {
-    INTERNAL,
-    EXTERNAL,
+    INTERNAL = 0,
+    EXTERNAL = 1,
 };
 
 struct speedDebugData {
