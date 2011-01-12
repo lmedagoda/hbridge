@@ -14,11 +14,6 @@ struct EncoderInterface encoders[NUM_ENCODERS];
 
 enum encoderTypes externalEncoderType;
 
-struct encoderData {
-    u16 ticksPerTurn;
-    u8 tickDivider;
-};
-
 extern unsigned int systemTick;
 
 vs32 externalEncoderValue = 0;
@@ -32,16 +27,15 @@ struct encoderData externalEncoderConfig;
 void defaultEncoderInit(void) {}
 void defaultSetTicksPerTurn(u32 ticks, u8 tickDivider) {}
 u32 defaultGetTicks(void) {return 0;}
-u16 defaultGetDividedTicks(void) {return 0;}
-u32 defaultGetTicksPerTurn(void) {return 0;}
 void defaultEncoderDeInit(void) {}
 
 void defaultInitEncoder(struct EncoderInterface *encoder)
 {
+    encoder->encoderConfig.configured = 0;
+    encoder->encoderConfig.tickDivider = 1;
+    encoder->encoderConfig.ticksPerTurn = 0;
     encoder->encoderInit = defaultEncoderInit;
     encoder->getTicks = defaultGetTicks;
-    encoder->getDividedTicks = defaultGetDividedTicks;
-    encoder->getTicksPerTurn = defaultGetTicksPerTurn;
     encoder->setTicksPerTurn = defaultSetTicksPerTurn;
     encoder->encoderDeInit = defaultEncoderDeInit;
 }
@@ -186,12 +180,6 @@ u32 getTicksQuadratureWithZero() {
 	return 0;
 
     return externalEncoderValue;
-}
-
-u16 getDividedTicksQuadratureWithZero() {
-    if(!foundZero)
-	return 0;
-    return externalEncoderValue / externalEncoderConfig.tickDivider;
 }
 
 // Baumer multiturn absolute encoder
@@ -453,26 +441,24 @@ void encodersInit()
     	defaultInitEncoder(encoders + i);
     }
 
+    //the non existing encoder is allways configured
+    encoders[NO_ENCODER].encoderConfig.configured = 1;
+
     encoders[QUADRATURE].encoderInit = encoderInitQuadrature;
     encoders[QUADRATURE].getTicks = getTicksQuadrature;
-    encoders[QUADRATURE].getDividedTicks = getDividedTicksQuadrature;
     encoders[QUADRATURE].setTicksPerTurn = setTicksPerTurnQuadrature;
 
     encoders[QUADRATURE_WITH_ZERO].encoderInit = encoderInitQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZero;
-    encoders[QUADRATURE_WITH_ZERO].getDividedTicks = getDividedTicksQuadratureWithZero;
     encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
 
     encoders[BMMV30_SSI].encoderInit = encoderInitBMMV;
     encoders[BMMV30_SSI].getTicks = getTicksBMMV;
-    encoders[BMMV30_SSI].getDividedTicks = getDividedTicksBMMV;
     encoders[BMMV30_SSI].setTicksPerTurn = setTicksPerTurnBMMV;
     
     encoders[ANALOG_VOLTAGE].encoderInit = encoderInitADC;
     encoders[ANALOG_VOLTAGE].encoderDeInit = encoderDeInitADC;
-    encoders[ANALOG_VOLTAGE].getDividedTicks = getDividedTicksADC;
     encoders[ANALOG_VOLTAGE].getTicks = getTicksADC;
-    encoders[ANALOG_VOLTAGE].getTicksPerTurn = getTicksPerTurnADC;
     encoders[ANALOG_VOLTAGE].setTicksPerTurn = setTicksPerTurnADC;
 }
 
@@ -484,25 +470,43 @@ u32 getTicks(enum encoderTypes type)
 
 u16 getDividedTicks(enum encoderTypes type)
 {
-    return encoders[type].getDividedTicks();
+    if(encoders[type].encoderConfig.tickDivider != 0)
+        return encoders[type].getTicks() / encoders[type].encoderConfig.tickDivider;
+    else
+        return 0;
 }
 
 void setTicksPerTurn(enum encoderTypes type, u32 ticks, u8 tickDivider)
 {
-    encoders[type].setTicksPerTurn(ticks, tickDivider);
+    encoders[type].encoderConfig.configured = 1;
+
+    //do not bother encoder code with anything if the config didn't change
+    if((encoders[type].encoderConfig.ticksPerTurn == ticks * tickDivider) && (encoders[type].encoderConfig.tickDivider == tickDivider))
+        return;
+ 
+    encoders[type].encoderConfig.tickDivider = tickDivider;
+    encoders[type].encoderConfig.ticksPerTurn = ticks * tickDivider;
+    encoders[type].setTicksPerTurn(ticks * tickDivider, tickDivider);
 }
 
 u32 getTicksPerTurn(enum encoderTypes type)
 {
-    return encoders[type].getTicksPerTurn();
+    return encoders[type].encoderConfig.ticksPerTurn;
+}
+
+u8 getTickDivider(enum encoderTypes type)
+{
+    return encoders[type].encoderConfig.tickDivider;
 }
 
 void initEncoder(enum encoderTypes type) 
 {
-  encoders[type].encoderInit();
+    encoders[type].encoderInit();
+    if(type != NO_ENCODER)
+        encoders[type].encoderConfig.configured = 0;
 }
 
 void deinitEncoder(enum encoderTypes type) 
 {
-  encoders[type].encoderDeInit();
+    encoders[type].encoderDeInit();
 }
