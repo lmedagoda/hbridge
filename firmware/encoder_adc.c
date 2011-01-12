@@ -9,7 +9,7 @@
 u32 adcEncoderValue = 0;
 u32 adcTicksPerTurn;
 u8 adcTickDivider;
-vu8 adcEncDone; 
+vu8 adcEncDone = 0; 
 vu16 adcValues[ADC_VALUES_PER_MS];
 
 void encoderInitADC()
@@ -22,24 +22,27 @@ void encoderInitADC()
     ADC Channel14) as analog inputs */
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-    GPIO_Init(GPIOC, &GPIO_InitStructure);
+//     GPIO_Init(GPIOC, &GPIO_InitStructure);
 
 
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Configure and enable ADC interrupt */
     NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
     ADC_InitTypeDef ADC_InitStructure;
 
+    //disable for config
+    ADC_Cmd(ADC2, DISABLE);
+
     /* ADC2 configuration ------------------------------------------------------*/
     ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
     ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-    ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
     ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
     ADC_InitStructure.ADC_NbrOfChannel = 1;
@@ -51,6 +54,9 @@ void encoderInitADC()
     
     /* Enable ADC2 EOC interupt */
     ADC_ITConfig(ADC2, ADC_IT_EOC, ENABLE);
+
+    //Enable ADC2
+    ADC_Cmd(ADC2, ENABLE);
 
     /* Enable ADC2 reset calibaration register */   
     ADC_ResetCalibration(ADC2);
@@ -103,6 +109,10 @@ u32 getTicksADC(void)
 	    adcEncoderValue += adcValues[i];
 	}
 	adcEncoderValue = adcEncoderValue / ADC_VALUES_PER_MS;
+        adcEncDone = 0;
+
+        //trigger next round
+        ADC_SoftwareStartConvCmd(ADC2, ENABLE);
     }
     return adcEncoderValue * adcTicksPerTurn / (1<<12); 
 }
