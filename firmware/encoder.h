@@ -30,6 +30,6 @@ void deinitEncoder(enum encoderTypes type);
 
 void encodersInit();
 
-u8 encodersConfigured();
+u8 encoderConfigured(enum encoderTypes type);
 
 #endif

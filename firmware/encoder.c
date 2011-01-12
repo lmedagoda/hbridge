@@ -40,9 +40,6 @@ void defaultInitEncoder(struct EncoderInterface *encoder)
     encoder->encoderDeInit = defaultEncoderDeInit;
 }
 
-u8 encodersConfigured() {
-    return configured;
-}
 // incremental encoder
 void encoderInitQuadrature() {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -498,6 +495,12 @@ u8 getTickDivider(enum encoderTypes type)
 {
     return encoders[type].encoderConfig.tickDivider;
 }
+
+u8 encoderConfigured(enum encoderTypes type)
+{
+    return encoders[type].encoderConfig.configured;
+}
+
 
 void initEncoder(enum encoderTypes type) 
 {

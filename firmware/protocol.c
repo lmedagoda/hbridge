@@ -140,7 +140,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	  break;
 	}
         case PACKET_ID_SET_CONFIGURE: {
-            if(!encodersConfigured()) {
+            if(!encoderConfigured(state->internalEncoder) || !encoderConfigured(state->externalEncoder)) {
                 state->internalState = STATE_ERROR;
                 getErrorState()->encodersNotInitalized = 1;
                 break;
@@ -169,7 +169,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	}
 	  
         case PACKET_ID_SET_CONFIGURE2: {
-            if(!encodersConfigured()) {
+            if(!encoderConfigured(state->internalEncoder) || !encoderConfigured(state->externalEncoder)) {
                 state->internalState = STATE_ERROR;
                 getErrorState()->encodersNotInitalized = 1;
                 break;
@@ -190,36 +190,40 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	}
 	case PACKET_ID_ENCODER_CONFIG_EXTERN:
 	case PACKET_ID_ENCODER_CONFIG_INTERN: {
+            u8 error = 0;
 	    print("Got PACKET_ID_ENCODER_CONFIG Msg \n");
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		print("Bad, state is configured \n");
 		//do not allow to configure encoders while PID might be active
 		getErrorState()->badConfig = 1;
-	    } else {
-	      
-		struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
-		printf("configuring encoders %du \n",encData->ticksPerTurn);		
-                if(curMsg->StdId == PACKET_ID_ENCODER_CONFIG_INTERN) {
-		    if (state->internalEncoder != encData->encoderType)
-		    {
-		        deinitEncoder(state->internalEncoder);
-			initEncoder(encData->encoderType);
-		        state->internalEncoder = encData->encoderType;
-		    }
-                } else {
-		    if (state->externalEncoder != encData->encoderType)
-		    {
-		        deinitEncoder(state->externalEncoder);
-			initEncoder(encData->encoderType);
-			state->externalEncoder = encData->encoderType;
-		    }
-                }      
-		setTicksPerTurn(encData->encoderType, encData->ticksPerTurn, encData->tickDivider);
-		clearErrors();
-		state->internalState = STATE_UNCONFIGURED;
-                //systick needs to run one time after new encoder values are set
-                forceSynchronisation = 1;
-	    }
+                error = 1;
+	    } 
+	    
+            struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
+            printf("configuring encoders %du \n",encData->ticksPerTurn);		
+            if(curMsg->StdId == PACKET_ID_ENCODER_CONFIG_INTERN) {
+                if (state->internalEncoder != encData->encoderType)
+                {
+                    deinitEncoder(state->internalEncoder);
+                    initEncoder(encData->encoderType);
+                    state->internalEncoder = encData->encoderType;
+                }
+            } else {
+                if (state->externalEncoder != encData->encoderType)
+                {
+                    deinitEncoder(state->externalEncoder);
+                    initEncoder(encData->encoderType);
+                    state->externalEncoder = encData->encoderType;
+                }
+            }
+            setTicksPerTurn(encData->encoderType, encData->ticksPerTurn, encData->tickDivider);
+            if(!error)
+            {
+                clearErrors();
+                state->internalState = STATE_UNCONFIGURED;
+            }
+            //systick needs to run one time after new encoder values are set
+            forceSynchronisation = 1;
 	}
 	break;
      default: 
