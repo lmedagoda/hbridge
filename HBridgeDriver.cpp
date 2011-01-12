@@ -409,10 +409,17 @@ Ticks Encoder::getAbsolutPosition()
                        double kp, double ki, double kd,
                        double minMaxValue) const
     {
+		//check if values exceed signed short
+	if(kp * 100 > (1<<16) || kp * 100 < -(1<<16) ||
+	   ki * 100 > (1<<16) || ki * 100 < -(1<<16) ||
+	   kd * 100 > (1<<16) || kd * 100 < -(1<<16))
+	    throw std::runtime_error("Given PID Parameters are out of bound");
+	
         firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data);
-        data->kp = kp;
-        data->ki = ki;
-        data->kd = kd;
+	//convert given parameters to fixed point values for transmission
+        data->kp = kp * 100;
+        data->ki = ki * 100;
+        data->kd = kd * 100;
         data->minMaxPidOutput = minMaxValue;
         
         msg.size = sizeof(firmware::setPidData);
