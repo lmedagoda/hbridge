@@ -9,6 +9,7 @@
 #include "protocol.h"
 #include "inc/stm32f10x_spi.h"
 #include "encoder_adc.h"
+#include "encoder_quadrature.h"
 
 struct EncoderInterface encoders[NUM_ENCODERS];
 
@@ -21,7 +22,6 @@ vs32 externalEncoderValue = 0;
 static vu8 configured = 0;
 static vu8 foundZero = 0;
 
-struct encoderData internalEncoderConfig;
 struct encoderData externalEncoderConfig;
 
 void defaultEncoderInit(void) {}
@@ -38,138 +38,6 @@ void defaultInitEncoder(struct EncoderInterface *encoder)
     encoder->getTicks = defaultGetTicks;
     encoder->setTicksPerTurn = defaultSetTicksPerTurn;
     encoder->encoderDeInit = defaultEncoderDeInit;
-}
-
-// incremental encoder
-void encoderInitQuadrature() {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-    
-    GPIO_InitTypeDef GPIO_InitStructure;
-
-    //get default GPIO config
-    GPIO_StructInit(&GPIO_InitStructure);
-    
-      //configure Timer4 ch1 (PB6) as encoder input
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-    
-    //configure Timer4 ch2 (PB7) as encoder input
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIOB, &GPIO_InitStructure);
-    
-    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-
-
-    //turn on timer hardware
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-
-    // Time base configuration 
-    TIM_TimeBaseStructure.TIM_Period = 65000;
-    TIM_TimeBaseStructure.TIM_Prescaler = 0;
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
-
-    //configure TIM4 as encoder interface
-    TIM_EncoderInterfaceConfig(TIM4, TIM_EncoderMode_TI12,
-				TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);    
-
-    //only take edges into account where the 
-    //signal is stable for at least 8 clock cycles
-    TIM4->CCMR1 |= (3<<4) | (3<<12);
-    TIM4->CCMR2 |= (3<<4) | (3<<12);
-
-    TIM_SetCounter(TIM4, 0);
-
-    // TIM enable counter
-    TIM_Cmd(TIM4, ENABLE);    
-    
-    internalEncoderConfig.tickDivider = 1;
-    internalEncoderConfig.ticksPerTurn = 0;    
-}
-
-void setTicksPerTurnQuadrature(u32 ticks, u8 tickDivider) {
-    if(configured && internalEncoderConfig.ticksPerTurn == ticks && internalEncoderConfig.tickDivider == tickDivider)
-	return;
-    
-    if(ticks == 0)
-	ticks = 1;
-    
-    internalEncoderConfig.tickDivider = tickDivider;
-    internalEncoderConfig.ticksPerTurn = ticks;
-    TIM_Cmd(TIM4, DISABLE);    
- 
-    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-
-    // Time base configuration 
-    TIM_TimeBaseStructure.TIM_Period = ticks - 1;
-    TIM_TimeBaseStructure.TIM_Prescaler = 0;
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
-    
-    //configure value to reload after wrap around
-    TIM_SetAutoreload(TIM4, ticks - 1);
-    
-    TIM_SetCounter(TIM4, 0);
-    
-    TIM_Cmd(TIM4, ENABLE);
-    foundZero = 0;
-    configured = 1;
-}
-
-u32 getTicksQuadrature()
-{
-  static s32 lastEncoderValue = 0;
-  static s16 wrapCounter = 0;
-
-  //get encoder
-  s32 encoderValue = TIM_GetCounter(TIM4);
-  
-  u32 wheelPos = encoderValue;
-  s32 diff = encoderValue - lastEncoderValue;
-  //we got a wraparound
-  if(abs(diff) > internalEncoderConfig.ticksPerTurn / 2) {
-      //test if we wrapped "forward" or "backwards"
-      if(diff < 0)  {
-	  //forward
-	  wrapCounter++;
-	  if(wrapCounter >= internalEncoderConfig.tickDivider)
-	      wrapCounter -= internalEncoderConfig.tickDivider;
-      } else {
-	  //backward
-	  wrapCounter--;
-	  if(wrapCounter < 0)
-	      wrapCounter += internalEncoderConfig.tickDivider;
-      }
-  }
-
-  wheelPos += wrapCounter * internalEncoderConfig.ticksPerTurn;
-
-  lastEncoderValue = encoderValue;
-
-  return wheelPos;
-}
-
-u16 getDividedTicksQuadrature() {
-    u32 ticks = getTicksQuadrature();
-    return ticks / internalEncoderConfig.tickDivider;
-}
-
-void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {
-    if(configured && externalEncoderConfig.ticksPerTurn == ticks && externalEncoderConfig.tickDivider == tickDivider)
-	return;
-    
-    externalEncoderConfig.tickDivider = tickDivider;
-    externalEncoderConfig.ticksPerTurn = ticks;
-    configured = 1;
-    foundZero = 0;
 }
 
 u32 getTicksQuadratureWithZero() {
@@ -209,9 +77,8 @@ void encoderInitBMMV()
     SPI_Cmd(SPI2, ENABLE);
 
      // TODO: Does something need be changed here?
-    internalEncoderConfig.tickDivider = 1;
-    internalEncoderConfig.ticksPerTurn = 0;
-
+    externalEncoderConfig.tickDivider = 1;
+    externalEncoderConfig.ticksPerTurn = 0;
   
 }
 
@@ -428,6 +295,16 @@ void encoderInitQuadratureWithZero() {
     externalEncoderValue = 0;
     externalEncoderConfig.ticksPerTurn = 0;
     externalEncoderConfig.tickDivider = 1;
+}
+
+void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {
+    if(configured && externalEncoderConfig.ticksPerTurn == ticks && externalEncoderConfig.tickDivider == tickDivider)
+        return;
+    
+    externalEncoderConfig.tickDivider = tickDivider;
+    externalEncoderConfig.ticksPerTurn = ticks;
+    configured = 1;
+    foundZero = 0;
 }
 
 void encodersInit()
