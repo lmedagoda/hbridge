@@ -62,7 +62,7 @@ void Encoder::setRawEncoderValue(uint value)
 	
 	// We assume that a motor rotates less than half a turn per [ms]
 	// (a status packet is sent every [ms])
-	if (abs(diff) > wrapValue / 2)
+	if ((uint) abs(diff) > wrapValue / 2)
 	{
 	    turns += (diff < 0 ? 1 : -1);
 	}
