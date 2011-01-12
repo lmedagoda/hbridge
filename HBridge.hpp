@@ -10,7 +10,6 @@
 
 namespace hbridge
 {
-    const int TICKS_PER_TURN = 512 * 729 / 16;
     const int BOARD_COUNT = 8;
     
     typedef int64_t Ticks;
