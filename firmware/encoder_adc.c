@@ -14,15 +14,15 @@ vu16 adcValues[ADC_VALUES_PER_MS];
 
 void encoderInitADC()
 {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2 | RCC_APB2Periph_GPIOC, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2 | RCC_APB2Periph_GPIOB, ENABLE);
 
     GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_StructInit(&GPIO_InitStructure);
 
-    /* Configure PC.02, PC.03 and PC.04 (ADC Channel12, ADC Channel13 and 
-    ADC Channel14) as analog inputs */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    //setup PB0 as adc in
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
-//     GPIO_Init(GPIOC, &GPIO_InitStructure);
+    GPIO_Init(GPIOB, &GPIO_InitStructure);
 
 
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -50,7 +50,7 @@ void encoderInitADC()
     
     /* ADC2 regular channels configuration */ 
     //55,5 usecs 
-    ADC_RegularChannelConfig(ADC2, ADC_Channel_13, 1, ADC_SampleTime_239Cycles5);
+    ADC_RegularChannelConfig(ADC2, ADC_Channel_8, 1, ADC_SampleTime_239Cycles5);
     
     /* Enable ADC2 EOC interupt */
     ADC_ITConfig(ADC2, ADC_IT_EOC, ENABLE);
@@ -83,6 +83,7 @@ void ADC1_2_IRQHandler(void)
 	cnt++;
 	ADC_SoftwareStartConvCmd(ADC2, ENABLE);
     } else {
+        cnt = 0;
 	adcEncDone = 1;
     }
 }
