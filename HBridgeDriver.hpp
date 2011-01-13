@@ -39,6 +39,7 @@ namespace hbridge
     protected:
 
         BoardState states[BOARD_COUNT];
+	Configuration configuration[BOARD_COUNT];
 	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
         hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
 	
@@ -183,7 +184,7 @@ namespace hbridge
          * @return Two new CAN messages (PACKET_ID_CONFIGURE, PACKET_ID_CONFIGURE2)
          */
         MessagePair setConfiguration(int board,
-                                     const Configuration &cfg) const;
+                                     const Configuration &cfg);
 
 	/**
 	* Generates a CAN message for configuraing encoder parameters.

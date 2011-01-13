@@ -323,8 +323,11 @@ Ticks Encoder::getAbsolutPosition()
     }
 
     MessagePair Driver::setConfiguration(int board,
-                                         const Configuration &cfg) const
+                                         const Configuration &cfg)
     {
+	//save configuration
+	configuration[board] = cfg;
+	
         MessagePair msgs;
     
         firmware::configure1Data *cfg1 =
