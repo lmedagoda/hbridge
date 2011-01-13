@@ -44,6 +44,9 @@ namespace hbridge
 	Encoder encoderIntern[BOARD_COUNT];
 	Encoder encoderExtern[BOARD_COUNT];
 	
+	SpeedControllerDebug speedControllerDebug[BOARD_COUNT];
+	PositionControllerDebug positionControllerDebug[BOARD_COUNT];
+	
 	int getCurrentTickDivider(int index) const;
     public:
 	

@@ -185,10 +185,18 @@ int Driver::getCurrentTickDivider(int index) const
                 break;
             }
 
-            case firmware::PACKET_ID_SPEED_DEBUG:
-                // To be implemented
-                break;
+            case firmware::PACKET_ID_SPEED_DEBUG: {
+		int tickDivider = getCurrentTickDivider(index);
 
+		const firmware::speedDebugData *data =
+		    reinterpret_cast<const firmware::speedDebugData *>(msg.data);
+		    
+		speedControllerDebug[index].encoderValue = data->encoderVal * tickDivider;
+		speedControllerDebug[index].pwmValue = data->pwmVal;
+		speedControllerDebug[index].speedValue = data->speedVal;
+		speedControllerDebug[index].targetValue = data->targetVal;
+                break;
+	    }
             case firmware::PACKET_ID_POS_DEBUG:
                 // To be implemented
                 break;

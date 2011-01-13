@@ -165,6 +165,36 @@ namespace hbridge
 	struct ErrorState error;
         base::Time can_time;
     };
+    
+    struct PIDDebug
+    {
+	PIDDebug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};
+	signed short pPart;
+	signed short iPart;
+	signed short dPart;
+	unsigned short minMaxPidOutput;
+    };
+    
+    struct PositionControllerDebug
+    {
+	PositionControllerDebug() : targetValue(0), pwmValue(0), encoderValue(0), positionValue(0) {};
+	unsigned short targetValue;
+	signed short pwmValue;
+	unsigned int encoderValue;
+	unsigned int positionValue;
+	PIDDebug pidDebug;
+    };
+    
+    struct SpeedControllerDebug
+    {
+	SpeedControllerDebug() : targetValue(0), pwmValue(0), encoderValue(0), speedValue(0) {};
+	unsigned short targetValue;
+	signed short pwmValue;
+	unsigned int encoderValue;
+	unsigned int speedValue;
+	PIDDebug pidDebug;
+    };
+
 }
 
 #endif /* HBRIDGE_DRIVER_HPP */
