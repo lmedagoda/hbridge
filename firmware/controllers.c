@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include "inc/stm32f10x_type.h"
 #include "inc/stm32f10x_can.h"
+#include "encoder.h"
+#include "state.h"
 
 extern volatile enum hostIDs ownHostId;
 struct pid_data posPidData;
@@ -56,6 +58,8 @@ s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) 
     pwmValue = pid(&(posPidData), curVal);
 
     if(debug) {
+	u8 tickDivider = getTickDivider(activeCState->controllerInputEncoder);
+	
         CanTxMsg pidMessagePos;
         CanTxMsg posDbgMessage;
 
@@ -67,16 +71,17 @@ s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) 
 
 	struct pidDebugData *sdata = (struct pidDebugData *) pidMessagePos.Data;
 	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+	sdata->minMaxPidOutput = posPidData.max_command_val;
 	posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
 	posDbgMessage.RTR=CAN_RTR_DATA;
 	posDbgMessage.IDE=CAN_ID_STD;
 	posDbgMessage.DLC= sizeof(struct posDebugData);
 
 	struct posDebugData *pdbgdata = (struct posDebugData *) posDbgMessage.Data;
-	pdbgdata->targetVal = targetPos;
+	pdbgdata->targetVal = targetPos / tickDivider;
 	pdbgdata->pwmVal = pwmValue;
-	pdbgdata->encoderVal = wheelPos;
-	pdbgdata->posVal = (curVal / 4);
+	pdbgdata->encoderVal = wheelPos / tickDivider;
+	pdbgdata->posVal = curVal / tickDivider;
 	
 	while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
 	    ;
@@ -116,7 +121,9 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
     pwmValue = pid(&(speedPidData), curSpeed);
 
     if(debug) {
-        CanTxMsg speedDbgMessage;
+	u8 tickDivider = getTickDivider(activeCState->controllerInputEncoder);
+
+	CanTxMsg speedDbgMessage;
         CanTxMsg pidMessageSpeed;
         speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
 	speedDbgMessage.RTR=CAN_RTR_DATA;
@@ -127,7 +134,7 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
         
         sdbgdata->targetVal = targetSpeed;
 	sdbgdata->pwmVal = pwmValue;
-	sdbgdata->encoderVal = wheelPos;
+	sdbgdata->encoderVal = wheelPos / tickDivider;
 	sdbgdata->speedVal = curSpeed;
 
 	//send status message over CAN
@@ -138,6 +145,7 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
 
 	struct pidDebugData *sdata = (struct pidDebugData *) pidMessageSpeed.Data;
 	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
+	sdata->minMaxPidOutput = speedPidData.max_command_val;
 	
 	while(CAN_Transmit(&pidMessageSpeed) == CAN_NO_MB){
 	    ;
