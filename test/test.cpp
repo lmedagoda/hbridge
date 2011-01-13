@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	if(gotmsg) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
-	    if(abs(state.position - posInternStart) > ticksPerTurnIntern / 2) {
+	    if((uint) abs(state.position - posInternStart) > ticksPerTurnIntern / 2) {
 		if(speed < 0)
 		    break;
 		posInternStart = state.position;
@@ -364,7 +364,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	if(gotmsg) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
-	    if(abs(state.positionExtern - posExternStart) > ticksPerTurnExtern / 2) {
+	    if((uint) abs(state.positionExtern - posExternStart) > ticksPerTurnExtern / 2) {
 		if(speed < 0)
 		    break;
 		posExternStart = state.positionExtern;
