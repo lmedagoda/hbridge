@@ -370,6 +370,8 @@ u32 getTicksPerTurn(enum encoderTypes type)
 
 u8 getTickDivider(enum encoderTypes type)
 {
+    if(encoders[type].encoderConfig.tickDivider == 0)
+	return 1;
     return encoders[type].encoderConfig.tickDivider;
 }
 
