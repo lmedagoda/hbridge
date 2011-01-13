@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
     canbus::Message msg;
 
     std::cerr << "Configuring Encoders " << (hbridge_id +1) << std::endl;
-    hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, 4, hbridge::ENCODER_QUADRATURE);
-    hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, 1, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
+    hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, hbridge::ENCODER_QUADRATURE);
+    hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
     
     canbus::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);

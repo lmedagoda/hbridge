@@ -70,8 +70,8 @@ namespace hbridge
             ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
-        EncoderConfiguration(uint32_t ticksPerTurn, uint8_t tickDivider, ENCODER_TYPE type) :
-	    ticksPerTurn(ticksPerTurn), tickDivider(tickDivider), zeroPosition(0), type(type)
+        EncoderConfiguration(uint32_t ticksPerTurn, ENCODER_TYPE type) :
+	    ticksPerTurn(ticksPerTurn), tickDivider(1), zeroPosition(0), type(type)
 	{
 	    validate();
 	}

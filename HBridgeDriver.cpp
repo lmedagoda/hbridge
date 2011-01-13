@@ -15,20 +15,20 @@ namespace hbridge
  
 Encoder::Encoder()
 {
-    wrapValue = 0;
     lastPositionInTurn = 0;
     turns = 0;
     zeroPosition = 0;
     gotValidReading = false;
 }
 
-void Encoder::setWrapValue(uint value)
+void Encoder::setConfiguration(EncoderConfiguration& cfg)
 {
-    if(wrapValue == value)
+    if(encoderConfig.ticksPerTurn == cfg.ticksPerTurn)
         return;
+    
+    encoderConfig = cfg;
 
     //we go sane and reset the encoder if wrap value changes
-    wrapValue = value;
     lastPositionInTurn = 0;
     turns = 0;
     gotValidReading = false;    
@@ -41,7 +41,9 @@ void Encoder::setZeroPosition(Ticks zeroPos)
 
 void Encoder::setRawEncoderValue(uint value)
 {
-
+    //reverse scale down for transmission
+    value *= encoderConfig.tickDivider;
+    
     if(!gotValidReading)
     {
 	if(value > 0)
@@ -62,7 +64,7 @@ void Encoder::setRawEncoderValue(uint value)
 	
 	// We assume that a motor rotates less than half a turn per [ms]
 	// (a status packet is sent every [ms])
-	if ((uint) abs(diff) > wrapValue / 2)
+	if ((uint) abs(diff) > encoderConfig.ticksPerTurn / 2)
 	{
 	    turns += (diff < 0 ? 1 : -1);
 	}
@@ -71,8 +73,13 @@ void Encoder::setRawEncoderValue(uint value)
 
 Ticks Encoder::getAbsolutPosition()
 {
-    Ticks ret = turns* ((int)wrapValue) + ((int)lastPositionInTurn) - zeroPosition;
+    Ticks ret = turns* ((int)encoderConfig.ticksPerTurn) + ((int)lastPositionInTurn) - zeroPosition;
     return ret;
+}
+
+const EncoderConfiguration& Encoder::getEncoderConfig() const
+{
+    return encoderConfig;
 }
 
     Driver::Driver() :
@@ -86,6 +93,21 @@ Ticks Encoder::getAbsolutPosition()
     Driver::~Driver()
     {
     }
+
+int Driver::getCurrentTickDivider(int index) const
+{
+    int tickDivider;
+    switch(configuration[index].controllerInputEncoder)
+    {
+	case INTERNAL:
+	    tickDivider = encoderIntern[index].getEncoderConfig().tickDivider;
+	    break;
+	case EXTERNAL:
+	    tickDivider = encoderExtern[index].getEncoderConfig().tickDivider;
+	    break;
+    }
+    return tickDivider;
+}
 
     void Driver::reset()
     {
@@ -279,8 +301,11 @@ Ticks Encoder::getAbsolutPosition()
                 values[i] = targets[i];
                 break;
             case base::actuators::DM_POSITION:
-                values[i] = targets[i];
+	    {
+		int tickDivider = getCurrentTickDivider(i);
+                values[i] = targets[i] / tickDivider;
                 break;
+	    }
             default:
                 throw std::runtime_error("setTargetValues called before setDriveMode");
             }
@@ -369,27 +394,35 @@ Ticks Encoder::getAbsolutPosition()
         return msgs;
     }
 
-    canbus::Message Driver::setInternalEncoderConfiguration(int board, const EncoderConfiguration &cfg)
+    canbus::Message Driver::setInternalEncoderConfiguration(int board, EncoderConfiguration cfg)
     {      
 	canbus::Message msg = setEncoderConfiguration(board, cfg);
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
         msg.size = sizeof(firmware::encoderConfiguration);
 
-	encoderIntern[board].setWrapValue(cfg.ticksPerTurnDivided);
+	//calcualte correct tick divider for 16 bit width
+	cfg.tickDivider = cfg.ticksPerTurn / (1<<16) +1;
+	cfg.validate();
+	
+	encoderIntern[board].setConfiguration(cfg);
 	encoderIntern[board].setZeroPosition(cfg.zeroPosition);
 		
 	return msg;
     }
     
-    canbus::Message Driver::setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg)
+    canbus::Message Driver::setExternalEncoderConfiguration(int board, hbridge::EncoderConfiguration cfg)
     {
 	canbus::Message msg = setEncoderConfiguration(board, cfg);
 
 	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
         msg.size = sizeof(firmware::encoderConfiguration);
 
-	encoderExtern[board].setWrapValue(cfg.ticksPerTurnDivided);
+	//calcualte correct tick divider for 12 bit width
+	cfg.tickDivider = cfg.ticksPerTurn / (1<<12) +1;
+	cfg.validate();
+
+	encoderExtern[board].setConfiguration(cfg);
 	encoderExtern[board].setZeroPosition(cfg.zeroPosition);
 		
 	return msg;

@@ -19,32 +19,32 @@ namespace hbridge
     class Encoder
     {
 	private:
-	    unsigned int wrapValue;
+	    EncoderConfiguration encoderConfig;
 	    Ticks zeroPosition;
-	    unsigned int positionInTurn;
 	    unsigned int lastPositionInTurn;
 	    int turns;
 	    bool gotValidReading;
 	public:
 	    Encoder();
-	    void setWrapValue(unsigned int value);
+	    void setConfiguration(EncoderConfiguration &cfg);
 	    void setZeroPosition(Ticks zeroPos);
 	    void setRawEncoderValue(unsigned int value);
 	    Ticks getAbsolutPosition();
+	    const EncoderConfiguration &getEncoderConfig() const;
     };
 
     class Driver
     {
     public:
     protected:
-
         BoardState states[BOARD_COUNT];
 	Configuration configuration[BOARD_COUNT];
-	EncoderConfiguration encoderConfigurations[BOARD_COUNT];
-        hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
+	hbridge::DRIVE_MODE current_modes[BOARD_COUNT];
 	
 	Encoder encoderIntern[BOARD_COUNT];
 	Encoder encoderExtern[BOARD_COUNT];
+	
+	int getCurrentTickDivider(int index) const;
     public:
 	
         Driver();
@@ -195,7 +195,7 @@ namespace hbridge
 	*
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
-	canbus::Message setInternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
+	canbus::Message setInternalEncoderConfiguration(int board, hbridge::EncoderConfiguration cfg);
 
 	/**
 	* Generates a CAN message for configuraing encoder parameters.
@@ -206,7 +206,7 @@ namespace hbridge
 	*
 	* @return A new CAN message (PACKET_ID_ENCODER_CONFIG)
 	**/
-	canbus::Message setExternalEncoderConfiguration(int board, const hbridge::EncoderConfiguration& cfg);
+	canbus::Message setExternalEncoderConfiguration(int board, hbridge::EncoderConfiguration cfg);
 	
     protected:
         /**
