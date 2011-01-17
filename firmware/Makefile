@@ -80,103 +80,10 @@ gen_checksum: gen_checksum.c
 .PHONY: bin clean
 
 #generated using 
-##find . -name "*.c" -exec gcc -I inc -I . -MM {} -MQ {} \; >> Makefile
+# find . -name "*.c" -exec gcc -I inc -I . -MM {} -MQ {} \; | sed -r "s/[ ].+\\.c//" >> Makefile
 #and some manual fixups
-printf.c: printf.c usart.h inc/stm32f10x_type.h inc/stm32f10x_usart.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/cortexm3_macro.h
-src/stm32f10x_tim.c: src/stm32f10x_tim.c inc/stm32f10x_tim.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_dbgmcu.c: src/stm32f10x_dbgmcu.c inc/stm32f10x_dbgmcu.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_i2c.c: src/stm32f10x_i2c.c inc/stm32f10x_i2c.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_spi.c: src/stm32f10x_spi.c inc/stm32f10x_spi.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_nvic.c: src/stm32f10x_nvic.c inc/stm32f10x_nvic.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_fsmc.c: src/stm32f10x_fsmc.c inc/stm32f10x_fsmc.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_usart.c: src/stm32f10x_usart.c inc/stm32f10x_usart.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_iwdg.c: src/stm32f10x_iwdg.c inc/stm32f10x_iwdg.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_wwdg.c: src/stm32f10x_wwdg.c inc/stm32f10x_wwdg.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_dac.c: src/stm32f10x_dac.c inc/stm32f10x_dac.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_systick.c: src/stm32f10x_systick.c inc/stm32f10x_systick.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_lib.c: src/stm32f10x_lib.c inc/stm32f10x_lib.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
- inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
- inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
- inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
- inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
- inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
- inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
- inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
- inc/stm32f10x_wwdg.h
-src/stm32f10x_bkp.c: src/stm32f10x_bkp.c inc/stm32f10x_bkp.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_dma.c: src/stm32f10x_dma.c inc/stm32f10x_dma.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_rtc.c: src/stm32f10x_rtc.c inc/stm32f10x_rtc.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_can.c: src/stm32f10x_can.c inc/stm32f10x_can.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_rcc.c: src/stm32f10x_rcc.c inc/stm32f10x_rcc.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_crc.c: src/stm32f10x_crc.c inc/stm32f10x_crc.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_flash.c: src/stm32f10x_flash.c inc/stm32f10x_flash.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_gpio.c: src/stm32f10x_gpio.c inc/stm32f10x_gpio.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_sdio.c: src/stm32f10x_sdio.c inc/stm32f10x_sdio.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_exti.c: src/stm32f10x_exti.c inc/stm32f10x_exti.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h
-src/stm32f10x_pwr.c: src/stm32f10x_pwr.c inc/stm32f10x_pwr.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-src/stm32f10x_adc.c: src/stm32f10x_adc.c inc/stm32f10x_adc.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
-encoder_adc.c: encoder_adc.c encoder.h inc/stm32f10x_type.h protocol.h \
- inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
- inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
- inc/stm32f10x_adc.h inc/stm32f10x_rcc.h inc/stm32f10x_nvic.h \
- inc/stm32f10x_gpio.h
-encoder.c: encoder.c inc/stm32f10x_tim.h inc/stm32f10x_map.h \
- stm32f10x_conf.h inc/stm32f10x_type.h inc/stm32f10x_type.h \
- inc/cortexm3_macro.h inc/stm32f10x_rcc.h inc/stm32f10x_gpio.h \
- inc/stm32f10x_exti.h inc/stm32f10x_nvic.h printf.h inc/stm32f10x_type.h \
- encoder.h protocol.h inc/stm32f10x_can.h inc/stm32f10x_spi.h \
- encoder_adc.h
-main.c: main.c inc/stm32f10x_lib.h inc/stm32f10x_map.h stm32f10x_conf.h \
+
+main.c: inc/stm32f10x_lib.h inc/stm32f10x_map.h stm32f10x_conf.h \
  inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
  inc/stm32f10x_adc.h inc/stm32f10x_bkp.h inc/stm32f10x_can.h \
  inc/stm32f10x_crc.h inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h \
@@ -191,11 +98,151 @@ main.c: main.c inc/stm32f10x_lib.h inc/stm32f10x_map.h stm32f10x_conf.h \
  inc/stm32f10x_i2c.h pid.h usart.h inc/stm32f10x_usart.h protocol.h can.h \
  state.h controllers.h hbridge.h encoder.h current_measurement.h \
  inc/stm32f10x_adc.h lm73cimk.h printf.h
-state.c: state.c state.h inc/stm32f10x_type.h protocol.h \
+current_measurement.c: inc/stm32f10x_type.h \
+ inc/stm32f10x_adc.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
+ inc/stm32f10x_dma.h inc/stm32f10x_rcc.h inc/stm32f10x_tim.h printf.h \
+ current_measurement.h
+stm32f10x_it.c: stm32f10x_it.h inc/stm32f10x_lib.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
+ inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
+ inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
+ inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
+ inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
+ inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
+ inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
+ inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
+ inc/stm32f10x_wwdg.h
+src/stm32f10x_i2c.c: inc/stm32f10x_i2c.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_rtc.c: inc/stm32f10x_rtc.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_dbgmcu.c: inc/stm32f10x_dbgmcu.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_wwdg.c: inc/stm32f10x_wwdg.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_gpio.c: inc/stm32f10x_gpio.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_spi.c: inc/stm32f10x_spi.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_systick.c: inc/stm32f10x_systick.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_iwdg.c: inc/stm32f10x_iwdg.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_bkp.c: inc/stm32f10x_bkp.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_rcc.c: inc/stm32f10x_rcc.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_can.c: inc/stm32f10x_can.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_dac.c: inc/stm32f10x_dac.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_flash.c: inc/stm32f10x_flash.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_adc.c: inc/stm32f10x_adc.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_sdio.c: inc/stm32f10x_sdio.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_usart.c: inc/stm32f10x_usart.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_tim.c: inc/stm32f10x_tim.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_fsmc.c: inc/stm32f10x_fsmc.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_exti.c: inc/stm32f10x_exti.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_crc.c: inc/stm32f10x_crc.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_nvic.c: inc/stm32f10x_nvic.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h
+src/stm32f10x_pwr.c: inc/stm32f10x_pwr.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_dma.c: inc/stm32f10x_dma.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_rcc.h
+src/stm32f10x_lib.c: inc/stm32f10x_lib.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
+ inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
+ inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
+ inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
+ inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
+ inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
+ inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
+ inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
+ inc/stm32f10x_wwdg.h
+can.c: inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
+ inc/stm32f10x_rcc.h inc/stm32f10x_gpio.h can.h inc/stm32f10x_type.h \
+ protocol.h printf.h
+encoder_adc.c: encoder.h inc/stm32f10x_type.h protocol.h \
+ inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
+ inc/stm32f10x_adc.h inc/stm32f10x_rcc.h inc/stm32f10x_nvic.h \
+ inc/stm32f10x_gpio.h
+encoder.c: inc/stm32f10x_tim.h inc/stm32f10x_map.h \
+ stm32f10x_conf.h inc/stm32f10x_type.h inc/stm32f10x_type.h \
+ inc/cortexm3_macro.h inc/stm32f10x_rcc.h inc/stm32f10x_gpio.h \
+ inc/stm32f10x_exti.h inc/stm32f10x_nvic.h printf.h inc/stm32f10x_type.h \
+ encoder.h protocol.h inc/stm32f10x_can.h inc/stm32f10x_spi.h \
+ encoder_adc.h encoder_quadrature.h
+spi.c: inc/stm32f10x_type.h stm32f10x_it.h inc/stm32f10x_lib.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
+ inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
+ inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
+ inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
+ inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
+ inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
+ inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
+ inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
+ inc/stm32f10x_wwdg.h inc/stm32f10x_gpio.h spi.h
+state.c: state.h inc/stm32f10x_type.h protocol.h \
  inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
  inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h printf.h
-gen_checksum.c: gen_checksum.c
-i2c.c: i2c.c i2c.h inc/stm32f10x_type.h inc/stm32f10x_i2c.h \
+stm32f10x_vector.c: inc/stm32f10x_lib.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
+ inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
+ inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
+ inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
+ inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
+ inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
+ inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
+ inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
+ inc/stm32f10x_wwdg.h stm32f10x_it.h
+encoder_quadrature.c: encoder.h inc/stm32f10x_type.h \
+ protocol.h inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
+ inc/stm32f10x_tim.h inc/stm32f10x_rcc.h inc/stm32f10x_nvic.h \
+ inc/stm32f10x_gpio.h printf.h
+printf.c: usart.h inc/stm32f10x_type.h inc/stm32f10x_usart.h \
+ inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
+ inc/cortexm3_macro.h
+i2c.c: i2c.h inc/stm32f10x_type.h inc/stm32f10x_i2c.h \
  inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
  inc/stm32f10x_type.h inc/cortexm3_macro.h stm32f10x_it.h \
  inc/stm32f10x_lib.h inc/stm32f10x_map.h inc/stm32f10x_adc.h \
@@ -207,69 +254,29 @@ i2c.c: i2c.c i2c.h inc/stm32f10x_type.h inc/stm32f10x_i2c.h \
  inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
  inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
  inc/stm32f10x_wwdg.h printf.h
-stm32f10x_vector.c: stm32f10x_vector.c inc/stm32f10x_lib.h \
+checksum1.c:
+controllers.c: pid.h inc/stm32f10x_type.h protocol.h \
+ inc/stm32f10x_type.h inc/stm32f10x_can.h inc/stm32f10x_map.h \
+ stm32f10x_conf.h inc/stm32f10x_type.h inc/cortexm3_macro.h encoder.h \
+ state.h
+pid.c: pid.h inc/stm32f10x_type.h stm32f10x_conf.h protocol.h \
+ inc/stm32f10x_type.h inc/stm32f10x_can.h inc/stm32f10x_map.h \
+ stm32f10x_conf.h inc/stm32f10x_type.h inc/cortexm3_macro.h can.h
+usart.c: usart.h inc/stm32f10x_type.h inc/stm32f10x_usart.h \
  inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
- inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
- inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
- inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
- inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
- inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
- inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
- inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
- inc/stm32f10x_wwdg.h stm32f10x_it.h
-checksum1.c: checksum1.c
-lm73cimk.c: lm73cimk.c lm73cimk.h inc/stm32f10x_type.h i2c.h \
- inc/stm32f10x_i2c.h inc/stm32f10x_map.h stm32f10x_conf.h \
- inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h printf.h \
- inc/stm32f10x_rcc.h inc/stm32f10x_nvic.h inc/stm32f10x_gpio.h
-current_measurement.c: current_measurement.c inc/stm32f10x_type.h \
- inc/stm32f10x_adc.h inc/stm32f10x_map.h stm32f10x_conf.h \
- inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
- inc/stm32f10x_dma.h inc/stm32f10x_rcc.h inc/stm32f10x_tim.h printf.h \
- current_measurement.h
-hbridge.c: hbridge.c inc/stm32f10x_tim.h inc/stm32f10x_map.h \
+ inc/cortexm3_macro.h inc/stm32f10x_usart.h inc/stm32f10x_rcc.h \
+ inc/stm32f10x_map.h inc/stm32f10x_gpio.h
+protocol.c: protocol.h inc/stm32f10x_type.h \
+ inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h state.h \
+ encoder.h inc/stm32f10x_gpio.h printf.h
+hbridge.c: inc/stm32f10x_tim.h inc/stm32f10x_map.h \
  stm32f10x_conf.h inc/stm32f10x_type.h inc/stm32f10x_type.h \
  inc/cortexm3_macro.h inc/stm32f10x_rcc.h inc/stm32f10x_adc.h \
  inc/stm32f10x_gpio.h hbridge.h current_measurement.h \
  inc/stm32f10x_type.h
-can.c: can.c inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
- inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h \
- inc/stm32f10x_rcc.h inc/stm32f10x_gpio.h can.h inc/stm32f10x_type.h \
- protocol.h printf.h
-controllers.c: controllers.c pid.h inc/stm32f10x_type.h protocol.h \
- inc/stm32f10x_type.h inc/stm32f10x_can.h inc/stm32f10x_map.h \
- stm32f10x_conf.h inc/stm32f10x_type.h inc/cortexm3_macro.h
-spi.c: spi.c inc/stm32f10x_type.h stm32f10x_it.h inc/stm32f10x_lib.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
- inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
- inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
- inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
- inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
- inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
- inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
- inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
- inc/stm32f10x_wwdg.h inc/stm32f10x_gpio.h spi.h
-usart.c: usart.c usart.h inc/stm32f10x_type.h inc/stm32f10x_usart.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/cortexm3_macro.h inc/stm32f10x_usart.h inc/stm32f10x_rcc.h \
- inc/stm32f10x_map.h inc/stm32f10x_gpio.h
-stm32f10x_it.c: stm32f10x_it.c stm32f10x_it.h inc/stm32f10x_lib.h \
- inc/stm32f10x_map.h stm32f10x_conf.h inc/stm32f10x_type.h \
- inc/stm32f10x_type.h inc/cortexm3_macro.h inc/stm32f10x_adc.h \
- inc/stm32f10x_bkp.h inc/stm32f10x_can.h inc/stm32f10x_crc.h \
- inc/stm32f10x_dac.h inc/stm32f10x_dbgmcu.h inc/stm32f10x_dma.h \
- inc/stm32f10x_exti.h inc/stm32f10x_flash.h inc/stm32f10x_fsmc.h \
- inc/stm32f10x_gpio.h inc/stm32f10x_i2c.h inc/stm32f10x_iwdg.h \
- inc/stm32f10x_nvic.h inc/stm32f10x_pwr.h inc/stm32f10x_rcc.h \
- inc/stm32f10x_rtc.h inc/stm32f10x_sdio.h inc/stm32f10x_spi.h \
- inc/stm32f10x_systick.h inc/stm32f10x_tim.h inc/stm32f10x_usart.h \
- inc/stm32f10x_wwdg.h
-protocol.c: protocol.c protocol.h inc/stm32f10x_type.h \
- inc/stm32f10x_can.h inc/stm32f10x_map.h stm32f10x_conf.h \
- inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h state.h \
- encoder.h inc/stm32f10x_gpio.h printf.h
-pid.c: pid.c pid.h inc/stm32f10x_type.h stm32f10x_conf.h protocol.h \
- inc/stm32f10x_type.h inc/stm32f10x_can.h inc/stm32f10x_map.h \
- stm32f10x_conf.h inc/stm32f10x_type.h inc/cortexm3_macro.h can.h
+gen_checksum.c:
+lm73cimk.c: lm73cimk.h inc/stm32f10x_type.h i2c.h \
+ inc/stm32f10x_i2c.h inc/stm32f10x_map.h stm32f10x_conf.h \
+ inc/stm32f10x_type.h inc/stm32f10x_type.h inc/cortexm3_macro.h printf.h \
+ inc/stm32f10x_rcc.h inc/stm32f10x_nvic.h inc/stm32f10x_gpio.h
