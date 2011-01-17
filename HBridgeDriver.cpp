@@ -198,16 +198,39 @@ int Driver::getCurrentTickDivider(int index) const
                 break;
 	    }
             case firmware::PACKET_ID_POS_DEBUG:
-                // To be implemented
-                break;
+            {
+                int tickDivider = getCurrentTickDivider(index);
+                const firmware::posDebugData * data =
+                    reinterpret_cast<const firmware::posDebugData *> (msg.data);
 
+                positionControllerDebug[index].encoderValue = data->encoderVal * tickDivider;
+                positionControllerDebug[index].pwmValue = data->pwmVal;
+                positionControllerDebug[index].positionValue = data->posVal * tickDivider;
+                positionControllerDebug[index].targetValue = data->targetVal * tickDivider;
+                break;
+            }
             case firmware::PACKET_ID_PID_DEBUG_SPEED:
-                // To be implemented
-                break;
+            {
+                const firmware::pidDebugData * data =
+                    reinterpret_cast<const firmware::pidDebugData *> (msg.data);
 
-            case firmware::PACKET_ID_PID_DEBUG_POS:
-                // To be implemented
+                speedPIDDebug[index].dPart = data->dPart;
+                speedPIDDebug[index].iPart = data->iPart;
+                speedPIDDebug[index].pPart = data->pPart;
+                speedPIDDebug[index].minMaxPidOutput = data->minMaxPidOutput;
                 break;
+            }
+            case firmware::PACKET_ID_PID_DEBUG_POS:
+            {
+                const firmware::pidDebugData * data =
+                    reinterpret_cast<const firmware::pidDebugData *> (msg.data);
+
+                posPIDDebug[index].dPart = data->dPart;
+                posPIDDebug[index].iPart = data->iPart;
+                posPIDDebug[index].pPart = data->pPart;
+                posPIDDebug[index].minMaxPidOutput = data->minMaxPidOutput;
+                break;
+            }
 	    default:
 		//whatever it is, it did not update our internal state
 		return false;
@@ -470,6 +493,33 @@ int Driver::getCurrentTickDivider(int index) const
         data->minMaxPidOutput = minMaxValue;
         
         msg.size = sizeof(firmware::setPidData);
+    }
+
+    Driver::DebugData Driver::getDebugData(int const board) const
+    {
+        Driver::DebugData debugData;
+
+        debugData.speedTargetVal = speedControllerDebug[board].targetValue;
+        debugData.speedPWMVal = speedControllerDebug[board].pwmValue;
+        debugData.speedEncoderVal = speedControllerDebug[board].encoderValue;
+        debugData.speedVal = speedControllerDebug[board].speedValue;
+
+        debugData.posTargetVal = positionControllerDebug[board].targetValue;
+        debugData.posPWMVal = positionControllerDebug[board].pwmValue;
+        debugData.posEncoderVal = positionControllerDebug[board].encoderValue;
+        debugData.posVal = positionControllerDebug[board].positionValue;
+
+        debugData.posPPart = posPIDDebug[board].pPart;
+        debugData.posIPart = posPIDDebug[board].iPart;
+        debugData.posDPart = posPIDDebug[board].dPart;
+        debugData.posMaxPidOutput = posPIDDebug[board].minMaxPidOutput;
+
+        debugData.speedPPart = speedPIDDebug[board].pPart;
+        debugData.speedIPart = speedPIDDebug[board].iPart;
+        debugData.speedDPart = speedPIDDebug[board].dPart;
+        debugData.speedMaxPidOutput = speedPIDDebug[board].minMaxPidOutput;
+
+        return debugData;
     }
 }
 

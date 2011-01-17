@@ -36,6 +36,29 @@ namespace hbridge
     class Driver
     {
     public:
+
+        struct DebugData {
+            int16_t speedTargetVal;
+            int16_t speedPWMVal;
+            uint16_t speedEncoderVal;
+            int16_t speedVal;
+
+            uint16_t posTargetVal;
+            int16_t posPWMVal;
+            uint16_t posEncoderVal;
+            uint16_t posVal;
+
+            int16_t posPPart;
+            int16_t posIPart;
+            int16_t posDPart;
+            uint16_t posMaxPidOutput;
+
+            int16_t speedPPart;
+            int16_t speedIPart;
+            int16_t speedDPart;
+            uint16_t speedMaxPidOutput;
+        };
+
     protected:
         BoardState states[BOARD_COUNT];
 	Configuration configuration[BOARD_COUNT];
@@ -46,7 +69,9 @@ namespace hbridge
 	
 	SpeedControllerDebug speedControllerDebug[BOARD_COUNT];
 	PositionControllerDebug positionControllerDebug[BOARD_COUNT];
-	
+        PIDDebug speedPIDDebug[BOARD_COUNT];
+        PIDDebug posPIDDebug[BOARD_COUNT];
+
 	int getCurrentTickDivider(int index) const;
     public:
 	
@@ -211,6 +236,14 @@ namespace hbridge
 	**/
 	canbus::Message setExternalEncoderConfiguration(int board, hbridge::EncoderConfiguration cfg);
 	
+        /**
+         * Generates a debug package based on the data received from the 
+         * specified hbridge.
+         * @param board hbridge identifier
+         * @return A DebugData object
+         */
+        DebugData getDebugData(int const board) const;
+        
     protected:
         /**
 	* Internal method to generate set encoder message without packet id 
