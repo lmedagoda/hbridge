@@ -3,7 +3,7 @@
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_nvic.h"
 #include "inc/stm32f10x_gpio.h"
-#include <math.h>
+#include <stdlib.h>
 #include "printf.h"
 
 u32 maxWraps = 0;
