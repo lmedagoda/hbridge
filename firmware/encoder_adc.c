@@ -88,11 +88,6 @@ void ADC1_2_IRQHandler(void)
     }
 }
 
-u32 getTicksPerTurnADC()
-{
-    return adcTicksPerTurn;
-}
-
 void setTicksPerTurnADC(u32 ticks, u8 tickDivider)
 {
     adcTicksPerTurn = ticks;
@@ -118,10 +113,6 @@ u32 getTicksADC(void)
     return adcEncoderValue * adcTicksPerTurn / (1<<12); 
 }
 
-u16 getDividedTicksADC(void)
-{
-    return getTicksADC() / adcTickDivider;
-}
 
 void encoderDeInitADC(void)
 {
