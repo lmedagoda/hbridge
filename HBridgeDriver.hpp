@@ -183,7 +183,7 @@ namespace hbridge
          * @return Two new CAN messages (PACKET_ID_CONFIGURE, PACKET_ID_CONFIGURE2)
          */
         MessagePair setConfiguration(int board,
-                                     const Configuration &cfg) const;
+                                     const Configuration &cfg);
 
 	/**
 	* Generates a CAN message for configuraing encoder parameters.

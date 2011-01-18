@@ -83,14 +83,15 @@ namespace hbridge
 	bool badConfig;
 	bool encodersNotInitialized;
         bool hardwareShutdown;
+        bool emergencyOff;
 
 	ErrorState() :
-            motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitialized(false), hardwareShutdown(false)
+	  motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitialized(false), hardwareShutdown(false), emergencyOff(false)
         {}
         
         bool hasError() 
         {
-	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitialized || hardwareShutdown);
+	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitialized || hardwareShutdown || emergencyOff);
 	}
 
         bool operator != (ErrorState const& other) const
@@ -102,7 +103,8 @@ namespace hbridge
                 timeout                != other.timeout ||
                 badConfig              != other.badConfig ||
                 encodersNotInitialized != other.encodersNotInitialized ||
-                hardwareShutdown       != other.hardwareShutdown;
+                hardwareShutdown       != other.hardwareShutdown ||
+	        emergencyOff           != other.emergencyOff;
         }
 
         bool operator == (ErrorState const& other) const
@@ -117,6 +119,7 @@ namespace hbridge
 	    std::cout << "badConfig            :" << badConfig << std::endl;
 	    std::cout << "encodersNotInitialized:" << encodersNotInitialized << std::endl;
 	    std::cout << "hardwareShutdown     :" << hardwareShutdown << std::endl;
+	    std::cout << "emergencyOff         :" << emergencyOff<< std::endl;
 	}
 	
 	ErrorState operator | (ErrorState const& es) const
@@ -129,6 +132,7 @@ namespace hbridge
 	    ret.badConfig       = this->badConfig || es.badConfig;
 	    ret.encodersNotInitialized = this->encodersNotInitialized || es.encodersNotInitialized;
 	    ret.hardwareShutdown = this->hardwareShutdown || es.hardwareShutdown;
+	    ret.emergencyOff = this->emergencyOff || es.emergencyOff;
 	    return ret;
 	}
     };

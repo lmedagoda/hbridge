@@ -104,8 +104,16 @@ Ticks Encoder::getAbsolutPosition()
 	
 	//broadcast message is allways a controll message
 	//and thuis does not update the internal state
-	if(index == -1)
+	if(index == -1) {
+	    if(msg.can_id == firmware::PACKET_ID_EMERGENCY_STOP)
+	    {
+	        for(int i = 0; i < BOARD_COUNT; i++)
+		{
+		    states[i].error.emergencyOff = true;
+		}
+	    }
 	    return false;
+	}
 	
 	if ((index < -1) || (index > (BOARD_COUNT - 1)))
 	{
@@ -316,7 +324,7 @@ Ticks Encoder::getAbsolutPosition()
     }
 
     MessagePair Driver::setConfiguration(int board,
-                                         const Configuration &cfg) const
+                                         const Configuration &cfg)
     {
         MessagePair msgs;
     
@@ -346,6 +354,9 @@ Ticks Encoder::getAbsolutPosition()
 
         msgs.second.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_SET_CONFIGURE2;
         msgs.second.size = sizeof(firmware::configure2Data);
+
+	//reset internal emergency off status
+	states[board].error.emergencyOff = false;
 
         return msgs;
     }
