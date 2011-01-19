@@ -14,9 +14,9 @@ namespace hbridge
     
     typedef int64_t Ticks;
 
-    enum CONTORLLER_INPUT_ENCODER {
-	INTERNAL = 1,
-	EXTERNAL = 2
+    enum CONTROLLER_INPUT_ENCODER {
+        INTERNAL = 1,
+        EXTERNAL = 2
     };
     
     struct Configuration
@@ -34,7 +34,7 @@ namespace hbridge
         unsigned short maxCurrent;
         unsigned char maxCurrentCount;
         unsigned short pwmStepPerMs;
-	CONTORLLER_INPUT_ENCODER controllerInputEncoder;
+	CONTROLLER_INPUT_ENCODER controllerInputEncoder;
         /**
          * Initialise all fields of the configuration structure with 0
          */
