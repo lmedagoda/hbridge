@@ -1,4 +1,5 @@
 <package>
     <depend package="base/types" />
     <depend package="drivers/canbus" />
+    <tags>stable</tags>
 </package>
