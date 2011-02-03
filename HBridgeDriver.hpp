@@ -69,8 +69,8 @@ namespace hbridge
 	
 	SpeedControllerDebug speedControllerDebug[BOARD_COUNT];
 	PositionControllerDebug positionControllerDebug[BOARD_COUNT];
-        PIDDebug speedPIDDebug[BOARD_COUNT];
-        PIDDebug posPIDDebug[BOARD_COUNT];
+        PID_Debug speedPIDDebug[BOARD_COUNT];
+        PID_Debug posPIDDebug[BOARD_COUNT];
 
 	int getCurrentTickDivider(int index) const;
     public:

@@ -166,9 +166,9 @@ namespace hbridge
         base::Time can_time;
     };
     
-    struct PIDDebug
+    struct PID_Debug
     {
-	PIDDebug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};
+	PID_Debug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};
 	signed short pPart;
 	signed short iPart;
 	signed short dPart;
@@ -182,7 +182,7 @@ namespace hbridge
 	signed short pwmValue;
 	unsigned int encoderValue;
 	unsigned int positionValue;
-	PIDDebug pidDebug;
+	PID_Debug pidDebug;
     };
     
     struct SpeedControllerDebug
@@ -192,7 +192,7 @@ namespace hbridge
 	signed short pwmValue;
 	unsigned int encoderValue;
 	unsigned int speedValue;
-	PIDDebug pidDebug;
+	PID_Debug pidDebug;
     };
 
 }
