@@ -421,28 +421,24 @@ int Driver::getCurrentTickDivider(int index) const
 
     canbus::Message Driver::setInternalEncoderConfiguration(int board, EncoderConfiguration cfg)
     {      
-	canbus::Message msg = setEncoderConfiguration(board, cfg);
-
-	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
-        msg.size = sizeof(firmware::encoderConfiguration);
-
 	//calcualte correct tick divider for 16 bit width
 	cfg.tickDivider = cfg.ticksPerTurn / (1<<16) +1;
 	cfg.validate();
 	
 	encoderIntern[board].setConfiguration(cfg);
 	encoderIntern[board].setZeroPosition(cfg.zeroPosition);
+
+	canbus::Message msg = setEncoderConfiguration(board, cfg);
+
+	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
+        msg.size = sizeof(firmware::encoderConfiguration);
+
 		
 	return msg;
     }
     
     canbus::Message Driver::setExternalEncoderConfiguration(int board, hbridge::EncoderConfiguration cfg)
     {
-	canbus::Message msg = setEncoderConfiguration(board, cfg);
-
-	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
-        msg.size = sizeof(firmware::encoderConfiguration);
-
 	//calcualte correct tick divider for 12 bit width
 	cfg.tickDivider = cfg.ticksPerTurn / (1<<12) +1;
 	cfg.validate();
@@ -450,6 +446,11 @@ int Driver::getCurrentTickDivider(int index) const
 	encoderExtern[board].setConfiguration(cfg);
 	encoderExtern[board].setZeroPosition(cfg.zeroPosition);
 		
+	canbus::Message msg = setEncoderConfiguration(board, cfg);
+
+	msg.can_id = HBRIDGE_BOARD_ID(board) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
+        msg.size = sizeof(firmware::encoderConfiguration);
+
 	return msg;
     }
 
