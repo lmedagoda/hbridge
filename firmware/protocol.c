@@ -45,28 +45,35 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    //print("Got PACKET_ID_SET_VALUE Msg \n");
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		struct setValueData *data = (struct setValueData *) curMsg->Data;
+		s16 targetVal;
 		switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
 		    case RECEIVER_ID_H_BRIDGE_5:
-			state->targetValue = data->board1Value;
+			targetVal = data->board1Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
 		    case RECEIVER_ID_H_BRIDGE_6:
-			state->targetValue = data->board2Value;
+			targetVal = data->board2Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
 		    case RECEIVER_ID_H_BRIDGE_7:
-			state->targetValue = data->board3Value;
+			targetVal = data->board3Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
 		    case RECEIVER_ID_H_BRIDGE_8:
-			state->targetValue = data->board4Value;
+			targetVal = data->board4Value;
 			state->internalState = STATE_GOT_TARGET_VAL;
 			break;
 		}
+		u16 posVal = targetVal;
+		if(state->controllMode == CONTROLLER_MODE_POSITION)
+		    state->targetValue = posVal;
+		else
+		    state->targetValue = targetVal;
+
 	    } else {
 		print("Error, not configured \n");
 		state->internalState = STATE_ERROR;

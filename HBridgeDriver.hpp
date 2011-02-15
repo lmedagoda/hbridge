@@ -163,13 +163,13 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_NEW_VALUE)
          */
-        canbus::Message setTargetValues(BOARD_SET set, short int* targets) const;
+        canbus::Message setTargetValues(BOARD_SET set, int* targets) const;
 
         /**
          * \overloaded
          */
-        canbus::Message setTargetValues(BOARD_SET set, short int value1, short int value2,
-                                     short int value3, short int value4) const;
+        canbus::Message setTargetValues(BOARD_SET set, int value1, int value2,
+                                     int value3, int value4) const;
 
         /**
          * Generate a CAN message for setting the PID values for the speed

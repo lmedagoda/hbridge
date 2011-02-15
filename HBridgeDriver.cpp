@@ -300,13 +300,13 @@ int Driver::getCurrentTickDivider(int index) const
         return msg;
     }
 
-    canbus::Message Driver::setTargetValues(BOARD_SET set, short int value1, short int value2,
-                                         short int value3, short int value4) const
+    canbus::Message Driver::setTargetValues(BOARD_SET set, int value1, int value2,
+                                         int value3, int value4) const
     {
-        short int value_array[4] = { value1, value2, value3, value4 };
+        int value_array[4] = { value1, value2, value3, value4 };
         return setTargetValues(set, value_array);
     }
-    canbus::Message Driver::setTargetValues(BOARD_SET set, short int* targets) const
+    canbus::Message Driver::setTargetValues(BOARD_SET set, int* targets) const
     {
         canbus::Message msg;
 
