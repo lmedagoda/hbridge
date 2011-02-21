@@ -317,17 +317,30 @@ int Driver::getCurrentTickDivider(int index) const
 
         short int* values = &(data->board1Value);
 
-	for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 4; ++i)
         {
             switch(current_modes[i])
             {
             case base::actuators::DM_SPEED:
-            case base::actuators::DM_PWM:
+                // parameter check
+                if(targets[i] > 400 || targets[i] < -400)
+                    throw std::out_of_range("Given speed value is out of bound. Value Range: [-400, 400]");
                 values[i] = targets[i];
                 break;
+
+            case base::actuators::DM_PWM:
+                // parameter check
+                if(targets[i] > 1800 || targets[i] < -1800)
+                    throw std::out_of_range("Given PWM value is out of bound. Value Range: [-1800, 1800]");
+                values[i] = targets[i];
+                break;
+
             case base::actuators::DM_POSITION:
-	    {
-		int tickDivider = getCurrentTickDivider(i);
+            {
+                // parameter check
+                if(targets[i] > (512 * 729)/4 || targets[i] < 0)
+                    throw std::out_of_range("Given Position value is out of bound. Value Range: [0, 93312]");
+                int tickDivider = getCurrentTickDivider(i);
                 values[i] = targets[i] / tickDivider;
                 break;
 	    }
