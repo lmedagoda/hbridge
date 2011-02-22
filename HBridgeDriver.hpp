@@ -153,8 +153,7 @@ namespace hbridge
          * - Physical Unit: (quarter of a tick)/ms
          *
          * Position
-         * - Value Range:   [0, 23328] (23328 = 512 * 729 / 16)
-         * - Physical Unit: P° where P = 64.8° (((512 * 729 / 16) / 360)°)
+         * - Value Range:   [0, ticksPerTurn]
          *
          * @param value1 [PWM,Speed,Position] value of motor 1
          * @param value2 [PWM,Speed,Position] value of motor 2

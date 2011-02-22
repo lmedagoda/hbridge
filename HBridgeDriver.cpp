@@ -323,8 +323,8 @@ int Driver::getCurrentTickDivider(int index) const
             {
             case base::actuators::DM_SPEED:
                 // parameter check
-                if(targets[i] > 400 || targets[i] < -400)
-                    throw std::out_of_range("Given speed value is out of bound. Value Range: [-400, 400]");
+                if(targets[i] > 32767 || targets[i] < -32767)
+                    throw std::out_of_range("Given speed value is out of bound. Value Range: [-32767,32767]");
                 values[i] = targets[i];
                 break;
 
@@ -338,8 +338,8 @@ int Driver::getCurrentTickDivider(int index) const
             case base::actuators::DM_POSITION:
             {
                 // parameter check
-                if(targets[i] > (512 * 729)/4 || targets[i] < 0)
-                    throw std::out_of_range("Given Position value is out of bound. Value Range: [0, 93312]");
+                if(targets[i] > encoderIntern[i].getEncoderConfig().ticksPerTurn || targets[i] < 0)
+                    throw std::out_of_range("Given Position value is out of bound. Value Range: [0, ticksPerTurn]");
                 int tickDivider = getCurrentTickDivider(i);
                 values[i] = targets[i] / tickDivider;
                 break;
