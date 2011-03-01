@@ -14,6 +14,8 @@
 struct EncoderInterface encoders[NUM_ENCODERS];
 
 enum encoderTypes externalEncoderType;
+enum encoderStates encoderState;
+enum encoderInputs encoderInput;
 
 extern unsigned int systemTick;
 
@@ -152,39 +154,99 @@ void EXTI15_10_IRQHandler(void)
     u16 ain = GPIOB->IDR & GPIO_Pin_13; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_13);
     u16 bin = GPIOB->IDR & GPIO_Pin_14; //GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_14);
 
-    static s32 zeroStart = -1;
-   
-    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
-	//impicit ain != lastAin
-	if(ain) {
-	    if(bin)
-		externalEncoderValue++;
-	    else
-		externalEncoderValue--;      
-	} else { //!ain
-	    if(bin)
-		externalEncoderValue--;
-	    else
-		externalEncoderValue++;	    
-	}
-	EXTI_ClearITPendingBit(EXTI_Line13);
+    // set binary encoder input
+    if(ain) {
+	if(bin)
+	    encoderInput = INPUT_11;
+	else
+	    encoderInput = INPUT_10;
+    } else {
+	if(bin)
+	    encoderInput = INPUT_01;
+	else
+	    encoderInput = INPUT_00;
     }
 
+    /*
+	encoder state machine with 'State_ab'
+	---> 00 <-> 01 <-> 11 <-> 10 <---
+    */
+    switch(encoderState) {
+	case STATE_00: 
+	    // check if we got a valid transition
+	    switch(encoderInput) {
+		case INPUT_01:
+		    externalEncoderValue++;
+		    encoderState = STATE_01;
+		    break;
+		case INPUT_10:
+		    externalEncoderValue--;
+		    encoderState = STATE_10;
+		    break;
+		default:
+		    //printf("e00 a: %du b: %du \n", ain,bin);
+		    break;
+		}
+	    break;
+	case STATE_01:
+	    // check if we got a valid transition
+	    switch(encoderInput) {
+		case INPUT_11:
+		    externalEncoderValue++;
+		    encoderState = STATE_11;
+		    break;
+		case INPUT_00:
+		    externalEncoderValue--;
+		    encoderState = STATE_00;
+		    break;
+		default:
+		    //printf("e01 a: %du b: %du \n", ain,bin);
+		    break;
+		}
+	    break;
+	case STATE_10:
+	    // check if we got a valid transition
+	    switch(encoderInput) {
+		case INPUT_11:
+		    externalEncoderValue--;
+		    encoderState = STATE_11;
+		    break;
+		case INPUT_00:
+		    externalEncoderValue++;
+		    encoderState = STATE_00;
+		    break;
+		default:
+		    //printf("e10 a: %du b: %du \n", ain,bin);
+		    break;
+		}
+	    break;
+	case STATE_11:
+	    // check if we got a valid transition
+	    switch(encoderInput) {
+		case INPUT_10:
+		    externalEncoderValue++;
+		    encoderState = STATE_10;
+		    break;
+		case INPUT_01:
+		    externalEncoderValue--;
+		    encoderState = STATE_01;
+		    break;
+		default:
+		    //printf("e11 a: %du b: %du \n", ain,bin);
+		    break;
+		}
+	    break;
+	}
+
+    // clear interrupts
+    if(EXTI_GetITStatus(EXTI_Line13) != RESET) {
+	EXTI_ClearITPendingBit(EXTI_Line13);
+    }
     if(EXTI_GetITStatus(EXTI_Line14) != RESET) {
-	if(bin) {
-	    if(ain)
-		externalEncoderValue--;
-	    else
-		externalEncoderValue++;      
-	} else {
-	    if(ain)
-		externalEncoderValue++;
-	    else
-		externalEncoderValue--;	    
-	}      
 	EXTI_ClearITPendingBit(EXTI_Line14);
     }
 
+    static s32 zeroStart = -1;
 
     if(externalEncoderValue < 0)
 	externalEncoderValue += externalEncoderConfig.ticksPerTurn;
@@ -295,6 +357,22 @@ void encoderInitQuadratureWithZero() {
     externalEncoderValue = 0;
     externalEncoderConfig.ticksPerTurn = 0;
     externalEncoderConfig.tickDivider = 1;
+
+    // set zero encoder state
+    u16 ain = GPIOB->IDR & GPIO_Pin_13;
+    u16 bin = GPIOB->IDR & GPIO_Pin_14;
+    //printf("init a: %du b: %du \n", ain,bin);
+    if(ain) {
+        if(bin)
+            encoderState = STATE_11;
+        else
+            encoderState = STATE_10;
+    } else {
+        if(bin)
+            encoderState = STATE_01;
+        else
+            encoderState = STATE_00;
+    }
 }
 
 void setTicksPerTurnQuadratureWithZero(u32 ticks, u8 tickDivider) {

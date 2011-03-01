@@ -19,6 +19,20 @@ struct EncoderInterface
     void (*encoderDeInit) (void);
 };
 
+enum encoderStates {
+    STATE_00,
+    STATE_01,
+    STATE_10,
+    STATE_11,
+};
+
+enum encoderInputs {
+    INPUT_00,
+    INPUT_01,
+    INPUT_10,
+    INPUT_11,
+};
+
 void setExternalEncoder(enum encoderTypes type);
 u32 getTicks(enum encoderTypes type);
 u16 getDividedTicks(enum encoderTypes type);
