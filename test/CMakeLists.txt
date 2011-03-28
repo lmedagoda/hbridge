@@ -12,4 +12,6 @@ else(Boost_FOUND)
     message(STATUS "boost/unit not found, disabled unit test")
 endif (Boost_FOUND)
 
+ADD_EXECUTABLE(calib_tool calib_tool.cpp)
+TARGET_LINK_LIBRARIES(calib_tool hbridge ${CANBUS_LIBRARIES})
 
