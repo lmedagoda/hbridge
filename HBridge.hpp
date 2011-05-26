@@ -89,9 +89,17 @@ namespace hbridge
 	  motorOverheated(false), boardOverheated(false), overCurrent(false), timeout(false), badConfig(false), encodersNotInitialized(false), hardwareShutdown(false), emergencyOff(false)
         {}
         
-        bool hasError() 
+	/** Returns true if any of the error flags is set */
+        bool hasError() const
         {
-	    return (motorOverheated || boardOverheated || overCurrent || timeout || badConfig || encodersNotInitialized || hardwareShutdown || emergencyOff);
+	    return hasConfigurationError() || timeout;
+	}
+
+	/** Returns true if an error that forbids driving the motors is set. In
+	 * practice, it is any error but timeout */
+        bool hasConfigurationError() const
+        {
+	    return (motorOverheated || boardOverheated || overCurrent || badConfig || encodersNotInitialized || hardwareShutdown || emergencyOff);
 	}
 
         bool operator != (ErrorState const& other) const
