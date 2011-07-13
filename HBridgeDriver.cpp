@@ -315,11 +315,22 @@ int Driver::getCurrentTickDivider(int index) const
         firmware::setValueData *data =
             reinterpret_cast<firmware::setValueData *>(msg.data);
 
+	const hbridge::DRIVE_MODE *current_modes_local;
+	switch(set) {
+	    case BOARDS_14:
+	        current_modes_local = current_modes;
+		break;
+	    case BOARDS_58:
+	        current_modes_local = current_modes + 4;
+		break;
+	}
+
+	
         short int* values = &(data->board1Value);
 
         for (int i = 0; i < 4; ++i)
         {
-            switch(current_modes[i])
+            switch(current_modes_local[i])
             {
             case base::actuators::DM_SPEED:
                 // parameter check
