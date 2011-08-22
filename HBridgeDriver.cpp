@@ -124,6 +124,12 @@ Ticks Encoder::getAbsolutPosition()
         switch (msg.can_id & 0x1f)
         {
 	    case firmware::PACKET_ID_ERROR: {
+		if(msg.size != sizeof(firmware::errorData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}
+		
 		const firmware::errorData *edata =
 		    reinterpret_cast<const firmware::errorData *>(msg.data);
                 
@@ -149,6 +155,12 @@ Ticks Encoder::getAbsolutPosition()
 	    break;
             case firmware::PACKET_ID_STATUS:
             {
+		if(msg.size != sizeof(firmware::statusData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}
+
 		const firmware::statusData *data =
 		    reinterpret_cast<const firmware::statusData *>(msg.data);
 
@@ -172,18 +184,38 @@ Ticks Encoder::getAbsolutPosition()
             }
 
             case firmware::PACKET_ID_SPEED_DEBUG:
+		if(msg.size != sizeof(firmware::speedDebugData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}		
                 // To be implemented
                 break;
 
             case firmware::PACKET_ID_POS_DEBUG:
+		if(msg.size != sizeof(firmware::posDebugData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}		
                 // To be implemented
                 break;
 
             case firmware::PACKET_ID_PID_DEBUG_SPEED:
+		if(msg.size != sizeof(firmware::pidDebugData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}		
                 // To be implemented
                 break;
 
             case firmware::PACKET_ID_PID_DEBUG_POS:
+		if(msg.size != sizeof(firmware::pidDebugData))
+		{
+		    std::cout << "Got msg with id " << msg.can_id << " with wrong size " << std::endl;
+		    throw std::invalid_argument("Got message with wrong size");
+		}		
                 // To be implemented
                 break;
 	    default:
