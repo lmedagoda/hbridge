@@ -111,7 +111,8 @@ int main(int argc, char *argv[]) {
 		for(int i = 0; i < 4; i++)
 		{
 		    hbridge::BoardState state = hbd.getState(i);
-		    std::cout << "Board " << i << " Ext enc pos " << state.positionExtern << std::endl; 
+		    double normalized = fmod(state.positionExtern, M_PI * 2 / 5); 
+		    std::cout << "Board " << i << " Ext enc pos " << normalized << std::endl; 
 		}
 		exit(0);
 	    }  
