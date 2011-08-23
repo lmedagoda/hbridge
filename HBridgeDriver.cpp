@@ -116,7 +116,7 @@ int Driver::getCurrentTickDivider(int index) const
 
     int Driver::getBoardIdFromMessage(const canbus::Message& msg) const
     {
-	int index = ((msg.can_id & 0xE0) >> 5) - 1;
+	int index = ((msg.can_id & 0x1E0) >> 5) - 1;
 	return index;
     }
 
@@ -126,9 +126,12 @@ int Driver::getCurrentTickDivider(int index) const
 	
 	//broadcast message is allways a controll message
 	//and thuis does not update the internal state
-	if(index == -1)
+	if(index == -1) 
+	  {
+	    std::cout << "Got broadcast message" << std::endl;
 	    return false;
-	
+	  }
+
 	if ((index < -1) || (index > (BOARD_COUNT - 1)))
 	{
 	    // Invalid id specified in packet
@@ -232,6 +235,7 @@ int Driver::getCurrentTickDivider(int index) const
                 break;
             }
 	    default:
+	      std::cout << "Got unknow message with id " << msg.can_id << std::endl;
 		//whatever it is, it did not update our internal state
 		return false;
 	      break;
