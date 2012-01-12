@@ -89,7 +89,7 @@ void CAN_Configuration(enum CAN_REMAP remap)
     CAN_InitStructure.CAN_Prescaler=4;
     if(CAN_Init(&CAN_InitStructure) == CANINITFAILED) {
 	print("Can init failed \n");
-        assert_param(false);
+        assert_param(0);
     }
 
     /* CAN FIFO0 message pending interrupt enable */ 

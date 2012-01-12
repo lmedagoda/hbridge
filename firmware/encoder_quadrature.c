@@ -93,7 +93,7 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	if(withZero)
 	{
 	    //not implemented, bail out
-	    assert_param(false);
+	    assert_param(0);
 	}
 
 	//turn on timer hardware
@@ -144,14 +144,14 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	if(withZero)
 	{
 	    //not implemented, bail out
-	    assert_param(false);
+	    assert_param(0);
 	}
 	//turn on timer hardware
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
     } else {
 	//not implemented, bail out
-	assert_param(false);
+	assert_param(0);
     }
     
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
