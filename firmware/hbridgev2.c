@@ -10,10 +10,14 @@ vu16 rightHighCC;
 vu16 leftLowCC;
 vu16 rightLowCC;
 
+u8 lastDirection = 0;
 
 
 void initHbridgeTimers()
 {
+    //timer used for PWM generation
+    //turn on timer hardware
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
@@ -27,12 +31,8 @@ void initHbridgeTimers()
     TIM_TimeBaseStructure.TIM_Prescaler = 0;
     TIM_TimeBaseStructure.TIM_ClockDivision = 0;
     //only generate an update event when downcounting
-    TIM_TimeBaseStructure.TIM_RepetitionCounter = 1;
+    TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_CenterAligned3;
-
-    //timer used for PWM generation
-    //turn on timer hardware
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 
     //init timer to 40khz
     TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
@@ -51,47 +51,31 @@ void initHbridgeTimers()
     TIM_OCInitTypeDef ocstruct;
     TIM_OCStructInit(&ocstruct);
     
-    ocstruct->TIM_OCMode = TIM_OCMode_PWM1;
-    ocstruct->TIM_OutputState = TIM_OutputState_Enable;
-    ocstruct->TIM_OCPolarity = TIM_OCPolarity_High;
+    ocstruct.TIM_OCMode = TIM_OCMode_PWM2;
+    ocstruct.TIM_OutputState = TIM_OutputState_Enable;
+    ocstruct.TIM_OCPolarity = TIM_OCPolarity_Low;
     //no pulse initally
-    ocstruct->TIM_Pulse = 0;
+    ocstruct.TIM_Pulse = 0;
     
     //high side have high polarity
-    TIM_OC1Init(TIM1, ocstruct);
-    TIM_OC3Init(TIM1, ocstruct);
+    TIM_OC1Init(TIM1, &ocstruct);
+    TIM_OC3Init(TIM1, &ocstruct);
 
     //low sides have low polarity
-    ocstruct->TIM_OCPolarity = TIM_OCPolarity_Low;
-    TIM_OC2Init(TIM1, ocstruct);
-    TIM_OC4Init(TIM1, ocstruct);
+    ocstruct.TIM_OCMode = TIM_OCMode_PWM2;
+    ocstruct.TIM_OCPolarity = TIM_OCPolarity_High;
+    TIM_OC2Init(TIM1, &ocstruct);
+    TIM_OC4Init(TIM1, &ocstruct);
 
+    TIM_CtrlPWMOutputs(TIM1, ENABLE);
+    
     // TIM1 enable counter
     TIM_Cmd(TIM1, ENABLE);
-    
-    
-    //force update event to occure on underflow
-    u8 dir = TIM1->CR1 & (1<<4);
-    u8 lastDir = dir;
-    
-    const u8 down = 1;
-    const u8 up = 0;
-    
-    while(1)
-    {
-	dir = TIM1->CR1 & (1<<4);
-	if(dir == up && lastDir == down)
-	{
-	    //this rewrites the internal repition counter with
-	    //the value from the RCR register, thus moving the 
-	    //update event to the correct spot
-	    TIM_GenerateEvent(TIM1, TIM_EventSource_Update);
-	    break;
-	}
-	lastDir = dir;
-    }
-    
 
+    //set RCR AFTER timer was enables, 
+    //so that update event occurs on underflow 
+    TIM1->RCR = 1;
+    
 }
 
 void hbridgeGPIOConfig() {
@@ -129,100 +113,84 @@ void hbridgeInit() {
     initHbridgeTimers();
 
     //set pwm to zero
-    setNewPWM(0, 0);
-    
+    setNewPWM(0, 0);    
 }
 
 void setNewPWM(const s16 value2, u8 useOpenLoop) {
-  s16 value = value2;
+    s16 value = value2 / 2;
 
-  //truncate to max of 95% PWM, needed to charge boost circuit
-  const s16 maxValue = 855;
-  
-  if(value < -maxValue)
-  {
-    value = -maxValue;
-  }
-  else
-  {
-    if(value > maxValue)
+    //truncate to max of 95% PWM, needed to charge boost circuit
+    const s16 maxValue = 855;
+
+    if(value < -maxValue)
     {
-        value = maxValue;
+	value = -maxValue;
     }
-  }  
+    else
+    {
+	if(value > maxValue)
+	{
+	    value = maxValue;
+	}
+    }  
 
-  u16 dutyTime = abs(value);
-  
-  const u16 low_allways_on = 0;
-  const u16 hight_allways_on = 900;
-  const u16 low_allways_off = 900;
-  const u16 high_allways_off = 0;
-  
-  //TODO get real value
-  const u16 dead_time = 10;  
+    s16 dutyTime = abs(value);
 
-  u8 desiredDirection = 0;
-  
-  if(value != 0) {
-    desiredDirection = value > 0;
-  }
-  
-  if(desiredDirection) {
+    const u16 low_allways_on = 0;
+    const u16 low_allways_off = 900;
+    const u16 high_allways_off = 0;
+
+    //set dead time to 500ns
+    const s16 dead_time = 36;  
+
+    if(dutyTime + dead_time > 900)
+    {
+	dutyTime = 900 - dead_time;
+    }
+
+    u8 desiredDirection = 0;
+
+    if(value != 0) {
+	desiredDirection = value > 0;
+    } else {
+	desiredDirection = lastDirection;
+    }
+
+    if(desiredDirection) {
 	//forward case
 	leftHighCC = dutyTime;
 	rightHighCC = high_allways_off;
 	rightLowCC = low_allways_on;
 
-    if(useOpenLoop) {
-	leftLowCC = low_allways_off;
+	if(useOpenLoop) {
+	    leftLowCC = low_allways_off;
+	} else {
+	    //closed loop
+	    leftLowCC = dutyTime + dead_time;
+	}    
     } else {
-        //closed loop
-	leftLowCC = dutyTime + dead_time;
-    }    
-  } else {
 	//backward case
 	leftHighCC = high_allways_off;
 	rightHighCC = dutyTime;
 	leftLowCC = low_allways_on;
 
-    if(useOpenLoop) {
-	rightLowCC = low_allways_off;
-    } else {
-        //closed loop
-	rightLowCC = dutyTime + dead_time;
-    }    
-  }
+	if(useOpenLoop) {
+	    rightLowCC = low_allways_off;
+	} else {
+	    //closed loop
+	    rightLowCC = dutyTime + dead_time;
+	}    
+    }
 
+    TIM_UpdateDisableConfig(TIM1, ENABLE);
 
-///not needed, done by repetition counter
-//   //activate interrupt to write values to CC
-//   //registers at a sane time
-//   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+    TIM1->CCR1 = leftHighCC;
+    TIM1->CCR2 = leftLowCC;
+    TIM1->CCR3 = rightHighCC;
+    TIM1->CCR4 = rightLowCC;
+
+    TIM_UpdateDisableConfig(TIM1, DISABLE);
+
+    lastDirection = desiredDirection;
 }
-
-///not needed, done by repetition counter
-// void TIM1_UP_IRQHandler(void)
-// {
-//     //Clear TIM1 update interrupt pending bit
-//     TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
-//     
-//     //only write values if we are downcounting
-//     if(TIM_GetCounter(TIM1) > 700)
-//     {
-// 	//update values
-// 	//note as this code is executed
-// 	//near to an update event
-// 	//we can be relativly shure that
-// 	//no quirk happens and all values
-// 	//get written atomar
-// 	TIM1->CCR1 = leftHighCC;
-// 	TIM1->CCR2 = leftLowCC;
-// 	TIM1->CCR3 = rightHighCC;
-// 	TIM1->CCR4 = rightLowCC;
-// 	
-// 	//out job is done stop wasting cpu time
-// 	//and disable it
-// 	TIM_ITConfig(TIM1, TIM_IT_Update, DISABLE);
-//     }
-// };
 
