@@ -10,7 +10,7 @@ OD	= arm-none-linux-gnueabi-objdump
 HOST_CC = gcc
 HOST_CFLAGS = -Wall
 
-CFLAGS  =  -I ./ -I inc/ -c -fno-common -O1 -g -mcpu=cortex-m3 -mthumb -ggdb -Wall
+CFLAGS  =  -I ./ -I inc/ -c -fno-common -O1 -g -mcpu=cortex-m3 -mthumb -ggdb -Wall -fno-unwind-tables
 AFLAGS  = -ahls -mapcs-32 -o crt.o
 LFLAGS  = -L. -Tstm_h103_rom.ld -nostartfiles
 CPFLAGS = -Obinary
