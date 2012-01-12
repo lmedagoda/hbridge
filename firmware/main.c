@@ -65,8 +65,8 @@ int main(void)
 
   //read out dip switches
   ownHostId = getOwnHostId();
-  
-  CAN_Configuration();
+
+  CAN_Configuration(CAN_NO_REMAP);
   CAN_ConfigureFilters(ownHostId);
 
   currentMeasurementInit();

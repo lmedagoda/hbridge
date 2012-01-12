@@ -12,24 +12,58 @@ u8 canRxWritePointer;
 u8 canRxReadPointer;
 u8 canRxError;
 
-void CAN_Configuration(void)
+void CAN_Configuration(enum CAN_REMAP remap)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
     
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_StructInit(&GPIO_InitStructure);
 
-	//Configure CAN pin: RX 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    switch(remap)
+    {
+	case CAN_NO_REMAP:
+	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	    
+	    //Configure CAN pin: RX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	    GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    //Configure CAN pin: TX 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+	    //Configure CAN pin: TX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	    GPIO_Init(GPIOA, &GPIO_InitStructure);
+	    break;
+	case CAN_REMAP1:
+	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+
+	    //Configure CAN pin: RX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	    GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	    //Configure CAN pin: TX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	    GPIO_Init(GPIOB, &GPIO_InitStructure);
+	    break;
+	case CAN_REMAP2:
+	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
+
+	    //Configure CAN pin: RX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	    //Configure CAN pin: TX 
+	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	    GPIO_Init(GPIOD, &GPIO_InitStructure);
+	    break;
+    }	    
 
 	
     /* CAN Periph clock enable */
