@@ -3,31 +3,40 @@
 
 #undef printf
 
-int print(const unsigned char *format) {
+typedef u8 (*send_func_t)(const u8 *, const u32);
+
+int _print(send_func_t sf, const unsigned char *format) {
   const unsigned char *fmt = format;
   unsigned int len = 0;
   
   while(*fmt) {
-    ++fmt;
-    ++len;
+    fmt++;
+    len++;
   }
 
   int ret = 1;
   
 //  while(ret)
-    ret = USART1_SendData(format, len);
+  ret = sf(format, len);
 
   //USB_Send_Data(format, len);
 
   return len;
 }
 
+int print(const unsigned char *format) 
+{
+    return _print(USART1_SendData, format);    
+}
+
+
+
 void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
   unsigned long int i, j;
   
   if(d == 0) {
     msg[*pos] = '0';
-    ++(*pos);
+    (*pos)++;
     return;
   }
   
@@ -35,20 +44,20 @@ void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
   j = d;
   while(j) {
     j /= 10;
-    ++i;
+    i++;
   }
   
   j = i;
   while(i) {
     msg[*pos + i - 1] = (char) (d % 10) + '0';
     d /= 10;
-    --i;
+    i--;
   }
   *pos += j;
 }
 
 
-int printf(const char *format, ...) {
+int _printf(send_func_t sf, const char *format, ...) {
   unsigned char msg[128];
   const char *fmt = format;
   int pos = 0;
@@ -64,29 +73,29 @@ int printf(const char *format, ...) {
   
     if(*fmt != '%') {
       msg[pos] = *fmt;
-      ++pos;
-      ++fmt;
+      pos++;
+      fmt++;
       continue;
     } else {
-      ++fmt;
+      fmt++;
       assert_param(*fmt);
     }
 
     switch (*fmt) {
     case 's':              /* string */
-      ++fmt;
+      fmt++;
       s = va_arg(ap, char *);
       while(*s) {
 	msg[pos] = *s;
-	++pos;
-	++s;
+	pos++;
+	s++;
       }
       break;
 
       
     case 'd':              /* int */
     case 'l':               /* unsigned long int */
-      ++fmt;
+      fmt++;
       if(*fmt == 'u') {
 	d = (unsigned long int) va_arg(ap, long int);
       } else {
@@ -95,7 +104,7 @@ int printf(const char *format, ...) {
 
 	    if(ds < 0) {
 	    msg[pos] = '-';
-	    ++pos;
+	    pos++;
 	    //set first bit to zero, so there is no 
 	    //difference singend / unsigend now
 	    //and we can use generic function for unsigend int
@@ -104,14 +113,14 @@ int printf(const char *format, ...) {
 	    d = ds;
 	}
       }
-      ++fmt;
+      fmt++;
 
       fillInUnsignedLongInt(d, msg, &pos);
 
       break;
 
     case 'h':              /* short int */
-      ++fmt;
+      fmt++;
       if(*fmt == 'u') {
 	h = (unsigned short int) va_arg(ap, int);
 	d = h;
@@ -121,7 +130,7 @@ int printf(const char *format, ...) {
 	    d = hs;
 	    if(hs < 0) {
 	    msg[pos] = '-';
-	    ++pos;
+	    pos++;
 	    //set first bit to zero, so there is no 
 	    //difference singend / unsigend now
 	    //and we can use generic function for unsigend int
@@ -131,7 +140,7 @@ int printf(const char *format, ...) {
 	    }
 	}
       }
-      ++fmt;
+      fmt++;	
       fillInUnsignedLongInt(d, msg, &pos);
       break;
     case 'c':              /* char */
@@ -139,7 +148,7 @@ int printf(const char *format, ...) {
 	 takes fully promoted types */
       c = (char) va_arg(ap, int);
       msg[pos] = c;
-      ++pos;
+      pos++;
       break;
     }    
   }
@@ -150,11 +159,19 @@ int printf(const char *format, ...) {
 
   u8 ret = 1;
 //    while(ret) 
-    ret = USART1_SendData(msg, pos);
-  
+
+  ret = sf(msg, pos);
+
   //USB_Send_Data(msg, pos);  
 
   return pos;
+}
+
+
+int printf(const char *format, ...) 
+{
+    va_list ap;
+    return  _printf(USART1_SendData, format, ap);
 }
 
 void testprintf() {
