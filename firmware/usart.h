@@ -5,31 +5,14 @@
 #include "stm32f10x_usart.h"
 
 
-#define USART_BUFFER_SIZE 256
-
-struct USART_Data {
-  u8 RxBuffer[USART_BUFFER_SIZE];
-  u16 RxWritePointer;
-  u16 RxReadPointer;
-  
-  u8 TxBuffer[USART_BUFFER_SIZE];
-  u16 TxWritePointer;
-  u16 TxReadPointer;
-
-  u8 RxBufferFullError;
-
-};
-
-extern volatile struct USART_Data USART1_Data;
-
-void USART_Configuration(void);
-
+void USART1_Init(FunctionalState useInterrupts);
+void USART1_DeInit(void);
 u8 USART1_SendData(const u8 *data, const u32 size);
-u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const u8 *data, const u32 size);
-
 u32 USART1_GetData (u8 *buffer, const u32 buffer_length);
-u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const u32 buffer_length);
 
-void USART_IRQHandler(USART_TypeDef* USARTx, volatile struct USART_Data *data);
+void USART3_Init(FunctionalState useInterrupts);
+void USART3_DeInit(void);
+u8 USART3_SendData(const u8 *data, const u32 size);
+u32 USART3_GetData (u8 *buffer, const u32 buffer_length);
 
 #endif
