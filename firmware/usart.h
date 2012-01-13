@@ -5,7 +5,7 @@
 #include "stm32f10x_usart.h"
 
 
-#define USART_BUFFER_SIZE 128
+#define USART_BUFFER_SIZE 256
 
 struct USART_Data {
   u8 RxBuffer[USART_BUFFER_SIZE];

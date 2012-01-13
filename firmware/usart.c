@@ -1,8 +1,8 @@
-
 #include "usart.h"
 #include "inc/stm32f10x_usart.h"
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_gpio.h"
+#include "inc/stm32f10x_lib.h"
 
 
 volatile struct USART_Data USART1_Data;
@@ -34,6 +34,15 @@ void USART_Configuration(void) {
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOA, &GPIO_InitStructure); 
+
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_StructInit(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
     USART1_Data.RxWritePointer = 0;
     USART1_Data.RxReadPointer = 0;
