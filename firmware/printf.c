@@ -19,14 +19,12 @@ int _print(send_func_t sf, const unsigned char *format) {
 //  while(ret)
   ret = sf(format, len);
 
-  //USB_Send_Data(format, len);
-
   return len;
 }
 
 int print(const unsigned char *format) 
 {
-    return _print(USART1_SendData, format);    
+    return _print(USART3_SendData, format);    
 }
 
 
@@ -57,18 +55,16 @@ void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
 }
 
 
-int _printf(send_func_t sf, const char *format, ...) {
+int _printf(send_func_t sf, const char *format, va_list* ap) {
   unsigned char msg[128];
   const char *fmt = format;
   int pos = 0;
-  va_list ap;
   long int ds;
   unsigned long int d = 0;
   unsigned short int h;
   short int hs;  
   char c, *s;
 
-  va_start(ap, format);
   while (*fmt) {
   
     if(*fmt != '%') {
@@ -84,7 +80,7 @@ int _printf(send_func_t sf, const char *format, ...) {
     switch (*fmt) {
     case 's':              /* string */
       fmt++;
-      s = va_arg(ap, char *);
+      s = va_arg(*ap, char *);
       while(*s) {
 	msg[pos] = *s;
 	pos++;
@@ -97,10 +93,10 @@ int _printf(send_func_t sf, const char *format, ...) {
     case 'l':               /* unsigned long int */
       fmt++;
       if(*fmt == 'u') {
-	d = (unsigned long int) va_arg(ap, long int);
+	d = (unsigned long int) va_arg(*ap, long int);
       } else {
 	if(*fmt == 'i') {
-	    ds = va_arg(ap, long int);
+	    ds = va_arg(*ap, long int);
 
 	    if(ds < 0) {
 	    msg[pos] = '-';
@@ -122,11 +118,11 @@ int _printf(send_func_t sf, const char *format, ...) {
     case 'h':              /* short int */
       fmt++;
       if(*fmt == 'u') {
-	h = (unsigned short int) va_arg(ap, int);
+	h = (unsigned short int) va_arg(*ap, int);
 	d = h;
       } else {
 	if(*fmt == 'i') {
-	    hs = (short int) va_arg(ap, int);
+	    hs = (short int) va_arg(*ap, int);
 	    d = hs;
 	    if(hs < 0) {
 	    msg[pos] = '-';
@@ -146,23 +142,19 @@ int _printf(send_func_t sf, const char *format, ...) {
     case 'c':              /* char */
       /* need a cast here since va_arg only
 	 takes fully promoted types */
-      c = (char) va_arg(ap, int);
+      c = (char) va_arg(*ap, int);
       msg[pos] = c;
       pos++;
       break;
     }    
   }
   
-  va_end(ap);
-
   assert_param(pos < 128);
 
   u8 ret = 1;
 //    while(ret) 
 
   ret = sf(msg, pos);
-
-  //USB_Send_Data(msg, pos);  
 
   return pos;
 }
@@ -171,7 +163,9 @@ int _printf(send_func_t sf, const char *format, ...) {
 int printf(const char *format, ...) 
 {
     va_list ap;
-    return  _printf(USART1_SendData, format, ap);
+    va_start(ap, format);
+    return  _printf(USART3_SendData, format, &ap);
+    va_end(ap);
 }
 
 void testprintf() {
@@ -219,6 +213,4 @@ void testprintf() {
 
   signedLong = -2147483648;
   printf("s32 -2147483648 is %li \n", signedLong);
-
-
 }
