@@ -7,6 +7,143 @@
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
+
+void setupI2C2(u16 address, int speed) {
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_StructInit(&NVIC_InitStructure);
+  
+  /* Configure and enable I2C2 interrupt ------------------------------------*/
+  NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_Init(&NVIC_InitStructure);
+  
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+
+  I2C_DeInit(I2C2);
+  
+  I2C_InitTypeDef  I2C_InitStructure;
+  I2C_StructInit(&I2C_InitStructure);
+  I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
+  I2C_InitStructure.I2C_OwnAddress1 = address;
+  I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
+  I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+  I2C_InitStructure.I2C_ClockSpeed = speed;
+
+  if(speed <= 100000)
+  {
+      I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
+  } else
+  {
+      I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9;
+  }
+  I2C_Init(I2C2, &I2C_InitStructure);
+
+  //Enable I2C2
+  I2C_Cmd(I2C2, ENABLE);
+
+  //Configure I2C2 Pins, SDA and SCL
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_StructInit(&GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);  
+
+  int wait = 10000;
+  while(wait--)
+      ;
+
+  //Configure I2C2 Pins, SDA and SCL
+  GPIO_StructInit(&GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);  
+
+  // Disable PEC for I2C2
+  I2C_CalculatePEC(I2C2, DISABLE);
+
+  //setup mode correctly
+  I2C2_Data.I2CMode = I2C_FINISHED;
+
+  // Enable I2C1 and I2C2 event and buffer interrupt
+  I2C_ITConfig(I2C2, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE); 
+}
+
+void I2CSendBytesBlocking(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
+{
+    u8 error = 0;
+    error = I2CSendBytes(data, size, addr, I2Cx, I2Cx_Data);
+    
+    while(!I2C2OperationFinished() || error)
+    {
+	if(handleI2C2Errors() || error)
+	{
+	    error = I2C2SendBytes(data, size, addr);
+	    print("e");
+	}
+    }
+}
+
+void I2C2SendBytesBlocking(u8 *data, u8 size, u8 addr)
+{
+    I2CSendBytesBlocking(data, size, addr, I2C2, &I2C2_Data);
+}
+
+
+u8 handleI2C2Errors()
+{
+    u8 hasError = 0;
+
+    if(I2C2_Data.I2CError == 2) {
+	print("Bus Amok\n");
+    }
+    //handle I2C errors
+    if(I2C2_Data.I2CError) {
+	switch(I2C2_Data.I2CErrorReason) {
+	case I2C_FLAG_ARLO:
+	    print("ARLO");
+	    break;
+	case I2C_FLAG_BERR:
+	    print("BERR");
+	    I2C_SoftwareResetCmd(I2C2, DISABLE);
+	    setupI2C2(0x0A, 10000);
+	    break;
+	case I2C_FLAG_OVR:
+	    print("OVR");
+	    break;
+	case I2C_FLAG_AF:
+	    printf("AF");
+	    break;	
+	default:
+	    I2C_SoftwareResetCmd(I2C2, ENABLE);
+	    int wait = 1000;
+	    while(wait--)
+		;
+	    I2C_SoftwareResetCmd(I2C2, DISABLE);
+	    setupI2C2(0x0A, 10000);
+	    printf("Unknown %lu", I2C2_Data.I2CErrorReason);
+	}
+	
+	I2C2_Data.I2CMode = I2C_FINISHED;
+	
+	I2C2_Data.I2CError = 0;
+	//we were not acked, restart
+	//request next temperature
+	
+	hasError = 1;    
+    }
+
+    return hasError;
+}
+
 // counter to detect i2c interrupt storm (flooding)
 u32 i2cSafetyCounter = 0;
 
@@ -84,7 +221,10 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 
     // interrupt storm detected, disable irq
     if(i2cSafetyCounter > 120) {
-	I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
+	I2Cx_Data->I2CError = 2;
+	I2Cx_Data->I2CErrorReason = I2C_FLAG_BERR;
+	I2C_SoftwareResetCmd(I2Cx, ENABLE);
+	I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
     }
     
     vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
@@ -235,7 +375,10 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   i2cSafetyCounter++;
 
   if(i2cSafetyCounter > 120) {
-      I2C_ITConfig(I2C1, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
+      I2Cx_Data->I2CError = 2;
+      I2Cx_Data->I2CErrorReason = I2C_FLAG_BERR;
+      I2C_SoftwareResetCmd(I2Cx, ENABLE);
+      I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
   }
   
   //if(nextRxWritePointer != dbgRead) {
@@ -263,24 +406,36 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   }
 
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_ARLO)) {
-    I2C_ClearFlag(I2Cx, I2C_FLAG_ARLO);
     I2Cx_Data->I2CErrorReason = I2C_FLAG_ARLO;
     // Send STOP Condition
     if(!(cr1 & (1<<9) || cr1 & (1<<8)) && sr2 & I2C_BUSY)
 	I2C_GenerateSTOP(I2Cx, ENABLE);
+
+    I2C_ClearFlag(I2Cx, I2C_FLAG_ARLO);
+  }
+
+  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_TIMEOUT)) {
+      //I2Cx_Data->I2CErrorReason = I2C_FLAG_TIMEOUT;
+    // Send STOP Condition
+    if(!(cr1 & (1<<9) || cr1 & (1<<8)) && sr2 & I2C_BUSY)
+	I2C_GenerateSTOP(I2Cx, ENABLE);
+
+    I2C_ClearFlag(I2Cx, I2C_FLAG_TIMEOUT);
   }
   
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_BERR)) {
-    I2C_ClearFlag(I2Cx, I2C_FLAG_BERR);
     I2Cx_Data->I2CErrorReason = I2C_FLAG_BERR;
     I2C_SoftwareResetCmd(I2Cx, ENABLE);
+
+    I2C_ClearFlag(I2Cx, I2C_FLAG_BERR);
   }
   
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_OVR)) {
-    I2C_ClearFlag(I2Cx, I2C_FLAG_OVR);
     I2Cx_Data->I2CErrorReason = I2C_FLAG_OVR;
     // Send STOP Condition
     I2C_GenerateSTOP(I2Cx, ENABLE);
+
+    I2C_ClearFlag(I2Cx, I2C_FLAG_OVR);
   }
 }
 
@@ -328,20 +483,27 @@ u8 I2C1OperationFinished() {
   return I2C1_Data.I2CMode == I2C_FINISHED;
 };
 
+u8 I2C2OperationFinished() {
+    if(i2cSafetyCounter >= 120) {
+	printfI2CDbg();
+    }
+  return I2C2_Data.I2CMode == I2C_FINISHED;
+};
+
 u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
     
   if(I2Cx_Data->I2CError) {
-    //print("I2C1 in error status \n");
+    print("I2C in error status \n");
     return 1;
   }
   
   if(I2Cx_Data->I2CMode != I2C_FINISHED) {
-    print("I2C1 still active \n");
+    print("I2C still active \n");
     return 1;
   }
   
-  if(I2C_GetFlagStatus(I2C1, I2C_FLAG_MSL)) {
-    //print("BAD, I am still a master \n");
+  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
+    print("BAD, I am still a master \n");
     return 1;
   }
 
@@ -384,8 +546,8 @@ u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2
     return 1;
   }
   
-  if(I2C_GetFlagStatus(I2C1, I2C_FLAG_MSL)) {
-    //print("BAD, I am still a master \n");
+  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
+    print("BAD, I am still a master \n");
     return 1;
   }
 
@@ -424,8 +586,8 @@ u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2C
     return 1;
   }
   
-  if(I2C_GetFlagStatus(I2C1, I2C_FLAG_MSL)) {
-    //print("BAD, I am still a master \n");
+  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
+    print("BAD, I am still a master \n");
     return 1;
   }
 
