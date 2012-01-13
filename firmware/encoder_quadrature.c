@@ -13,7 +13,7 @@ struct TimerQuadratureEncoderData
     s32 lastEncoderValue;
     s16 wrapCounter;
     u8 usesZero;
-    u8 hasZero;
+    vu8 hasZero;
 };
 
 struct TimerQuadratureEncoderData tqeTim2Data;
@@ -54,9 +54,6 @@ void timerQuadratureEncoderEnableZero(TIM_TypeDef *timer, u8 irq_channel)
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-
-    // Enable Timers
-    TIM_Cmd(timer, ENABLE);
 }
 
 void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data, int withZero)
@@ -78,6 +75,8 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
     if(timer == TIM4)
     {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	//turn on timer hardware
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 	    
 	//configure Timer4 ch1 (PB6) as encoder input
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
@@ -95,13 +94,12 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	    //not implemented, bail out
 	    assert_param(0);
 	}
-
-	//turn on timer hardware
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
     } else
 	if(timer == TIM2)
     {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	//turn on timer hardware
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);	
 	    
 	//configure Timer2 ch1 (PA0) as encoder input
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
@@ -123,12 +121,12 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	    
 	    timerQuadratureEncoderEnableZero(timer, TIM2_IRQChannel);
 	}
-	//turn on timer hardware
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);	
     } else
 	if(timer == TIM3)
     {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+	//turn on timer hardware
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 	    
 	//configure Timer2 ch1 (PA0) as encoder input
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
@@ -146,9 +144,6 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	    //not implemented, bail out
 	    assert_param(0);
 	}
-	//turn on timer hardware
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-
     } else {
 	//not implemented, bail out
 	assert_param(0);
