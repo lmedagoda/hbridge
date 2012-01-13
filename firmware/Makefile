@@ -24,8 +24,8 @@ LIB_OBJS = $(sort \
 
 OBJS = main.o stm32f10x_it.o stm32f10x_vector.o \
 	i2c.o current_measurement.o pid.o usart.o printf.o can.o controllers.o \
-	protocol.o spi.o cortexm3_macro.o state.o hbridge.o encoder.o \
-	lm73cimk.o encoder_adc.o encoder_quadrature.o
+	protocol.o spi.o cortexm3_macro.o state.o hbridgev2.o encoder.o \
+	lm73cimk.o encoder_adc.o encoder_quadrature.o assert.o
 
 all: bin
 
