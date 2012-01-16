@@ -67,7 +67,7 @@ void GPIO_Configuration(void);
 int main(void)
 {
     //setup assert correctly
-    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
+    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
 
     vu32 delay;
     //Enable peripheral clock for GPIO
