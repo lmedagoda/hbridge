@@ -1,80 +1,137 @@
-
-#include "i2c.h"
 #include "inc/stm32f10x_i2c.h"
+#include "inc/stm32f10x_nvic.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_gpio.h"
 #include "stm32f10x_it.h"
+#include "i2c.h"
 #include "printf.h"
 
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
+void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) {
+    volatile struct I2C_Data *I2Cx_Data;
+    u8 EV_IRQChannel;
+    u8 ER_IRQChannel;
+    u16 GPIOs;
+    GPIO_TypeDef* GPIO_Block = GPIOB;
+    
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
+    if(I2Cx == I2C1)
+    {
+	I2Cx_Data = &I2C1_Data;
+	EV_IRQChannel = I2C1_EV_IRQChannel;
+	ER_IRQChannel = I2C1_ER_IRQChannel;
+	
+	if(remapped)
+	{
+	    GPIO_PinRemapConfig(GPIO_Remap_I2C1, ENABLE);
+	    GPIOs = GPIO_Pin_8 | GPIO_Pin_9;
+	}
+	else
+	{    
+	    GPIOs = GPIO_Pin_6 | GPIO_Pin_7;
+	}
+	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+
+    }
+    else
+    {
+	I2Cx_Data = &I2C2_Data;
+	EV_IRQChannel = I2C2_EV_IRQChannel;
+	ER_IRQChannel = I2C2_ER_IRQChannel;
+	
+	GPIOs = GPIO_Pin_10 | GPIO_Pin_11;
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+    }
+    
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_StructInit(&NVIC_InitStructure);
+    
+    /* Configure and enable I2C2 interrupt ------------------------------------*/
+    NVIC_InitStructure.NVIC_IRQChannel = EV_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = ER_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_Init(&NVIC_InitStructure);
+    
+
+    I2C_DeInit(I2Cx);
+  
+    I2C_InitTypeDef  I2C_InitStructure;
+    I2C_StructInit(&I2C_InitStructure);
+    I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
+    I2C_InitStructure.I2C_OwnAddress1 = address;
+    I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
+    I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
+    I2C_InitStructure.I2C_ClockSpeed = speed;
+
+    if(speed <= 100000)
+    {
+	I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
+    } else
+    {
+	I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9;
+    }
+    I2C_Init(I2Cx, &I2C_InitStructure);
+
+    //Enable I2C2
+    I2C_Cmd(I2Cx, ENABLE);
+
+    //configure as in floating, before (RE) initalizing.
+    //this works around the buggy i2c controller that 
+    //does not release the line in case of error
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = GPIOs;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
+
+    int wait = 10000;
+    while(wait--)
+	;
+
+    //Configure I2C2 Pins, SDA and SCL
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = GPIOs;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
+
+    // Disable PEC for I2C2
+    I2C_CalculatePEC(I2Cx, DISABLE);
+
+    //setup mode correctly
+    I2Cx_Data->I2CMode = I2C_FINISHED;
+    I2Cx_Data->curI2CAddr = address;
+    I2Cx_Data->curI2CSpeed = speed;
+    I2Cx_Data->curI2CIsRemapped = remapped;
+    I2Cx_Data->I2C_Tx_Idx = 0;
+    I2Cx_Data->I2C_Rx_Idx = 0;
+    I2Cx_Data->I2C_Tx_Size = 0;
+    I2Cx_Data->I2C_Rx_Size = 0;
+    I2Cx_Data->I2CError = 0;
+    I2Cx_Data->I2CErrorReason = 0;
+    I2Cx_Data->i2cSafetyCounter = 0;
+
+    // Enable I2C1 and I2C2 event and buffer interrupt
+    I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE); 
+}
 
 void setupI2C2(u16 address, int speed) {
-  NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_StructInit(&NVIC_InitStructure);
-  
-  /* Configure and enable I2C2 interrupt ------------------------------------*/
-  NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
+    //i2c2 can not be remapped
+    setupI2Cx(address, speed, I2C2, DISABLE);
+}
 
-  NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQChannel;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_Init(&NVIC_InitStructure);
-  
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
-
-  I2C_DeInit(I2C2);
-  
-  I2C_InitTypeDef  I2C_InitStructure;
-  I2C_StructInit(&I2C_InitStructure);
-  I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
-  I2C_InitStructure.I2C_OwnAddress1 = address;
-  I2C_InitStructure.I2C_Ack = I2C_Ack_Enable;
-  I2C_InitStructure.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress_7bit;
-  I2C_InitStructure.I2C_ClockSpeed = speed;
-
-  if(speed <= 100000)
-  {
-      I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2; // for < 100 kHz
-  } else
-  {
-      I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_16_9;
-  }
-  I2C_Init(I2C2, &I2C_InitStructure);
-
-  //Enable I2C2
-  I2C_Cmd(I2C2, ENABLE);
-
-  //Configure I2C2 Pins, SDA and SCL
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_StructInit(&GPIO_InitStructure);
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);  
-
-  int wait = 10000;
-  while(wait--)
-      ;
-
-  //Configure I2C2 Pins, SDA and SCL
-  GPIO_StructInit(&GPIO_InitStructure);
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);  
-
-  // Disable PEC for I2C2
-  I2C_CalculatePEC(I2C2, DISABLE);
-
-  //setup mode correctly
-  I2C2_Data.I2CMode = I2C_FINISHED;
-
-  // Enable I2C1 and I2C2 event and buffer interrupt
-  I2C_ITConfig(I2C2, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE); 
+void setupI2C1(u16 address, int speed, FunctionalState remapped) {
+    setupI2Cx(address, speed, I2C1, remapped);
 }
 
 void I2CSendBytesBlocking(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
@@ -98,23 +155,23 @@ void I2C2SendBytesBlocking(u8 *data, u8 size, u8 addr)
 }
 
 
-u8 handleI2C2Errors()
+u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 {
     u8 hasError = 0;
 
-    if(I2C2_Data.I2CError == 2) {
+    if(I2Cx_Data->I2CError == 2) {
 	print("Bus Amok\n");
     }
     //handle I2C errors
-    if(I2C2_Data.I2CError) {
-	switch(I2C2_Data.I2CErrorReason) {
+    if(I2Cx_Data->I2CError) {
+	switch(I2Cx_Data->I2CErrorReason) {
 	case I2C_FLAG_ARLO:
 	    print("ARLO");
 	    break;
 	case I2C_FLAG_BERR:
 	    print("BERR");
-	    I2C_SoftwareResetCmd(I2C2, DISABLE);
-	    setupI2C2(0x0A, 10000);
+	    I2C_SoftwareResetCmd(I2Cx, DISABLE);
+	    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped);
 	    break;
 	case I2C_FLAG_OVR:
 	    print("OVR");
@@ -123,18 +180,18 @@ u8 handleI2C2Errors()
 	    printf("AF");
 	    break;	
 	default:
-	    I2C_SoftwareResetCmd(I2C2, ENABLE);
+	    I2C_SoftwareResetCmd(I2Cx, ENABLE);
 	    int wait = 1000;
 	    while(wait--)
 		;
-	    I2C_SoftwareResetCmd(I2C2, DISABLE);
-	    setupI2C2(0x0A, 10000);
-	    printf("Unknown %lu", I2C2_Data.I2CErrorReason);
+	    I2C_SoftwareResetCmd(I2Cx, DISABLE);
+	    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped);
+	    printf("Unknown %lu", I2Cx_Data->I2CErrorReason);
 	}
 	
-	I2C2_Data.I2CMode = I2C_FINISHED;
+	I2Cx_Data->I2CMode = I2C_FINISHED;
 	
-	I2C2_Data.I2CError = 0;
+	I2Cx_Data->I2CError = 0;
 	//we were not acked, restart
 	//request next temperature
 	
@@ -142,10 +199,20 @@ u8 handleI2C2Errors()
     }
 
     return hasError;
+
 }
 
-// counter to detect i2c interrupt storm (flooding)
-u32 i2cSafetyCounter = 0;
+
+u8 handleI2C1Errors()
+{
+    return handleI2CxErrors(I2C1, &I2C1_Data);
+}
+
+u8 handleI2C2Errors()
+{
+    return handleI2CxErrors(I2C2, &I2C2_Data);
+}
+
 
 // define I2C register
 #define I2C_SMBALERT (1<<15)
@@ -193,7 +260,7 @@ struct i2cDebug {
     u8 error;
 };
 
-#define dbgBufferSize 200
+#define dbgBufferSize 20
 
 volatile u16 dbgWrite = 0;
 volatile u16 dbgRead = 0;
@@ -214,13 +281,13 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
     static u16 cnt = 0;
 
     //flush debug buffer
-    if(i2cSafetyCounter == 0)
+    if(I2Cx_Data->i2cSafetyCounter == 0)
 	dbgWrite = dbgRead;
 
-    ++i2cSafetyCounter;
+    ++(I2Cx_Data->i2cSafetyCounter);
 
     // interrupt storm detected, disable irq
-    if(i2cSafetyCounter > 120) {
+    if(I2Cx_Data->i2cSafetyCounter > 120) {
 	I2Cx_Data->I2CError = 2;
 	I2Cx_Data->I2CErrorReason = I2C_FLAG_BERR;
 	I2C_SoftwareResetCmd(I2Cx, ENABLE);
@@ -372,9 +439,9 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   I2C_GenerateSTART(I2Cx, DISABLE);
   
   vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
-  i2cSafetyCounter++;
+  (I2Cx_Data->i2cSafetyCounter)++;
 
-  if(i2cSafetyCounter > 120) {
+  if(I2Cx_Data->i2cSafetyCounter > 120) {
       I2Cx_Data->I2CError = 2;
       I2Cx_Data->I2CErrorReason = I2C_FLAG_BERR;
       I2C_SoftwareResetCmd(I2Cx, ENABLE);
@@ -476,18 +543,21 @@ void I2C2_EV_IRQHandler(void)
   I2C_EV_IRQHandler(I2C2, &I2C2_Data);
 }
 
-u8 I2C1OperationFinished() {
-    if(i2cSafetyCounter >= 120) {
+u8 I2CxOperationFinished(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
+{
+    if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
-  return I2C1_Data.I2CMode == I2C_FINISHED;
+    return I2Cx_Data->I2CMode == I2C_FINISHED;
+}
+
+
+u8 I2C1OperationFinished() {
+    return I2CxOperationFinished(I2C1, &I2C1_Data);
 };
 
 u8 I2C2OperationFinished() {
-    if(i2cSafetyCounter >= 120) {
-	printfI2CDbg();
-    }
-  return I2C2_Data.I2CMode == I2C_FINISHED;
+    return I2CxOperationFinished(I2C2, &I2C2_Data);
 };
 
 u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
@@ -507,10 +577,10 @@ u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I
     return 1;
   }
 
-    if(i2cSafetyCounter >= 120) {
+    if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
-  i2cSafetyCounter = 0;
+  I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
   I2Cx_Data->I2C_Tx_Idx = 0;
@@ -551,10 +621,10 @@ u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2
     return 1;
   }
 
-    if(i2cSafetyCounter >= 120) {
+    if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
-  i2cSafetyCounter = 0;
+  I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
   I2Cx_Data->I2C_Rx_Idx = 0;
@@ -591,10 +661,10 @@ u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2C
     return 1;
   }
 
-    if(i2cSafetyCounter >= 120) {
+    if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
-  i2cSafetyCounter = 0;
+  I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
   I2Cx_Data->I2C_Tx_Idx = 0;
