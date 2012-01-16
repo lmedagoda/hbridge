@@ -44,7 +44,7 @@ enum packetIDs {
   PACKET_ID_PIEZO = 17,
 };
 
-#define NUM_ENCODERS 8
+#define NUM_ENCODERS 6
 enum encoderTypes {
     NO_ENCODER = 0,
     QUADRATURE = 1,
@@ -52,8 +52,6 @@ enum encoderTypes {
     IC_HOUSE_MH_Y = 3,
     BMMV30_SSI = 4,
     ANALOG_VOLTAGE = 5,
-    V2_QUADRATURE = 6,
-    V2_QUADRATURE_WITH_ZERO = 7,    
 };
 
 enum controllerInputEncoder {

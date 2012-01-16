@@ -412,15 +412,6 @@ void encodersInit()
     encoders[ANALOG_VOLTAGE].encoderDeInit = encoderDeInitADC;
     encoders[ANALOG_VOLTAGE].getTicks = getTicksADC;
     encoders[ANALOG_VOLTAGE].setTicksPerTurn = setTicksPerTurnADC;
-    
-    encoders[V2_QUADRATURE].encoderInit = encoderInitADC;
-    encoders[V2_QUADRATURE].getTicks = getTicksADC;
-    encoders[V2_QUADRATURE].setTicksPerTurn = setTicksPerTurnADC;
-
-    encoders[V2_QUADRATURE_WITH_ZERO].encoderInit = encoderInitADC;
-    encoders[V2_QUADRATURE_WITH_ZERO].getTicks = getTicksADC;
-    encoders[V2_QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnADC;
-
 }
 
 

@@ -2,6 +2,7 @@
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_tim.h"
 #include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_nvic.h"
 #include "stm32f10x_it.h"
 #include "printf.h"
 #include "usart.h"
@@ -10,6 +11,8 @@
 #include "can.h"
 #include "assert.h"
 #include "lm73cimk.h"
+#include "encoder.h"
+#include "encoder_quadrature.h"
 #include <stdlib.h>
 
 enum hostIDs getOwnHostId() {
@@ -56,6 +59,7 @@ enum hostIDs getOwnHostId() {
 
 void GPIO_Configuration(void);
 
+extern struct EncoderInterface encoders[NUM_ENCODERS];
 
 /*******************************************************************************
 * Function Name  : main
@@ -98,6 +102,14 @@ int main(void)
     CAN_Configuration(CAN_REMAP1);
     CAN_ConfigureFilters(ownHostId);
 
+    //this is hacky, but the best way at,
+    encoders[QUADRATURE].encoderInit = encoderInitQuadratureV2;
+    encoders[QUADRATURE].getTicks = getTicksQuadratureV2;
+    encoders[QUADRATURE].setTicksPerTurn = setTicksPerTurnQuadratureV2;
+
+    encoders[QUADRATURE_WITH_ZERO].encoderInit = encoderInitQuadratureWithZeroV2;
+    encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZeroV2;
+    encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZeroV2;
     //activate systick interrupt, at this point
     //activeCState1 hast to be initalized completely sane !
     SysTick_Configuration();

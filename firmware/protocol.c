@@ -23,7 +23,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    //print("Got PACKET_ID_SET_VALUE Msg \n");
 	    if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
 		struct setValueData *data = (struct setValueData *) curMsg->Data;
-		s16 targetVal;
+		s16 targetVal = 0;
 		switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
 		    case RECEIVER_ID_H_BRIDGE_5:
@@ -185,7 +185,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    } 
 	    
             struct encoderConfiguration *encData = (struct encoderConfiguration *) curMsg->Data;
-            printf("configuring encoders %du \n",encData->ticksPerTurn);		
+            printf("configuring encoders %lu \n",encData->ticksPerTurn);		
             if(curMsg->StdId == PACKET_ID_ENCODER_CONFIG_INTERN) {
                 if (state->internalEncoder != encData->encoderType)
                 {
