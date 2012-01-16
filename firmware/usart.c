@@ -241,7 +241,7 @@ u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data
 	    {
 	    }
 	}
-	return;
+	return 0;
     }
     
     volatile int free_space = 0;
