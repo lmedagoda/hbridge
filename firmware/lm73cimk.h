@@ -2,6 +2,7 @@
 #define __LM73CIMK_H
 
 #include "inc/stm32f10x_type.h"
+#include "inc/stm32f10x_i2c.h"
 
 #define LM73_SENSOR_1 156 // 1001110 + r/w bit
 
@@ -15,14 +16,14 @@ enum lm73cimkStates {
 
 extern enum lm73cimkStates lm73cimkState;
 
-u8 getTemperature(u8 addr, u32 *val);
+void lm73cimk_init(I2C_TypeDef* I2C_Bus_l, FunctionalState remapped);
 
-void setupI2CForLM73CIMK();
+u8 lm73cimk_getTemperature(u8 addr, u32 *val);
 
 //for internal use only
 u8 lm73cimk_triggerTemeratureConversion(u8 addr);
 
-u8 requestTemperature(u8 addr);
+u8 lm73cimk_requestTemperature(u8 addr);
 
 
 #endif
