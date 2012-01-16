@@ -5,6 +5,7 @@
 
 extern volatile enum hostIDs ownHostId;
 
+void baseNvicInit();
 void baseInit();
 void pollCanMessages(); 
 void SysTick_Configuration(void);
