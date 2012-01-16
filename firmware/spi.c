@@ -2,6 +2,8 @@
 #include "inc/stm32f10x_type.h"
 #include "stm32f10x_it.h"
 #include "inc/stm32f10x_gpio.h"
+#include "inc/stm32f10x_rcc.h"
+#include "inc/stm32f10x_spi.h"
 #include "spi.h"
 
 volatile u8 SPI1_Buffer_Tx[8];
@@ -32,7 +34,18 @@ void SPISendReadBytes(u8 *txdata, u8 txsize, u8 rxsize, GPIO_TypeDef* GPIOx, u16
 *******************************************************************************/
 void SPI_Configuration(void)
 {
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB , ENABLE);
 
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_StructInit(&GPIO_InitStructure);
+    
+  //Configure SPI2 pins: SCK, MISO and MOSI
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    
   //TODO is SOFT_NSS suficient
 
   /* SPI1 clock enable */
