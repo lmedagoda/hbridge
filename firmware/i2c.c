@@ -10,6 +10,7 @@ volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
 void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) {
+    volatile int wait;
     volatile struct I2C_Data *I2Cx_Data;
     u8 EV_IRQChannel;
     u8 ER_IRQChannel;
@@ -24,7 +25,7 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 	ER_IRQChannel = I2C1_ER_IRQChannel;
 	
 	if(remapped)
-	{
+	{    
 	    GPIO_PinRemapConfig(GPIO_Remap_I2C1, ENABLE);
 	    GPIOs = GPIO_Pin_8 | GPIO_Pin_9;
 	}
@@ -34,7 +35,6 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 	}
 	
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
-
     }
     else
     {
@@ -61,9 +61,29 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_Init(&NVIC_InitStructure);
     
-
     I2C_DeInit(I2Cx);
-  
+
+    //configure as in floating, before (RE) initalizing.
+    //this works around the buggy i2c controller that 
+    //does not release the line in case of error
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = GPIOs;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
+
+    wait = 10000;
+    while(wait--)
+	;
+
+    //Configure I2C2 Pins, SDA and SCL
+    GPIO_StructInit(&GPIO_InitStructure);
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Pin = GPIOs;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
+    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
+
     I2C_InitTypeDef  I2C_InitStructure;
     I2C_StructInit(&I2C_InitStructure);
     I2C_InitStructure.I2C_Mode = I2C_Mode_I2C;
@@ -83,27 +103,6 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 
     //Enable I2C2
     I2C_Cmd(I2Cx, ENABLE);
-
-    //configure as in floating, before (RE) initalizing.
-    //this works around the buggy i2c controller that 
-    //does not release the line in case of error
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_StructInit(&GPIO_InitStructure);
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin = GPIOs;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
-
-    int wait = 10000;
-    while(wait--)
-	;
-
-    //Configure I2C2 Pins, SDA and SCL
-    GPIO_StructInit(&GPIO_InitStructure);
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Pin = GPIOs;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
-    GPIO_Init(GPIO_Block, &GPIO_InitStructure);  
 
     // Disable PEC for I2C2
     I2C_CalculatePEC(I2Cx, DISABLE);
@@ -192,9 +191,6 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 	I2Cx_Data->I2CMode = I2C_FINISHED;
 	
 	I2Cx_Data->I2CError = 0;
-	//we were not acked, restart
-	//request next temperature
-	
 	hasError = 1;    
     }
 
