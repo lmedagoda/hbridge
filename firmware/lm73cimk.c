@@ -22,7 +22,7 @@ u32 statistic_r = 0;
 
 void lm73cimk_init(I2C_TypeDef* I2C_Bus_l, FunctionalState remapped)
 {
-    I2C_Bus = I2C_Bus;
+    I2C_Bus = I2C_Bus_l;
     if(I2C_Bus == I2C1)
     {
 	I2C_Data = &I2C1_Data;
