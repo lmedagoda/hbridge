@@ -5,28 +5,6 @@
 #include "inc/stm32f10x_gpio.h"
 #include "printf.h"
 
-enum hostIDs getOwnHostId() {
-    enum hostIDs id = RECEIVER_ID_H_BRIDGE_1; 
-    u16 gpioData = 0;
-    gpioData |= GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
-    gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_14) << 1);
-    gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_15) << 2);
-    gpioData |= (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) << 3);
-
-    //get correct host id from gpio pins
-    id = gpioData +1;
-    printf("Configured as H_BRIDGE_%hu\n", id);
-
-    if(id > 8)
-    {
-        printf("Wrong host ide configured %hu\n", gpioData);
-	//blink and do nothing
-	assert_failed((u8 *)__FILE__, __LINE__);
-    }    
-    return (id << 5);
-}
-
-
 u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
     //clear device specific adress bits
     curMsg->StdId &= ~ownHostId;
