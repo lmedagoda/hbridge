@@ -77,3 +77,49 @@ void assert_failed(u8* file, u32 line)
 	}
     }
 }
+
+#define printDebug(debugString) \
+    switch(assertUsart) \
+    {\
+	case USE_USART1:\
+	    USART1_DeInit();\
+	    USART1_Init(DISABLE); \
+	    break;\
+	case USE_USART3:\
+	    USART3_DeInit();\
+	    USART3_Init(DISABLE);\
+	    break;\
+    }\
+    print(#debugString "\n");
+
+void NMIException(void)
+{
+    printDebug(NMIException)
+    assert_failed((u8 *)__FILE__, __LINE__);
+}
+
+void HardFaultException(void)
+{
+    printDebug(HardFaultException)
+    assert_failed((u8 *)__FILE__, __LINE__);
+}
+
+void MemManageException(void)
+{
+    printDebug(MemManageException)
+    assert_failed((u8 *)__FILE__, __LINE__);
+}
+
+void BusFaultException(void)
+{
+    printDebug(BusFaultException)
+    assert_failed((u8 *)__FILE__, __LINE__);
+}
+
+void UsageFaultException(void)
+{
+    printDebug(UsageFaultException)
+    assert_failed((u8 *)__FILE__, __LINE__);
+}
+
+
