@@ -2,6 +2,7 @@
 #include "inc/stm32f10x_can.h"
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_gpio.h"
+#include "inc/stm32f10x_nvic.h"
 #include "can.h"
 #include "printf.h"
 
@@ -92,6 +93,23 @@ void CAN_Configuration(enum CAN_REMAP remap)
         assert_param(0);
     }
 
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_StructInit(&NVIC_InitStructure);
+
+    /* Enable CAN RX0 interrupt IRQ channel */
+    NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN_RX0_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+    /* Enable CAN RX0 interrupt IRQ channel */
+    NVIC_InitStructure.NVIC_IRQChannel = CAN_RX1_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    
     /* CAN FIFO0 message pending interrupt enable */ 
     CAN_ITConfig(CAN_IT_FMP0, ENABLE);
 
