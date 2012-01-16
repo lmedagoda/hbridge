@@ -3,6 +3,20 @@
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_rcc.h"
 #include "usart.h"
+#include "assert.h"
+
+GPIO_TypeDef* assertGpio;
+u16 assertGpioPin;
+enum ASSERT_UASRT assertUsart;
+
+
+void Assert_Init(GPIO_TypeDef* GPIOx, u16 GPIO_Pin, enum ASSERT_UASRT used_usart)
+{
+    assertGpio = GPIOx;
+    assertGpioPin = GPIO_Pin;
+    assertUsart = used_usart;
+}
+
 
 /*******************************************************************************
 * Function Name  : assert_failed
@@ -15,9 +29,19 @@
 *******************************************************************************/
 void assert_failed(u8* file, u32 line)
 {
-    USART3_DeInit();
-    //do not use interrupts in assert case
-    USART3_Init(DISABLE);
+    switch(assertUsart)
+    {
+	case USE_USART1:
+	    USART1_DeInit();
+	    //do not use interrupts in assert case
+	    USART1_Init(DISABLE);
+	    break;
+	case USE_USART3:
+	    USART3_DeInit();
+	    //do not use interrupts in assert case
+	    USART3_Init(DISABLE);
+	    break;
+    }
     
     /* User can add his own implementation to report the file name and line number,
        ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
@@ -29,24 +53,24 @@ void assert_failed(u8* file, u32 line)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
     
     // Configure PC.12 as output push-pull (LED)
-    GPIO_WriteBit(GPIOA,GPIO_Pin_12,Bit_SET);
-    GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
+    GPIO_WriteBit(assertGpio,assertGpioPin,Bit_SET);
+    GPIO_InitStructure.GPIO_Pin =  assertGpioPin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(assertGpio, &GPIO_InitStructure);
     
     volatile int delay;
     int waittime = 500000;
     
     while(1)
     {  
-	GPIO_SetBits(GPIOA, GPIO_Pin_12);
+	GPIO_SetBits(assertGpio, assertGpioPin);
 	delay = waittime;
 	while(delay) {
 	    delay--;
 	}
 	
-	GPIO_ResetBits(GPIOA, GPIO_Pin_12);
+	GPIO_ResetBits(assertGpio, assertGpioPin);
 	delay = waittime;
 	while(delay) {
 	    delay--;
