@@ -98,7 +98,7 @@ add_library(hbridge_common
     encoder_quadrature.c    
     systick.c
 )
-target_link_libraries(hbridge_common stm32drivers)
+target_link_libraries(hbridge_common stm32drivers stm32fw)
 
 add_executable(main
     main.c
@@ -110,15 +110,12 @@ add_executable(pcbv2
     main_pcbv2.c
     hbridgev2.c
     current_measurementv2.c
-    encoder.c
-    encoder_adc.c
-    encoder_quadrature.c
 )
 
-target_link_libraries(main stm32fw stm32drivers hbridge_common)
+target_link_libraries(main stm32fw hbridge_common stm32fw stm32drivers stm32fw)
 objcopy_file(main)
 
-target_link_libraries(pcbv2 stm32fw stm32drivers hbridge_common)
+target_link_libraries(pcbv2 stm32fw hbridge_common stm32fw stm32drivers stm32fw)
 objcopy_file(pcbv2)
 
 add_custom_target(flash openocd -f ${STM32_SOURCE_DIR}/openocd.cfg 
