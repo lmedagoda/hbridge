@@ -24,8 +24,7 @@ volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
 
-
-void baseInit()
+void baseNvicInit()
 {
     /* Set the Vector Table base location at 0x08000000 */ 
     NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);   
@@ -34,8 +33,11 @@ void baseInit()
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
     /* Systick with Preemption Priority 2 and Sub Priority as 0 */ 
-    NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 3, 0);
-    
+    NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 3, 0);    
+}
+
+void baseInit()
+{
     systemTick = 0;
 
     //read out dip switches
@@ -45,11 +47,6 @@ void baseInit()
 
     encodersInit();
     
-    //wait until 5V rail get's stable
-    vu32 delay = 20000000;
-    while(delay)
-	delay--;
-
     volatile struct ControllerState cs1;
     volatile struct ControllerState cs2;
     

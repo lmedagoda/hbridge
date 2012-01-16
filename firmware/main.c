@@ -68,12 +68,13 @@ int main(void)
     //setup assert correctly
     Assert_Init(GPIOA, GPIO_Pin_8, USE_USART1);
     
-    vu32 delay;
     //Enable peripheral clock for GPIO
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
 
     GPIO_Configuration();
+    
+    baseNvicInit();
 
     USART1_Init(ENABLE);
 
@@ -90,6 +91,11 @@ int main(void)
     //init temperature sensor
     lm73cimk_init(I2C1, ENABLE);
 
+    //wait until 5V rail get's stable
+    vu32 delay = 20000000;
+    while(delay)
+	delay--;
+    
     measureACS712BaseVoltage(); 
     
     print("Peripheral configuration finished\n");

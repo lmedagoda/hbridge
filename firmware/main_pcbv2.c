@@ -76,7 +76,9 @@ int main(void)
 
     GPIO_Configuration();
 
-    USART3_Init(ENABLE);
+    baseNvicInit();
+
+    USART3_Init(DISABLE);
 
     //note, this mesage can only be send AFTER usart configuration
     print("Entered main loop\n");
