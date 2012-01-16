@@ -5,12 +5,7 @@
 #include "hbridge.h"
 #include <stdlib.h>
 
-vu16 leftHighCC;
-vu16 rightHighCC;
-vu16 leftLowCC;
-vu16 rightLowCC;
-
-u8 lastDirection = 0;
+vu8 lastDirection = 0;
 
 
 void initHbridgeTimers()
@@ -118,6 +113,11 @@ void hbridgeInit() {
 
 void setNewPWM(const s16 value2, u8 useOpenLoop) {
     s16 value = value2 / 2;
+    u16 leftHighCC = 0;
+    u16 rightHighCC = 0;
+    u16 leftLowCC = 0;
+    u16 rightLowCC = 0;
+
 
     //truncate to max of 95% PWM, needed to charge boost circuit
     const s16 maxValue = 855;
@@ -132,7 +132,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
 	{
 	    value = maxValue;
 	}
-    }  
+    }
 
     s16 dutyTime = abs(value);
 
@@ -193,4 +193,3 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
 
     lastDirection = desiredDirection;
 }
-
