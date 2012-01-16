@@ -46,7 +46,7 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
     }
-    
+
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_StructInit(&NVIC_InitStructure);
     
@@ -256,8 +256,8 @@ struct i2cDebug {
     u8 error;
 };
 
+#ifdef I2C_DEBUG
 #define dbgBufferSize 20
-
 volatile u16 dbgWrite = 0;
 volatile u16 dbgRead = 0;
 volatile struct i2cDebug dbgBuffer[dbgBufferSize];
@@ -269,6 +269,7 @@ void printfI2CDbg() {
 	printf("cnt %hu, SR1 %hu, SR2 %hu, S %hu, M %hu, idx %hu, size %hu, error %hu\n", dbg->cnt, dbg->sr1, dbg->sr2, dbg->state, dbg->mode, dbg->idx, dbg->size, dbg->error);
     }
 }
+#endif
 
 void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 {
@@ -276,9 +277,11 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
     u16 sr2 = I2Cx->SR2;
     static u16 cnt = 0;
 
+#ifdef I2C_DEBUG
     //flush debug buffer
     if(I2Cx_Data->i2cSafetyCounter == 0)
 	dbgWrite = dbgRead;
+#endif
 
     ++(I2Cx_Data->i2cSafetyCounter);
 
@@ -290,6 +293,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 	I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
     }
     
+#ifdef I2C_DEBUG
     vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
 
     if(nextRxWritePointer != dbgRead) {
@@ -304,6 +308,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 	dbg->error = I2Cx_Data->I2CError;
 	dbgWrite = nextRxWritePointer;
     }
+#endif
     
     cnt++;
     
@@ -434,7 +439,6 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   //later by an orphan start condition
   I2C_GenerateSTART(I2Cx, DISABLE);
   
-  vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
   (I2Cx_Data->i2cSafetyCounter)++;
 
   if(I2Cx_Data->i2cSafetyCounter > 120) {
@@ -444,6 +448,8 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
       I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, DISABLE);
   }
   
+#ifdef I2C_DEBUG
+  vu8 nextRxWritePointer = (dbgWrite + 1) % dbgBufferSize;
   //if(nextRxWritePointer != dbgRead) {
 	volatile struct i2cDebug *dbg = &(dbgBuffer[dbgWrite]);
 	dbg->sr1 = cr1;
@@ -456,6 +462,8 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
 	dbg->error = I2Cx_Data->I2CError;
 	dbgWrite = nextRxWritePointer;
     //}
+#endif
+	
   //Acknowledge failure
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_AF)) {
     I2Cx_Data->I2CErrorReason = I2C_FLAG_AF;
@@ -541,9 +549,11 @@ void I2C2_EV_IRQHandler(void)
 
 u8 I2CxOperationFinished(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 {
+#ifdef I2C_DEBUG
     if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
+#endif
     return I2Cx_Data->I2CMode == I2C_FINISHED;
 }
 
@@ -569,13 +579,16 @@ u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I
   }
   
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-    print("BAD, I am still a master \n");
+//     print("BAD, I am still a master \n");
     return 1;
   }
 
+#ifdef I2C_DEBUG
     if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
+#endif
+
   I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
@@ -613,13 +626,16 @@ u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2
   }
   
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-    print("BAD, I am still a master \n");
+//     print("BAD, I am still a master \n");
     return 1;
   }
 
+#ifdef I2C_DEBUG
     if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
+#endif
+
   I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
@@ -653,13 +669,16 @@ u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2C
   }
   
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-    print("BAD, I am still a master \n");
+//     print("BAD, I am still a master \n");
     return 1;
   }
 
+#ifdef I2C_DEBUG
     if(I2Cx_Data->i2cSafetyCounter >= 120) {
 	printfI2CDbg();
     }
+#endif
+
   I2Cx_Data->i2cSafetyCounter = 0;
 
   //setup interrupt handler state machine
