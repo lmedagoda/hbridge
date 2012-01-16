@@ -39,6 +39,9 @@ void CAN_Configuration(enum CAN_REMAP remap)
 	case CAN_REMAP1:
 	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
 
+	    //do the remap
+	    GPIO_PinRemapConfig(GPIO_Remap1_CAN, ENABLE);
+	    
 	    //Configure CAN pin: RX 
 	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
 	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
@@ -52,6 +55,9 @@ void CAN_Configuration(enum CAN_REMAP remap)
 	    break;
 	case CAN_REMAP2:
 	    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
+
+	    //do the remap
+	    GPIO_PinRemapConfig(GPIO_Remap2_CAN, ENABLE);	    
 
 	    //Configure CAN pin: RX 
 	    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
