@@ -2,6 +2,7 @@
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_adc.h"
 #include "inc/stm32f10x_gpio.h"
+#include "inc/stm32f10x_nvic.h"
 #include "hbridge.h"
 #include "current_measurement.h"
 #include <stdlib.h>
@@ -156,6 +157,16 @@ void initHbridgeTimers()
     TIM_SelectInputTrigger(TIM3, TIM_TS_ITR0);
 
     //enable interrupts
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_StructInit(&NVIC_InitStructure);
+
+    //Configure and enable TIM1 Update interrupt
+    NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&NVIC_InitStructure);
+    
     TIM_ITConfig(TIM2, TIM_IT_CC3, DISABLE);
 
     //interrupt for atomar config change
@@ -214,6 +225,10 @@ void hbridgeGPIOConfig() {
 }
 
 void hbridgeInit() {
+    // re-route timer1 output to pins not included in chip package (non-existing pins)
+    // needed for timer chaining
+    GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
+
     //init gpios
     hbridgeGPIOConfig();
     
