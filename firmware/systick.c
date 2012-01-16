@@ -23,6 +23,8 @@
 volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
+volatile struct ControllerState cs1;
+volatile struct ControllerState cs2;
 
 void baseNvicInit()
 {
@@ -46,9 +48,6 @@ void baseInit()
     currentMeasurementInit();
 
     encodersInit();
-    
-    volatile struct ControllerState cs1;
-    volatile struct ControllerState cs2;
     
     activeCState = &(cs1);
     lastActiveCState = &(cs2);
