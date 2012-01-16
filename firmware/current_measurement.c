@@ -3,6 +3,7 @@
 #include "inc/stm32f10x_dma.h"
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_tim.h"
+#include "inc/stm32f10x_nvic.h"
 #include "printf.h"
 #include "current_measurement.h"
 #include <stdlib.h>
@@ -248,6 +249,16 @@ void currentMeasurementInit()
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
   DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
   DMA_Init(DMA1_Channel1, &DMA_InitStructure);
+  
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_StructInit(&NVIC_InitStructure);
+
+  // Configure and enable ADC interrupt
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
   
   //enable interrupt when dma is finished
   DMA_ITConfig(DMA1_Channel1, DMA_IT_TC, ENABLE);
