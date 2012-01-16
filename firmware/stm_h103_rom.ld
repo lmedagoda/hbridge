@@ -113,5 +113,6 @@ PROVIDE(DMA2_Channel2_IRQHandler = _default_handler);
 PROVIDE(DMA2_Channel3_IRQHandler = _default_handler);
 PROVIDE(DMA2_Channel4_5_IRQHandler = _default_handler);
 
+EXTERN(g_pfnVectors _default_handler);
 
 /*========== end of file ==========*/
