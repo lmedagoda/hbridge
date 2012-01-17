@@ -118,34 +118,25 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
     u16 leftLowCC = 0;
     u16 rightLowCC = 0;
 
-
-    //truncate to max of 95% PWM, needed to charge boost circuit
-    const s16 maxValue = 855;
-
-    if(value < -maxValue)
-    {
-	value = -maxValue;
-    }
-    else
-    {
-	if(value > maxValue)
-	{
-	    value = maxValue;
-	}
-    }
-
-    s16 dutyTime = abs(value);
+    //set dead time to 500ns
+    const s16 dead_time = 36;  
 
     const u16 low_allways_on = 0;
     const u16 low_allways_off = 900;
     const u16 high_allways_off = 0;
 
-    //set dead time to 500ns
-    const s16 dead_time = 36;  
+    //time low side needs to be high 
+    //so that boost capacitor get's recharged
+    const u16 half_recharge_time = 30;
 
-    if(dutyTime + dead_time > 900)
+    const s16 maxValue = 900;
+
+    s16 dutyTime = abs(value);
+
+    //limit duty cycle to maximum possilbe pwm
+    if(dutyTime + dead_time + half_recharge_time > maxValue)
     {
-	dutyTime = 900 - dead_time;
+	dutyTime = maxValue - dead_time - half_recharge_time;
     }
 
     u8 desiredDirection = 0;
@@ -163,7 +154,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
 	rightLowCC = low_allways_on;
 
 	if(useOpenLoop) {
-	    leftLowCC = low_allways_off;
+	    leftLowCC = low_allways_off - half_recharge_time;
 	} else {
 	    //closed loop
 	    leftLowCC = dutyTime + dead_time;
@@ -175,7 +166,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
 	leftLowCC = low_allways_on;
 
 	if(useOpenLoop) {
-	    rightLowCC = low_allways_off;
+	    rightLowCC = low_allways_off - half_recharge_time;
 	} else {
 	    //closed loop
 	    rightLowCC = dutyTime + dead_time;
