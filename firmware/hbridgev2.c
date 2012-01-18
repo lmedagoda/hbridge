@@ -64,6 +64,11 @@ void initHbridgeTimers()
 
     TIM_CtrlPWMOutputs(TIM1, ENABLE);
     
+    TIM_SelectMasterSlaveMode(TIM1, TIM_MasterSlaveMode_Enable);
+    
+    //output a trigger event on ever update event for adc synchronisation
+    TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);
+
     // TIM1 enable counter
     TIM_Cmd(TIM1, ENABLE);
 
