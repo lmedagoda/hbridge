@@ -18,7 +18,7 @@ Encoder::Encoder()
     lastPositionInTurn = 0;
     turns = 0;
     zeroPosition = 0;
-    gotValidReading = false;
+    gotValidReading = false;    
 }
 
 void Encoder::setConfiguration(EncoderConfiguration& cfg)
@@ -87,7 +87,11 @@ const EncoderConfiguration& Encoder::getEncoderConfig() const
     {
 	reset();
         for (int i = 0; i < BOARD_COUNT; ++i)
+	{
             current_modes[i] = base::actuators::DM_UNINITIALIZED;
+	    newPosPIDDebug[i] = false;
+	    newSpeedPIDDebug[i] = false;
+	}
     }
 
     Driver::~Driver()
@@ -216,6 +220,7 @@ int Driver::getCurrentTickDivider(int index) const
                 positionControllerDebug[index].pwmValue = data->pwmVal;
                 positionControllerDebug[index].positionValue = data->posVal * tickDivider;
                 positionControllerDebug[index].targetValue = data->targetVal * tickDivider;
+		newPosPIDDebug[index] = true;
                 break;
             }
             case firmware::PACKET_ID_PID_DEBUG_SPEED:
@@ -223,10 +228,11 @@ int Driver::getCurrentTickDivider(int index) const
                 const firmware::pidDebugData * data =
                     reinterpret_cast<const firmware::pidDebugData *> (msg.data);
 
-                speedPIDDebug[index].dPart = data->dPart;
-                speedPIDDebug[index].iPart = data->iPart;
-                speedPIDDebug[index].pPart = data->pPart;
-                speedPIDDebug[index].minMaxPidOutput = data->minMaxPidOutput;
+                speedControllerDebug[index].pidDebug.dPart = data->dPart;
+                speedControllerDebug[index].pidDebug.iPart = data->iPart;
+                speedControllerDebug[index].pidDebug.pPart = data->pPart;
+                speedControllerDebug[index].pidDebug.minMaxPidOutput = data->minMaxPidOutput;
+		newSpeedPIDDebug[index] = true;
                 break;
             }
             case firmware::PACKET_ID_PID_DEBUG_POS:
@@ -234,10 +240,10 @@ int Driver::getCurrentTickDivider(int index) const
                 const firmware::pidDebugData * data =
                     reinterpret_cast<const firmware::pidDebugData *> (msg.data);
 
-                posPIDDebug[index].dPart = data->dPart;
-                posPIDDebug[index].iPart = data->iPart;
-                posPIDDebug[index].pPart = data->pPart;
-                posPIDDebug[index].minMaxPidOutput = data->minMaxPidOutput;
+                positionControllerDebug[index].pidDebug.dPart = data->dPart;
+                positionControllerDebug[index].pidDebug.iPart = data->iPart;
+                positionControllerDebug[index].pidDebug.pPart = data->pPart;
+                positionControllerDebug[index].pidDebug.minMaxPidOutput = data->minMaxPidOutput;
                 break;
             }
 	    default:
@@ -532,32 +538,33 @@ int Driver::getCurrentTickDivider(int index) const
         
         msg.size = sizeof(firmware::setPidData);
     }
-
-    Driver::DebugData Driver::getDebugData(int const board) const
+    
+    const hbridge::PositionControllerDebug& Driver::getPositionControllerDebugData(const int board) const
     {
-        Driver::DebugData debugData;
-
-        debugData.speedTargetVal = speedControllerDebug[board].targetValue;
-        debugData.speedPWMVal = speedControllerDebug[board].pwmValue;
-        debugData.speedEncoderVal = speedControllerDebug[board].encoderValue;
-        debugData.speedVal = speedControllerDebug[board].speedValue;
-
-        debugData.posTargetVal = positionControllerDebug[board].targetValue;
-        debugData.posPWMVal = positionControllerDebug[board].pwmValue;
-        debugData.posEncoderVal = positionControllerDebug[board].encoderValue;
-        debugData.posVal = positionControllerDebug[board].positionValue;
-
-        debugData.posPPart = posPIDDebug[board].pPart;
-        debugData.posIPart = posPIDDebug[board].iPart;
-        debugData.posDPart = posPIDDebug[board].dPart;
-        debugData.posMaxPidOutput = posPIDDebug[board].minMaxPidOutput;
-
-        debugData.speedPPart = speedPIDDebug[board].pPart;
-        debugData.speedIPart = speedPIDDebug[board].iPart;
-        debugData.speedDPart = speedPIDDebug[board].dPart;
-        debugData.speedMaxPidOutput = speedPIDDebug[board].minMaxPidOutput;
-
-        return debugData;
+	return positionControllerDebug[board];
     }
+
+    const hbridge::SpeedControllerDebug& Driver::getSpeedControllerDebugData(const int board) const
+    {
+	return speedControllerDebug[board];
+    }
+    
+bool Driver::getPositionControllerDebugData(const int board, PositionControllerDebug& data)
+{
+    bool ret = newPosPIDDebug[board];
+    newPosPIDDebug[board] = false;
+    data = positionControllerDebug[board];
+    return ret;
+}
+
+bool Driver::getSpeedControllerDebugData(const int board, SpeedControllerDebug& data)
+{
+    bool ret = newSpeedPIDDebug[board];
+    newSpeedPIDDebug[board] = false;
+    data = speedControllerDebug[board];
+    return ret;
+}
+
+    
 }
 
