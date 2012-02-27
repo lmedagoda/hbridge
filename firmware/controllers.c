@@ -20,10 +20,11 @@ struct ControllerInterface controllers[3];
 void initControllers()
 {
     controllers[CONTROLLER_MODE_POSITION].init = positionControllerInit;
-    controllers[CONTROLLER_MODE_POSITION].deInit = positionControllerDeInit;
     controllers[CONTROLLER_MODE_POSITION].reset = positionControllerReset;
+    controllers[CONTROLLER_MODE_POSITION].setDebugActive = positionControllerSetDebugActive;
     controllers[CONTROLLER_MODE_POSITION].setConfiguration = positionControllerSetConfiguration;
     controllers[CONTROLLER_MODE_POSITION].step = positionControllerStep;
+    controllers[CONTROLLER_MODE_POSITION].deInit = positionControllerDeInit;    
     
     //init pid structs with sane values
     initPIDStruct(&(speedPidData));

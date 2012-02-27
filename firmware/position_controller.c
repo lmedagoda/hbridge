@@ -1,4 +1,3 @@
-#include "protocol.h"
 #include "position_controller.h"
 #include "pid.h"
 #include "controllers.h"
@@ -34,10 +33,10 @@ void initPositionControllerConfig(volatile struct PositionControllerConfig *conf
     conf->hysteresisActive = 0;
     conf->maxHysteresisDistance = 0;
     conf->minHysteresisDistance = 0;
-    conf->maxOverDistanceCount = 0;
+    conf->maxOverDistanceCount = 1;
 }
 
-void positionControllerSetControllerConfiguration(struct posControllerData* data)
+void positionControllerSetControllerConfiguration(volatile struct posControllerData* data)
 {
     inActivPosConfig->hysteresisActive = data->hysteresisActive;
     inActivPosConfig->maxHysteresisDistance = data->maxHystDist;
@@ -63,6 +62,7 @@ void positionControllerInit()
     initPositionControllerConfig(&conf2);
     activePosConfig = &conf1;
     inActivPosConfig = &conf2;
+    posContData.debugActive = 0;
     positionControllerReset(0);
 }
 
@@ -114,7 +114,6 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
 	    //check if we left the corridor
 	    if(abs(targetPos - curVal) > activePosConfig->maxHysteresisDistance)
 	    {
-		inHystesis = 0;
 		hystLeavingCount++;
 	    } else {
 		hystLeavingCount = 0;
@@ -122,6 +121,8 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
 	    
 	    if(hystLeavingCount > activePosConfig->maxOverDistanceCount)
 	    {
+		inHystesis = 0;
+
 		//reset pid to avoid funny behaviour
 		resetPIDStruct(&(posContData.pidData));
 

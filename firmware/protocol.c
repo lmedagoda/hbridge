@@ -6,7 +6,7 @@
 #include "printf.h"
 
 //HACK this should be moved to a callback interface for message ids...
-void positionControllerSetControllerConfiguration(struct posControllerData* data);
+void positionControllerSetControllerConfiguration(volatile struct posControllerData* data);
 
 u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
     //clear device specific adress bits
@@ -216,6 +216,12 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	break;
 	case PACKET_ID_POS_CONTROLLER_DATA:
 	{
+	    print("Got Pos Ctrl data");
+	    if(curMsg->DLC != sizeof(struct posControllerData))
+	    {
+		print("Error PosCtrlData has wrong size");
+		break;
+	    }
 	    struct posControllerData *data = (struct posControllerData *) curMsg->Data;
 	    positionControllerSetControllerConfiguration(data);
 	}

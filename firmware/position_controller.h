@@ -2,15 +2,17 @@
 #define POSITION_CONTROLLER_H
 
 #include <inc/stm32f10x_type.h>
+#include "protocol.h"
+
+
 struct ControllerData;
-struct posControllerData;
 
 /**
  * This function is meant to set special configurations for this controller.
  * Also one should note, that this function may be called from a different
  * thread context.
  * */
-void positionControllerSetControllerConfiguration(struct posControllerData* data);
+void positionControllerSetControllerConfiguration(volatile struct posControllerData* data);
 void positionControllerInit(void);
 void positionControllerDeInit(void);
 void positionControllerReset(s32 wheelPos);
