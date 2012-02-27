@@ -165,8 +165,10 @@ namespace hbridge
                             double kp, double ki, double kd,
                             double minMaxValue) const;
 
-			    
-	canbus::Message setPositionControllerConfiguration(bool hysteresisActive, bool allowWrapAround, double minHystDist, double maxHystDist, int overDistCount) const;
+
+	canbus::Message setPositionControllerConfiguration(int board, const hbridge::PositionControllerConfiguration& posCtrlCfg) const;
+
+	canbus::Message setPositionControllerConfiguration(int board, bool hysteresisActive, bool allowWrapAround, double minHystDist, double maxHystDist, int overDistCount) const;
         /**
          * Generate a CAN message for setting the PID values for the position
          * controller of a given hbridge.

@@ -178,6 +178,18 @@ namespace hbridge
         base::Time can_time;
     };
     
+    struct PositionControllerConfiguration
+    {
+	PositionControllerConfiguration () :minHystDist(0), maxHystDist(0), 
+	hysteresisActive(false), allowWrapAround(false), overDistCount(0) {};
+	
+	double minHystDist;
+	double maxHystDist;
+	bool hysteresisActive;
+	bool allowWrapAround;
+	short overDistCount;
+    };
+    
     struct PID_Debug
     {
 	PID_Debug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};

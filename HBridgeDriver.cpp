@@ -565,10 +565,16 @@ bool Driver::getSpeedControllerDebugData(const int board, SpeedControllerDebug& 
     return ret;
 }
 
-canbus::Message Driver::setPositionControllerConfiguration(bool hysteresisActive, bool allowWrapAround, double minHystDist, double maxHystDist, int overDistCount) const
+canbus::Message Driver::setPositionControllerConfiguration(int board, const PositionControllerConfiguration& posCtrlCfg) const
+{
+    return setPositionControllerConfiguration(board, posCtrlCfg.hysteresisActive, posCtrlCfg.allowWrapAround, posCtrlCfg.minHystDist, posCtrlCfg.maxHystDist, posCtrlCfg.overDistCount);
+}
+
+
+canbus::Message Driver::setPositionControllerConfiguration(int board, bool hysteresisActive, bool allowWrapAround, double minHystDist, double maxHystDist, int overDistCount) const
 {
     canbus::Message ret;
-    ret.can_id = firmware::PACKET_ID_POS_CONTROLLER_DATA;
+    ret.can_id = firmware::PACKET_ID_POS_CONTROLLER_DATA | HBRIDGE_BOARD_ID(board);
     ret.size = sizeof(firmware::posControllerData);
     firmware::posControllerData *data = (firmware::posControllerData *) ret.data;
     data->hysteresisActive = hysteresisActive;
