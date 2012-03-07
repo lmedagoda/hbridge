@@ -41,7 +41,7 @@ enum packetIDs {
   PACKET_ID_POS_DEBUG = 14,
   PACKET_ID_PID_DEBUG_SPEED = 15,
   PACKET_ID_SPEED_DEBUG = 16,
-  PACKET_ID_PIEZO = 17,
+  PACKET_ID_POS_CONTROLLER_DATA = 17,
 };
 
 #define NUM_ENCODERS 6
@@ -80,11 +80,13 @@ struct pidDebugData {
   u16 minMaxPidOutput;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
-struct piezoData {
-  u16 value1;
-  u16 value2;
-  u16 value3;
-  u16 value4;
+struct posControllerData {
+    u16 minHystDist;
+    u16 maxHystDist;
+    unsigned hysteresisActive:1;
+    unsigned allowWrapAround:1;
+    unsigned unused:6;
+    u8 overDistCount;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct errorData {

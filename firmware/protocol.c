@@ -5,6 +5,9 @@
 #include "inc/stm32f10x_gpio.h"
 #include "printf.h"
 
+//HACK this should be moved to a callback interface for message ids...
+void positionControllerSetControllerConfiguration(struct posControllerData* data);
+
 u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
     //clear device specific adress bits
     curMsg->StdId &= ~ownHostId;
@@ -209,6 +212,12 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
             }
             //systick needs to run one time after new encoder values are set
             forceSynchronisation = 1;
+	}
+	break;
+	case PACKET_ID_POS_CONTROLLER_DATA:
+	{
+	    struct posControllerData *data = (struct posControllerData *) curMsg->Data;
+	    positionControllerSetControllerConfiguration(data);
 	}
 	break;
      default: 

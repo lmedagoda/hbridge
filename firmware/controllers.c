@@ -5,24 +5,35 @@
 #include "inc/stm32f10x_can.h"
 #include "encoder.h"
 #include "state.h"
+#include "position_controller.h"
+#include "controllers.h"
 
 extern volatile enum hostIDs ownHostId;
-struct pid_data posPidData;
 struct pid_data speedPidData;
 volatile s32 lastWheelPos = 0;
 
+
+
+struct ControllerInterface controllers[3];
+
+
 void initControllers()
 {
+    controllers[CONTROLLER_MODE_POSITION].init = positionControllerInit;
+    controllers[CONTROLLER_MODE_POSITION].deInit = positionControllerDeInit;
+    controllers[CONTROLLER_MODE_POSITION].reset = positionControllerReset;
+    controllers[CONTROLLER_MODE_POSITION].setConfiguration = positionControllerSetConfiguration;
+    controllers[CONTROLLER_MODE_POSITION].step = positionControllerStep;
+    
     //init pid structs with sane values
-    initPIDStruct(&(posPidData));
     initPIDStruct(&(speedPidData));
+    controllers[CONTROLLER_MODE_POSITION].init();
 }
 
 void resetControllers(s32 wheelPos)
 {
     lastWheelPos = wheelPos;
     resetPIDStruct(&(speedPidData));
-    resetPIDStruct(&(posPidData));
 }
 
 
@@ -34,65 +45,7 @@ void setNewSpeedPIDValues(s32 p, s32 i, s32 d, s32 minMax) {
 }
 
 void setNewPosPIDValues(s32 p, s32 i, s32 d, s32 minMax) {
-    setKp(&(posPidData), p);
-    setKi(&(posPidData), i);
-    setKd(&(posPidData), d);
-    setMinMaxCommandVal(&(posPidData), -minMax, minMax);
-}
-
-
-s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) {    
-    s32 pwmValue = 0;
-    s32 curVal = wheelPos;
-
-    //correct wraparounds
-    if(abs((targetPos) - curVal) > ticksPerTurn / 2) {
-    if(curVal < ticksPerTurn / 2)
-	curVal += ticksPerTurn;
-    else 
-	curVal -= ticksPerTurn;
-    }
-
-    //calculate PID value
-    setTargetValue(&(posPidData), targetPos);
-    pwmValue = pid(&(posPidData), curVal);
-
-    if(debug) {
-	u8 tickDivider = getTickDivider(activeCState->controllerInputEncoder);
-	
-        CanTxMsg pidMessagePos;
-        CanTxMsg posDbgMessage;
-
-	//send status message over CAN
-	pidMessagePos.StdId= PACKET_ID_PID_DEBUG_POS + ownHostId;
-	pidMessagePos.RTR=CAN_RTR_DATA;
-	pidMessagePos.IDE=CAN_ID_STD;
-	pidMessagePos.DLC= sizeof(struct pidDebugData);
-
-	struct pidDebugData *sdata = (struct pidDebugData *) pidMessagePos.Data;
-	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
-	sdata->minMaxPidOutput = posPidData.max_command_val;
-	posDbgMessage.StdId= PACKET_ID_POS_DEBUG + ownHostId;
-	posDbgMessage.RTR=CAN_RTR_DATA;
-	posDbgMessage.IDE=CAN_ID_STD;
-	posDbgMessage.DLC= sizeof(struct posDebugData);
-
-	struct posDebugData *pdbgdata = (struct posDebugData *) posDbgMessage.Data;
-	pdbgdata->targetVal = targetPos / tickDivider;
-	pdbgdata->pwmVal = pwmValue;
-	pdbgdata->encoderVal = wheelPos / tickDivider;
-	pdbgdata->posVal = curVal / tickDivider;
-	
-	while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
-	    ;
-	}
-	
-	while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
-	    ;
-	}
-    }
-
-    return pwmValue;
+    controllers[CONTROLLER_MODE_POSITION].setConfiguration(p,i,d,minMax);
 }
 
 
@@ -162,7 +115,8 @@ s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
 }
 
 s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
-    s32 pwmValue = positionController(targetPos, wheelPos, ticksPerTurn, debug);
+    controllers[CONTROLLER_MODE_POSITION].setDebugActive(debug);
+    s32 pwmValue = controllers[CONTROLLER_MODE_POSITION].step(targetPos, wheelPos, ticksPerTurn);
     pwmValue = speedController(pwmValue / 10, wheelPos, ticksPerTurn, debug);
    
     return pwmValue;

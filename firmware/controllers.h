@@ -2,6 +2,24 @@
 #define __CONTROLLERS_H
 
 #include "inc/stm32f10x_type.h"
+#include "pid.h"
+
+struct ControllerData {
+    struct pid_data pidData;
+    s32 lastWheelPos;
+    u8 debugActive;
+};
+
+struct ControllerInterface {
+    void (*init) (void);
+    void (*reset) (s32 wheelPos);
+    void (*setDebugActive) (u8 debugActive);
+    void (*setConfiguration) (s32 p, s32 i, s32 d, s32 minMax);
+    s32 (*step) (s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
+    void (*deInit) (void);
+};
+
+extern struct ControllerInterface controllers[3];
 
 /**
 * This function initializes internal values of the controllers

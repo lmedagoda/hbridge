@@ -217,7 +217,8 @@ void SysTickHandler(void) {
                     if(activeCState->cascadedPositionController) {
 			pwmValue = cascadedPositionController(targetPositionValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
 		    } else {
-			pwmValue = positionController(targetPositionValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
+			controllers[CONTROLLER_MODE_POSITION].setDebugActive(activeCState->enablePIDDebug);
+			pwmValue =  controllers[CONTROLLER_MODE_POSITION].step(targetPositionValue, wheelPos, ticksPerTurn);
 		    }
 		    break;
 		}   

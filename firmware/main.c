@@ -160,9 +160,6 @@ int main(void)
   }
 }
 
-
-
-
 /*******************************************************************************
 * Function Name  : GPIO_Configuration
 * Description    : Configures the different GPIO ports.
