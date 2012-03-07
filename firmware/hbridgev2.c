@@ -59,6 +59,8 @@ void initHbridgeTimers()
     //low sides have low polarity
     ocstruct.TIM_OCMode = TIM_OCMode_PWM2;
     ocstruct.TIM_OCPolarity = TIM_OCPolarity_High;
+    //initally low
+    ocstruct.TIM_Pulse = 900;
     TIM_OC2Init(TIM1, &ocstruct);
     TIM_OC4Init(TIM1, &ocstruct);
 
