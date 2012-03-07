@@ -7,20 +7,12 @@
 #include "printf.h"
 #include "current_measurement.h"
 #include <stdlib.h>
+#include <stm32f10x_gpio.h>
 
 #define ADC1_DR_Address    ((u32)0x4001244C)
 #define AVERAGE_THRESHOLD 10
-#define SLOPE_1 1388
-#define SLOPE_2 1275
 
 vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
-
-static ADC_InitTypeDef ADC_InitSingleShot;
-static DMA_InitTypeDef DMA_InitStructure;
-
-
-vu32 acs712BaseVoltage = 0;
-vu32 currentValue = 0;
 
 struct adcValues{
   u32 currentValues[USED_REGULAR_ADC_CHANNELS];
@@ -34,8 +26,8 @@ vu8 switchAdcValues = 0;
 static struct adcValues avs1;
 static struct adcValues avs2;
 
-volatile struct adcValues *activeAdcValues = &avs1;
-volatile struct adcValues *inActiveAdcValues = &avs2;
+volatile struct adcValues *activeAdcValues;
+volatile struct adcValues *inActiveAdcValues;
 
 extern vu8 actualDirection;
 vu8 oldDirection;
@@ -55,7 +47,6 @@ void waitForNewADCValues() {
 };
 
 u32 calculateCurrent() {
-
     /*
 	PWM period: 25000 ns
 	adc sample time:	1666.67 ns/sample
@@ -102,39 +93,52 @@ u32 calculateCurrent() {
     // search for corrupted values and sum up only usable values
     for(k = 0; k < (USED_REGULAR_ADC_CHANNELS / 2); k++) {
 	// hall sensor 1
-	if (h1[k] > thresholdMinH1 && h1[k] < thresholdMaxH1) {
+// 	if (h1[k] > thresholdMinH1 && h1[k] < thresholdMaxH1) {
 	    currentValueH1 += h1[k];
 	    cntH1++;
-	}
+// 	}
 	// hall sensor 2
-	if (h2[k] > thresholdMinH2 && h2[k] < thresholdMaxH2) {
+// 	if (h2[k] > thresholdMinH2 && h2[k] < thresholdMaxH2) {
 	    currentValueH2 += h2[k];
 	    cntH2++;
-	}
+// 	}
     }
 
     // compute average with accuracy factor
     if (cntH1 > 0)
-	currentValueH1 = (currentValueH1*128) / cntH1;
+	currentValueH1 = (currentValueH1*16) / cntH1;
     else 
 	currentValueH1 = 0;
 
     if (cntH2 > 0)
-	currentValueH2 = (currentValueH2*128) / cntH2;
+	currentValueH2 = (currentValueH2*16) / cntH2;
     else
 	currentValueH2 = 0;
-    
-    currentValue = currentValueH1 + currentValueH2;
 
-    //convert from voltage to Amps
-    currentValue = currentValue * 100 / 17; 
+    u32 curVal[12];
+    
+    for(i = 0; i< 12; i++)
+    {
+	u32 tmp = currentValues[i];
+	tmp = tmp * 100 / 17;
+	tmp = tmp * 3300 / 4096;
+	tmp = tmp / adcValueCount;
+	curVal[i] = tmp;
+    }
+    
+
+    currentValue = currentValueH1 + currentValueH2;
 
     //values are still raw adc values
     //convert to V
     currentValue = (currentValue * 3300) / 4096;
+
     
+    //convert from voltage to Amps
+    currentValue = currentValue * 100 / 17; 
+
     // divide by accuracy factor 128
-    currentValue = currentValue / 128;
+    currentValue = currentValue / 16;
 
     //divide by adcValueCount as every value until now is
     //the sum of values over adcValueCount pwm periods
@@ -165,6 +169,11 @@ void triggerTimerInit()
 {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+    //remap TIM to PD (not on chip)
+    GPIO_PinRemapConfig(GPIO_Remap_TIM4, ENABLE);
+    
     TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
@@ -189,10 +198,13 @@ void triggerTimerInit()
     TIM_OCStructInit(&ocstruct);
 
     //setup channel 4 for triggering of adc
-    ocstruct.TIM_OCMode = TIM_OCMode_Timing;
+    ocstruct.TIM_OCMode = TIM_OCMode_PWM1;
+    ocstruct.TIM_OutputState = TIM_OutputState_Enable;
     ocstruct.TIM_Pulse = 1;    
+    ocstruct.TIM_OCPolarity = TIM_OCPolarity_High;
     TIM_OC4Init(TIM4, &ocstruct);
 
+    TIM_UpdateDisableConfig(TIM4, DISABLE);
     //sync timer on timer 1
     TIM_SelectMasterSlaveMode(TIM4, TIM_MasterSlaveMode_Enable);
     TIM_SelectSlaveMode(TIM4, TIM_SlaveMode_Reset);
@@ -210,6 +222,9 @@ void adcInit()
     // Enable DMA1 clock 
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
+    DMA_InitTypeDef DMA_InitStructure;
+    DMA_StructInit(&DMA_InitStructure);
+    
     //DMA1 channel1 configuration
     DMA_DeInit(DMA1_Channel1);
     DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
@@ -244,6 +259,9 @@ void adcInit()
     //Enable DMA1 channel1
     DMA_Cmd(DMA1_Channel1, ENABLE);
 
+    ADC_InitTypeDef ADC_InitSingleShot;
+    ADC_StructInit(&ADC_InitSingleShot);
+    
     ADC_InitSingleShot.ADC_Mode = ADC_Mode_Independent;
     ADC_InitSingleShot.ADC_ScanConvMode = ENABLE;
     ADC_InitSingleShot.ADC_ContinuousConvMode = DISABLE;
@@ -289,52 +307,71 @@ void adcInit()
 
 void currentMeasurementInit()
 {
-    triggerTimerInit();
+    activeAdcValues = &avs1;
+    inActiveAdcValues = &avs2;
+    
+    int i;
+    //set all values to zero
+    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
+	activeAdcValues->currentValues[i] = 0;
+	inActiveAdcValues->currentValues[i] = 0;
+    }
+
+    // reset value count
+    activeAdcValues->currentValueCount = 0; 
+    inActiveAdcValues->currentValueCount = 0; 
+
     adcInit();
+    
+    triggerTimerInit();
 }
 
-void DMA1_Channel1_IRQHandler(void) {
+void DMA1_Channel1_IRQHandler(void) 
+{
+    GPIO_SetBits(GPIOA, GPIO_Pin_12);
 
-  int i;
+    int i;
 
-  // set pointer to active value struct
-  vu32 *cvp = activeAdcValues->currentValues;
+    // set pointer to active value struct
+    vu32 *cvp = activeAdcValues->currentValues;
 
-  // set pointer to converted value struct
-  vu16 *avp = adc_values;
+    // set pointer to converted value struct
+    vu16 *avp = adc_values;
 
-  // all channels are sampled
-  if(DMA1->ISR & DMA1_IT_TC1) {
+    // all channels are sampled
+    if(DMA1->ISR & DMA1_IT_TC1) {
 
-    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
-      *cvp += *avp;
-      ++cvp;
-      ++avp;
-    }
+	for(i = 0; i < USED_REGULAR_ADC_CHANNELS; i++) {
+	    *cvp += *avp;
+	    ++cvp;
+	    ++avp;
+	}
 
-    // increase value count
-    ++(activeAdcValues->currentValueCount);
+	// increase value count
+	++(activeAdcValues->currentValueCount);
 
-    // check switch value request
-    if(switchAdcValues) {
-      volatile struct adcValues *tempAdcValues;
+	// check switch value request
+	if(switchAdcValues) {
+	    volatile struct adcValues *tempAdcValues;
 
-      tempAdcValues = activeAdcValues;
-      activeAdcValues = inActiveAdcValues;
-      inActiveAdcValues = tempAdcValues;
-      
-      //set rest to zero
-      for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
-	activeAdcValues->currentValues[i] = 0;
-      }
-      activeAdcValues->currentValueCount = 0;
+	    tempAdcValues = activeAdcValues;
+	    activeAdcValues = inActiveAdcValues;
+	    inActiveAdcValues = tempAdcValues;
+	    
+	    //set rest to zero
+	    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
+		activeAdcValues->currentValues[i] = 0;
+	    }
+	    activeAdcValues->currentValueCount = 0;
 
-      switchAdcValues = 0;
+	    switchAdcValues = 0;
+	}
+    
+	//clear DMA interrupt pending bit
+	DMA1->IFCR = DMA1_FLAG_TC1;
     }
   
-    //clear DMA interrupt pending bit
-    DMA1->IFCR = DMA1_FLAG_TC1;
-  }
+    GPIO_ResetBits(GPIOA, GPIO_Pin_12);
 }
 
 
