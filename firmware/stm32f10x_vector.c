@@ -203,19 +203,19 @@ void Reset_Handler(void)
 /* init cpu at 72 mhz */
     cpu_init();
 
-    u32 c = 0;
-
-    for(pulSrc = 0; (unsigned char*)pulSrc < &_etext+(&_edata-&_data); ) {
-	c += *pulSrc++;
-    }
-    /* account for non-aligned &_edata */
-    switch (((u32)&_edata) & 0x3) {
-    case 0: break;
-    case 1: c -= (*--pulSrc) & 0xffffff00; break;
-    case 2: c -= (*--pulSrc) & 0xffff0000; break;
-    case 3: c -= (*--pulSrc) & 0xff000000; break;
-    }
-    while (c != 0) {} /*checksum error*/
+//     u32 c = 0;
+// 
+//     for(pulSrc = 0; (unsigned char*)pulSrc < &_etext+(&_edata-&_data); ) {
+// 	c += *pulSrc++;
+//     }
+//     /* account for non-aligned &_edata */
+//     switch (((u32)&_edata) & 0x3) {
+//     case 0: break;
+//     case 1: c -= (*--pulSrc) & 0xffffff00; break;
+//     case 2: c -= (*--pulSrc) & 0xffff0000; break;
+//     case 3: c -= (*--pulSrc) & 0xff000000; break;
+//     }
+//     while (c != 0) {} /*checksum error*/
 
 /* Call the application's entry point.*/
     main();
