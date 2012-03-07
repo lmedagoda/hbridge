@@ -45,6 +45,8 @@ void baseInit()
     //read out dip switches
     ownHostId = getOwnHostId();
 
+    hbridgeInit();
+
     currentMeasurementInit();
 
     encodersInit();
@@ -60,9 +62,6 @@ void baseInit()
 
     //clear all errors, btw initialize error state struct
     clearErrors();
-
-    hbridgeInit();
-
 }
 
 void pollCanMessages() 
