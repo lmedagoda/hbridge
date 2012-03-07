@@ -90,6 +90,7 @@ link_directories(
   )
 
 add_library(hbridge_common
+    position_controller.c
     controllers.c
     protocol.c
     state.c
