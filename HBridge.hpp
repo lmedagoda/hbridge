@@ -171,8 +171,8 @@ namespace hbridge
         int current;
         Ticks position;
         Ticks positionExtern;
-	int temperature;
-        int delta;
+	float temperature;
+	float motorTemperature;
         float pwm;
 	struct ErrorState error;
         base::Time can_time;

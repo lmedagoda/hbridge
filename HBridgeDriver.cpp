@@ -189,14 +189,20 @@ int Driver::getCurrentTickDivider(int index) const
 		this->states[index].position = encoderIntern[index].getAbsolutPosition();
 		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition();
 
-		//FIXME, What is this ?
-// 		this->states[index].delta = diff;
-		
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
                 this->states[index].can_time = msg.can_time;
                 break;
             }
+	    case firmware::PACKET_ID_EXTENDED_STATUS:
+	    {
+		const firmware::extendedStatusData *esdata = 
+		    reinterpret_cast<const firmware::extendedStatusData *>(msg.data);
+		    
+		this->states[index].temperature = esdata->temperature;
+		this->states[index].motorTemperature = esdata->motorTemperature;
+		break;
+	    }
 
             case firmware::PACKET_ID_SPEED_DEBUG: {
 		int tickDivider = getCurrentTickDivider(index);

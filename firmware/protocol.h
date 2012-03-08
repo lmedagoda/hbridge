@@ -42,6 +42,7 @@ enum packetIDs {
   PACKET_ID_PID_DEBUG_SPEED = 15,
   PACKET_ID_SPEED_DEBUG = 16,
   PACKET_ID_POS_CONTROLLER_DATA = 17,
+  PACKET_ID_EXTENDED_STATUS = 18, 
 };
 
 #define NUM_ENCODERS 6
@@ -110,6 +111,11 @@ struct statusData {
   u16 position;
   unsigned currentValue :14;
   unsigned index :10;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct extendedStatusData {
+    u8 temperature;
+    u8 motorTemperature;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setValueData {
