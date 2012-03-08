@@ -19,7 +19,9 @@ struct ControllerInterface {
     void (*deInit) (void);
 };
 
-extern struct ControllerInterface controllers[3];
+#define NUM_CONTROLLERS 3
+
+extern struct ControllerInterface controllers[NUM_CONTROLLERS];
 
 /**
 * This function initializes internal values of the controllers

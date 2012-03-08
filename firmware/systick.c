@@ -302,7 +302,8 @@ void SysTickHandler(void) {
 		    break;
 		}   
 		case CONTROLLER_MODE_SPEED:
-		    pwmValue = speedController(activeCState->targetValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
+		    controllers[CONTROLLER_MODE_SPEED].setDebugActive(activeCState->enablePIDDebug);
+		    pwmValue = controllers[CONTROLLER_MODE_SPEED].step(activeCState->targetValue, wheelPos, ticksPerTurn);
 		    break; 
 		default:
 		    pwmValue = 0;
