@@ -13,6 +13,7 @@ void initStateStruct(volatile struct ControllerState *cs) {
     //init cotroller state with sane values
     cs->controllMode = CONTROLLER_MODE_PWM;
     cs->internalState = STATE_UNCONFIGURED;
+    cs->useExternalTempSensor = 0;
     cs->useOpenLoop = 0;
     cs->cascadedPositionController = 0;
     cs->pwmStepPerMillisecond = 0;

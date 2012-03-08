@@ -135,6 +135,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
             }
 	    print("Got PACKET_ID_SET_CONFIGURE Msg \n");
 	    struct configure1Data *data = (struct configure1Data *) curMsg->Data;
+	    state->useExternalTempSensor = data->externalTempSensor;
 	    state->useOpenLoop = data->openCircuit;
 	    state->cascadedPositionController = data->cascadedPositionController;
             state->controllerInputEncoder = data->controllerInputEncoder;

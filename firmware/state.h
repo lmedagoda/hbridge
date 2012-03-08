@@ -38,6 +38,7 @@ struct ControllerState {
   enum encoderTypes internalEncoder;
   enum encoderTypes externalEncoder;
   enum controllerInputEncoder controllerInputEncoder;
+  u8 useExternalTempSensor;
   u8 useOpenLoop;
   u8 enablePIDDebug;
   u8 cascadedPositionController;

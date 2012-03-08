@@ -23,6 +23,7 @@
 volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
+static u32 motorTemperature = 0;
 volatile struct ControllerState cs1;
 volatile struct ControllerState cs2;
 
@@ -41,6 +42,7 @@ void baseNvicInit()
 void baseInit()
 {
     systemTick = 0;
+    motorTemperature = 0;
 
     //read out dip switches
     ownHostId = getOwnHostId();
@@ -159,8 +161,13 @@ void SysTickHandler(void) {
     u32 currentValue = calculateCurrent(currentPwmValue);
 
     // get temperature
-    lm73cimk_getTemperature(LM73_SENSOR_1,&temperature);
+    lm73cimk_getTemperature(LM73_SENSOR1,&temperature);
 
+    if(activeCState->useExternalTempSensor)
+    {
+	lm73cimk_getTemperature(LM73_SENSOR2,&motorTemperature);
+    }
+    
     //reset timeout, if "userspace" requested it
     if(activeCState->resetTimeoutCounter) {
 	activeCState->resetTimeoutCounter = 0;

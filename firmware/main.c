@@ -91,6 +91,10 @@ int main(void)
     //init temperature sensor
     lm73cimk_init(I2C1, ENABLE);
 
+    //address of LM73_SENSOR_1 is 156 // 1001110 + r/w bit
+    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, ENABLE, 156);
+    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, ENABLE, 148);
+    
     //wait until 5V rail get's stable
     vu32 delay = 20000000;
     while(delay)

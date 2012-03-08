@@ -95,7 +95,12 @@ int main(void)
     baseInit();
     
     //init temperature sensor
-    lm73cimk_init(I2C1, DISABLE);
+    lm73cimk_init();
+    
+    //address of sensor one 148 // 1001110 + r/w bit
+    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, DISABLE, 148);
+    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, DISABLE, 156);
+
     
     print("Peripheral configuration finished\n");
 
