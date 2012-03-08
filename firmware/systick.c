@@ -23,9 +23,86 @@
 volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
+static s32 currentPwmValue = 0;
+static u16 index = 0;
+static u16 overCurrentCounter = 0;
+static u16 timeoutCounter = 0;
+static u32 temperature = 0;
+static u32 overTempCounter = 0;
 static u32 motorTemperature = 0;
+static u32 overMotorTempCounter = 0;
+
 volatile struct ControllerState cs1;
 volatile struct ControllerState cs2;
+
+void checkMotorTemperature();
+void checkTimeout();
+void checkTemperature();
+void checkOverCurrent();
+
+void sendStatusMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index);
+void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index);
+
+void resetCounters()
+{
+    overCurrentCounter = 0;
+    timeoutCounter = 0;
+    overTempCounter = 0;
+    overMotorTempCounter = 0;
+}
+
+void checkTimeout()
+{	
+    //check for timeout and go into error state
+    if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
+	getErrorState()->timeout = 1;
+    }
+}
+
+void checkOverCurrent(u32 currentValue)
+{
+    //check for overcurrent
+    if(currentValue > activeCState->maxCurrent) {
+	overCurrentCounter++;
+
+	if(overCurrentCounter > activeCState->maxCurrentCount) {
+	    getErrorState()->overCurrent = 1;
+	}
+    } else {
+	overCurrentCounter = 0;
+    }
+}
+
+void checkMotorTemperature(u32 temperature)
+{
+    if(!activeCState->useExternalTempSensor)
+	return;
+	
+    //check for overcurrent
+    if(temperature > activeCState->maxMotorTemp) {
+	overMotorTempCounter++;
+
+	if(overMotorTempCounter > activeCState->maxMotorTempCount) {
+	    getErrorState()->motorOverheated = 1;
+	}
+    } else {
+	overMotorTempCounter = 0;
+    }
+}
+
+void checkTemperature(u32 temperature)
+{
+    //check for overcurrent
+    if(temperature > activeCState->maxBoardTemp) {
+	overTempCounter++;
+
+	if(overTempCounter > activeCState->maxBoardTempCount) {
+	    getErrorState()->boardOverheated = 1;
+	}
+    } else {
+	overTempCounter = 0;
+    }
+}
 
 void baseNvicInit()
 {
@@ -42,7 +119,15 @@ void baseNvicInit()
 void baseInit()
 {
     systemTick = 0;
+    currentPwmValue = 0;
+    index = 0;
+    overCurrentCounter = 0;
+    timeoutCounter = 0;
+    temperature = 0;
+    overTempCounter = 0;
     motorTemperature = 0;
+    overCurrentCounter = 0;
+    
 
     //read out dip switches
     ownHostId = getOwnHostId();
@@ -123,12 +208,6 @@ void SysTickHandler(void) {
     //request switch of adc value struct
     requestNewADCValues();
 
-    static s32 currentPwmValue = 0;
-    static u16 index = 0;
-    static u16 overCurrentCounter = 0;
-    static u16 timeoutCounter = 0;
-    static u32 temperature = 0;
-
     s32 pwmValue = 0;
     s32 wheelPos = 0;
     u32 ticksPerTurn = 0;
@@ -188,24 +267,17 @@ void SysTickHandler(void) {
 
     //only check for overcurrent if configured
     if(activeCState->internalState == STATE_CONFIGURED || activeCState->internalState == STATE_GOT_TARGET_VAL) {
-	//check for overcurrent
-	if(currentValue > activeCState->maxCurrent) {
-	    overCurrentCounter++;
 
-	    if(overCurrentCounter > activeCState->maxCurrentCount) {
-		activeCState->internalState = STATE_ERROR;
-		getErrorState()->overCurrent = 1;
-	    }
-	} else {
-	    overCurrentCounter = 0;
+	checkTimeout();
+	checkTemperature(temperature);
+	checkMotorTemperature(motorTemperature);
+	checkOverCurrent(currentValue);
+
+	if(inErrorState())
+	{
+	    activeCState->internalState = STATE_ERROR;
 	}
 	
-	//check for timeout and go into error state
-	if(activeCState->timeout && (timeoutCounter > activeCState->timeout)) {
-	    activeCState->internalState = STATE_ERROR;
-	    getErrorState()->timeout = 1;
-	}
-    
 	//only run controllers if we got an target value
 	if(activeCState->internalState == STATE_GOT_TARGET_VAL) {
 	    //calculate pwm value
@@ -255,30 +327,8 @@ void SysTickHandler(void) {
 	} else {
 	    currentPwmValue = 0;
 	}
-  
-	//send status message over CAN
-	CanTxMsg statusMessage;
-	statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
-	statusMessage.RTR=CAN_RTR_DATA;
-	statusMessage.IDE=CAN_ID_STD;
-	statusMessage.DLC= sizeof(struct statusData);
-	
-	struct statusData *sdata = (struct statusData *) statusMessage.Data;
-	
-	sdata->pwm = currentPwmValue;
-	sdata->externalPosition = getDividedTicks(activeCState->externalEncoder);
-	sdata->position = getDividedTicks(activeCState->internalEncoder);
-	sdata->currentValue = currentValue;
-	sdata->index = index;
-	
-	//cancel out old messages
-	CAN_CancelAllTransmits();
-	
-	if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
-	    print("Error Tranmitting status Message : No free TxMailbox \n");
-	} else {
-	    //print("Tranmitting status Message : OK \n");  
-	}
+
+	sendStatusMessage(currentPwmValue, currentValue, temperature, motorTemperature, index);
 	
 	//increase timeout
 	timeoutCounter++;
@@ -286,50 +336,104 @@ void SysTickHandler(void) {
 	//set pwm
 	setNewPWM(currentPwmValue, activeCState->useOpenLoop);
     } else {
+	currentPwmValue = 0;
+	
 	//send error message
-	if(activeCState->internalState == STATE_ERROR) {  
-	    //send status message over CAN
-	    CanTxMsg errorMessage;
-	    errorMessage.StdId= PACKET_ID_ERROR + ownHostId;
-	    errorMessage.RTR=CAN_RTR_DATA;
-	    errorMessage.IDE=CAN_ID_STD;
-	    errorMessage.DLC= sizeof(struct errorData);
-	    
-	    struct errorData *edata = (struct errorData *) errorMessage.Data;
-
-	    volatile struct ErrorState *es = getErrorState();
-
-	    edata->temperature = temperature;
-	    edata->position = getDividedTicks(activeCState->internalEncoder);
-	    edata->index = index;
-	    edata->externalPosition = getDividedTicks(activeCState->externalEncoder);
-	    edata->motorOverheated = es->motorOverheated;
-	    edata->boardOverheated = es->boardOverheated;
-	    edata->overCurrent = es->overCurrent;
-	    edata->timeout = es->timeout;
-	    edata->badConfig = es->badConfig;
-	    edata->encodersNotInitalized = es->encodersNotInitalized;
-
-	    //cancel out old messages
-	    CAN_CancelAllTransmits();
-
-	    if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
-		print("Error Tranmitting status Message : No free TxMailbox \n");
-	    } else {
-	    //print("Tranmitting status Message : OK \n");  
-	    }
+	if(activeCState->internalState == STATE_ERROR) {
+	    sendErrorMessage(currentPwmValue, currentValue, temperature, motorTemperature, index);
 	}
     
 	//reset to zero values
-	overCurrentCounter = 0;
-	timeoutCounter = 0;
-	setNewPWM(0, activeCState->useOpenLoop);
+	resetCounters();
+	setNewPWM(currentPwmValue, activeCState->useOpenLoop);
 
 	//reset PID struct, to avoid bad controller 
 	//behavior an reactivation due to big I part
 	resetControllers(wheelPos);
     }
 }
+
+void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index)
+{
+    //send status message over CAN
+    CanTxMsg errorMessage;
+    errorMessage.StdId= PACKET_ID_ERROR + ownHostId;
+    errorMessage.RTR=CAN_RTR_DATA;
+    errorMessage.IDE=CAN_ID_STD;
+    errorMessage.DLC= sizeof(struct errorData);
+    
+    struct errorData *edata = (struct errorData *) errorMessage.Data;
+
+    volatile struct ErrorState *es = getErrorState();
+
+    edata->temperature = temperature;
+    edata->position = getDividedTicks(activeCState->internalEncoder);
+    edata->index = index;
+    edata->externalPosition = getDividedTicks(activeCState->externalEncoder);
+    edata->motorOverheated = es->motorOverheated;
+    edata->boardOverheated = es->boardOverheated;
+    edata->overCurrent = es->overCurrent;
+    edata->timeout = es->timeout;
+    edata->badConfig = es->badConfig;
+    edata->encodersNotInitalized = es->encodersNotInitalized;
+
+    //cancel out old messages
+    CAN_CancelAllTransmits();
+
+    if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
+	print("Error Tranmitting status Message : No free TxMailbox \n");
+    } else {
+    //print("Tranmitting status Message : OK \n");  
+    }
+}
+
+void sendStatusMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index)
+{
+    //send status message over CAN
+    CanTxMsg statusMessage;
+    statusMessage.StdId= PACKET_ID_STATUS + ownHostId;
+    statusMessage.RTR=CAN_RTR_DATA;
+    statusMessage.IDE=CAN_ID_STD;
+    statusMessage.DLC= sizeof(struct statusData);
+    
+    struct statusData *sdata = (struct statusData *) statusMessage.Data;
+    
+    sdata->pwm = currentPwmValue;
+    sdata->externalPosition = getDividedTicks(activeCState->externalEncoder);
+    sdata->position = getDividedTicks(activeCState->internalEncoder);
+    sdata->currentValue = currentValue;
+    sdata->index = index;
+    
+    //cancel out old messages
+    CAN_CancelAllTransmits();
+    
+    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+	print("Error Tranmitting status Message : No free TxMailbox \n");
+    } else {
+	//print("Tranmitting status Message : OK \n");  
+    }
+    
+    //not this is not exact every 100 ms, but good enough
+    if(index % 100 == 0)
+    {
+	CanTxMsg extendedStatusMessage;
+	extendedStatusMessage.StdId= PACKET_ID_EXTENDED_STATUS + ownHostId;
+	extendedStatusMessage.RTR=CAN_RTR_DATA;
+	extendedStatusMessage.IDE=CAN_ID_STD;
+	extendedStatusMessage.DLC= sizeof(struct extendedStatusData);
+	
+	struct extendedStatusData *esdata = (struct extendedStatusData *) extendedStatusMessage.Data;
+	esdata->temperature = temperature;
+	esdata->motorTemperature = motorTemperature;
+	if(CAN_Transmit(&extendedStatusMessage) == CAN_NO_MB) {
+	    print("Error Tranmitting status Message : No free TxMailbox \n");
+	} else {
+	    //print("Tranmitting status Message : OK \n");  
+	}
+    }
+}
+
+
 
 void SysTick_Configuration(void) {
     SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
