@@ -11,7 +11,7 @@ enum LM73_SENSORS {
 
 void lm73cimk_init();
 
-void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus, FunctionalState i2c_remapped, u8 i2c_addr);
+void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus, u8 i2c_addr);
 
 u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, u32* val);
 

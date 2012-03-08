@@ -9,7 +9,14 @@
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
-void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) {
+void resetI2C(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
+{
+    //resetup bus
+    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx,  I2Cx_Data->curI2CIsRemapped);
+}
+
+void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) 
+{
     volatile int wait;
     volatile struct I2C_Data *I2Cx_Data;
     u8 EV_IRQChannel;
@@ -61,6 +68,9 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_Init(&NVIC_InitStructure);
     
+    //be shure bus is not beeing resetet
+    I2C_SoftwareResetCmd(I2Cx, DISABLE);
+
     I2C_DeInit(I2Cx);
 
     //configure as in floating, before (RE) initalizing.

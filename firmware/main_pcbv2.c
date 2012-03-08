@@ -10,6 +10,7 @@
 #include "current_measurement.h"
 #include "can.h"
 #include "assert.h"
+#include "i2c.h"
 #include "lm73cimk.h"
 #include "encoder.h"
 #include "encoder_quadrature.h"
@@ -93,13 +94,21 @@ int main(void)
     //init basic functionality
     //read address, turn on peripherals etc.
     baseInit();
+
+    print("Setting up I2C\n");
+    //setup I2C bus for lm73cimk
+    setupI2Cx(0xA0, 100000, I2C1, DISABLE);
     
+
+    print("LM73 init\n");
     //init temperature sensor
     lm73cimk_init();
     
     //address of sensor one 148 // 1001110 + r/w bit
-    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, DISABLE, 148);
-    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, DISABLE, 156);
+    print("LM73 Sensor1 setup\n");
+    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, 148);
+    print("LM73 Sensor2 setup\n");
+    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, 144);
 
     
     print("Peripheral configuration finished\n");

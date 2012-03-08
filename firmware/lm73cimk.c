@@ -49,10 +49,11 @@ void lm73cimk_init()
 	lm73Data[i].address = 0;
 	lm73Data[i].I2C_Data = 0;
 	lm73Data[i].I2C_Bus = 0;
+	lm73Data[i].errorCounter = 0;
     }
 }
 
-void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus_l, FunctionalState i2c_remapped, u8 i2c_addr)
+void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus_l, u8 i2c_addr)
 {
     lm73Data[sensor].I2C_Bus = I2C_Bus_l;
     if(lm73Data[sensor].I2C_Bus == I2C1)
@@ -62,14 +63,11 @@ void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus_l, Fun
     else
     {
 	lm73Data[sensor].I2C_Data = &I2C2_Data;
-	//I2C2 can not be remapped
-	assert_param(!remapped);
     }
 
-    setupI2Cx(0xA0, 100000, lm73Data[sensor].I2C_Bus, i2c_remapped);
-    
     lm73Data[sensor].state = LM73_IDLE;    
     lm73Data[sensor].enabled = 1;
+    lm73Data[sensor].address = i2c_addr;
 }
 
 
@@ -112,7 +110,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
     switch(lm73Data[sensor].state) {
     case LM73_IDLE:
 	//trigger new conversion
-	if(!lm73cimk_triggerTemeratureConversion(lm73Data[sensor].address)) {
+	if(!lm73cimk_triggerTemeratureConversion(sensor)) {
 	    statistic1++;
 	    statistic_tr++;
 	    lm73Data[sensor].state = LM73_TRIGGERED;
@@ -125,7 +123,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	//test if last operation was finished
 	if(I2CxOperationFinished(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data)) {
 	    //request next temperature
-	    if(!lm73cimk_requestTemperature(lm73Data[sensor].address)) {
+	    if(!lm73cimk_requestTemperature(sensor)) {
 		statistic1++;
 		statistic_r++;
 		lm73Data[sensor].errorCounter = 0;
@@ -137,8 +135,9 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	{
 	    if(++(lm73Data[sensor].errorCounter) > 2000)
 	    {
-		I2C_SoftwareResetCmd(lm73Data[sensor].I2C_Bus, DISABLE);
-		lm73cimk_init(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data->curI2CIsRemapped);
+	        print("bus reset\n");
+		//reset bus and start over
+		resetI2C(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data);
 		lm73Data[sensor].errorCounter = 0;
 		lm73Data[sensor].state = LM73_IDLE;
 	    }
@@ -220,7 +219,7 @@ u8 lm73cimk_requestTemperature(enum LM73_SENSORS sensor)
 u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, u32* val)
 {
     if(lm73Data[sensor].state != LM73_ACQUIRED_TEMP) {
-	moveLM73CIMKStateMachine(lm73Data[sensor].address);
+	moveLM73CIMKStateMachine(sensor);
     } else {
 	*val = lm73Data[sensor].temperature;
 	lm73Data[sensor].state = LM73_IDLE;

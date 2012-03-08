@@ -9,6 +9,7 @@
 #include "current_measurement.h"
 #include "can.h"
 #include "assert.h"
+#include "i2c.h"
 #include "lm73cimk.h"
 
 void GPIO_Configuration(void);
@@ -87,13 +88,16 @@ int main(void)
     //init basic functionality
     //read address, turn on peripherals etc.
     baseInit();
+
+    //setup I2C bus for lm73cimk
+    setupI2Cx(0xA0, 100000, I2C1, ENABLE);
     
     //init temperature sensor
     lm73cimk_init(I2C1, ENABLE);
 
     //address of LM73_SENSOR_1 is 156 // 1001110 + r/w bit
-    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, ENABLE, 156);
-    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, ENABLE, 148);
+    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, 156);
+    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, 148);
     
     //wait until 5V rail get's stable
     vu32 delay = 20000000;

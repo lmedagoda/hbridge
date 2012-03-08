@@ -66,6 +66,13 @@ u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2C
 u8 I2CxOperationFinished(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
 void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped);
 
+/**
+ * This function resets the I2C bus, this may be called from
+ * drivers if they think the bus is faulty and needs a complete
+ * reset.
+ **/
+void resetI2C(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+
 u8 I2C1SendBytes(u8 *data, u8 size, u8 addr);
 u8 I2C1ReadBytes(u8 size, u8 addr);
 u8 I2C1WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
