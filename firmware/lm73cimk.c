@@ -9,6 +9,7 @@
 enum lm73cimkState {
   LM73_IDLE,
   LM73_TRIGGERED,
+  LM73_TRIGGER_FINISHED,
   LM73_TEMP_REQUESTED,
   LM73_ERROR,
   LM73_ACQUIRED_TEMP,
@@ -25,7 +26,10 @@ struct LM73Data {
     u32 errorCounter;
 };
 
-struct LM73Data lm73Data[2];
+#define NUM_LM73 2
+
+struct LM73Data lm73Data[NUM_LM73];
+
 
 u32 statistic1 = 0;
 u32 statistic2 = 0;
@@ -34,45 +38,77 @@ u32 statistic_nr = 0;
 u32 statistic_gt = 0;
 u32 statistic_r = 0;
 
+enum LM73_SENSORS curI2COwner;
+enum LM73_SENSORS lastI2COwner;
+
 u8 lm73cimk_triggerTemeratureConversion(enum LM73_SENSORS sensor);
-void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor);
+void moveLM73CIMKStateMachine();
 u8 lm73cimk_requestTemperature(enum LM73_SENSORS sensor);
 
-void lm73cimk_init()
+void lm73cimk_init(I2C_TypeDef* I2C_Bus_l)
 {
+    lastI2COwner = LM73_NONE;
+    curI2COwner = LM73_NONE;
+
     int i;
-    for(i = 0; i < 2; i++)
+    for(i = 0; i < NUM_LM73; i++)
     {
 	lm73Data[i].enabled = 0;
 	lm73Data[i].state = LM73_IDLE;
 	lm73Data[i].temperature = 0;
 	lm73Data[i].address = 0;
-	lm73Data[i].I2C_Data = 0;
-	lm73Data[i].I2C_Bus = 0;
+	lm73Data[i].I2C_Bus = I2C_Bus_l;
+	if(lm73Data[i].I2C_Bus == I2C1)
+	{
+	    lm73Data[i].I2C_Data = &I2C1_Data;
+	}
+	else
+	{
+	    lm73Data[i].I2C_Data = &I2C2_Data;
+	}
 	lm73Data[i].errorCounter = 0;
     }
 }
 
-void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, I2C_TypeDef* I2C_Bus_l, u8 i2c_addr)
+void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, u8 i2c_addr)
 {
-    lm73Data[sensor].I2C_Bus = I2C_Bus_l;
-    if(lm73Data[sensor].I2C_Bus == I2C1)
-    {
-	lm73Data[sensor].I2C_Data = &I2C1_Data;
-    }
-    else
-    {
-	lm73Data[sensor].I2C_Data = &I2C2_Data;
-    }
-
     lm73Data[sensor].state = LM73_IDLE;    
     lm73Data[sensor].enabled = 1;
     lm73Data[sensor].address = i2c_addr;
 }
 
-
-void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor) 
+void scheduleLM73()
 {
+    if(curI2COwner == LM73_NONE)
+    {
+	//round robing sceduling
+	int i = lastI2COwner;
+	i++;
+	
+	if(i >= LM73_NONE)
+	    i = 0;
+	
+	//look for next enabled sensor
+	for(; i < LM73_NONE; i++)
+	{
+	    if(lm73Data[i].enabled)
+	    {
+		break;
+	    }
+	}
+	
+	curI2COwner = i;
+	lastI2COwner = curI2COwner;
+    }
+}
+
+void moveLM73CIMKStateMachine() 
+{
+    scheduleLM73();
+    
+    if(curI2COwner == LM73_NONE)
+	return;
+    
     if(statistic1 > 10000) {
 	print("Did 10000 i2c operations \n");
 	printf("Errors: %lu \n", statistic2);
@@ -90,6 +126,8 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	print("move state machine\n");
     }
     
+    enum LM73_SENSORS sensor = curI2COwner;
+    
     //handle I2C errors
     if(handleI2CxErrors(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data))
     {
@@ -98,12 +136,10 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	//we were not acked, restart
 	//request next temperature
     
-	if(lm73Data[sensor].state == LM73_TRIGGERED)
-	    //retrigger
-	    lm73Data[sensor].state = LM73_IDLE;
-	else
-	    //restart polling
-	    lm73Data[sensor].state = LM73_TRIGGERED;
+	//retrigger
+	lm73Data[sensor].state = LM73_IDLE;
+	//give away bus for other sensor
+	curI2COwner = LM73_NONE;
     }
   
 
@@ -122,14 +158,9 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
     {
 	//test if last operation was finished
 	if(I2CxOperationFinished(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data)) {
-	    //request next temperature
-	    if(!lm73cimk_requestTemperature(sensor)) {
-		statistic1++;
-		statistic_r++;
-		lm73Data[sensor].errorCounter = 0;
-		//print("Requested\n");
-		lm73Data[sensor].state = LM73_TEMP_REQUESTED;
-	    }
+	    lm73Data[sensor].state = LM73_TRIGGER_FINISHED;
+	    //give away bus for other sensor
+	    curI2COwner = LM73_NONE;
 	}
 	else
 	{
@@ -140,10 +171,23 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 		resetI2C(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data);
 		lm73Data[sensor].errorCounter = 0;
 		lm73Data[sensor].state = LM73_IDLE;
+		//give away bus for other sensor
+		curI2COwner = LM73_NONE;
 	    }
 	}
 	break;
     }
+    case LM73_TRIGGER_FINISHED:
+	//request next temperature
+	if(!lm73cimk_requestTemperature(sensor)) {
+	    statistic1++;
+	    statistic_r++;
+	    lm73Data[sensor].errorCounter = 0;
+	    //print("Requested\n");
+	    lm73Data[sensor].state = LM73_TEMP_REQUESTED;
+	}
+	break;
+
     case LM73_TEMP_REQUESTED:
 	if(I2CxOperationFinished(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data)) {
 	    //print("Got Temp\n");
@@ -156,7 +200,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	    {
 		//print("Temp Conversation not finished\n");
 		++statistic_nr;
-		lm73Data[sensor].state = LM73_TRIGGERED;
+		lm73Data[sensor].state = LM73_TRIGGER_FINISHED;
 	    }
 	    else
 	    {
@@ -169,6 +213,8 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 		statistic_gt++;
 		lm73Data[sensor].state = LM73_ACQUIRED_TEMP;
 	    }
+	    //give away bus for other sensor
+	    curI2COwner = LM73_NONE;
 	}
 	break;
     default:
@@ -219,13 +265,13 @@ u8 lm73cimk_requestTemperature(enum LM73_SENSORS sensor)
 u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, u32* val)
 {
     if(lm73Data[sensor].state != LM73_ACQUIRED_TEMP) {
-	moveLM73CIMKStateMachine(sensor);
+	moveLM73CIMKStateMachine();
     } else {
 	*val = lm73Data[sensor].temperature;
 	lm73Data[sensor].state = LM73_IDLE;
 	return 0;
     }
-  return 1;  
+    return 1;  
 }
 
 

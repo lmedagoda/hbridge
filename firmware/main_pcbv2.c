@@ -102,13 +102,13 @@ int main(void)
 
     print("LM73 init\n");
     //init temperature sensor
-    lm73cimk_init();
+    lm73cimk_init(I2C1);
     
     //address of sensor one 148 // 1001110 + r/w bit
     print("LM73 Sensor1 setup\n");
-    lm73cimk_setup_sensor(LM73_SENSOR1, I2C1, 148);
+    lm73cimk_setup_sensor(LM73_SENSOR1, 148);
     print("LM73 Sensor2 setup\n");
-    lm73cimk_setup_sensor(LM73_SENSOR2, I2C1, 144);
+    lm73cimk_setup_sensor(LM73_SENSOR2, 144);
 
     
     print("Peripheral configuration finished\n");
