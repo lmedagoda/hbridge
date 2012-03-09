@@ -93,16 +93,16 @@ void moveTMP100CIMKStateMachine(u8 sensor)
 	    {
 		tmp100Data[sensor].state = TMP100_TRIGGER_FINISHED;
 	    } else {
-		s16 value = ((i2cResult->rxData[0]) << 8) + i2cResult->rxData[1];
+		s16 value = (i2cResult->rxData[0] << 8) + (i2cResult->rxData[1]);
 		
 		//check if value is negative
-		u16 negative = value & (1<<11);
+		u16 negative = value & (1<<15);
 		
 		//remove negative bit
 		value = value & ~(1<<11);
 		
 		//recuce to integer (remove sub degrees;
-		value = value >> 4;
+		value = value >> 8;
 		
 		if(negative)
 		    value = value - 128;
