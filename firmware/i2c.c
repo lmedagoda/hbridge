@@ -6,13 +6,299 @@
 #include "i2c.h"
 #include "printf.h"
 
+enum I2CModes {
+    I2C_READ,
+    I2C_WRITE,
+    I2C_WRITE_READ,
+    I2C_FINISHED,
+};
+
+enum I2CState {
+    START_WRITTEN,
+    ADDRESS_WRITTEN,
+    HANDLING_DATA,
+    STOP_WRITTEN,
+};
+
+struct I2C_Data {
+    enum I2CState state;
+    u8 I2C_Buffer_Tx[4];
+    u8 I2C_Buffer_Rx[4];
+    u8 I2C_Tx_Idx;
+    u8 I2C_Rx_Idx;
+    u8 I2C_Tx_Size;
+    u8 I2C_Rx_Size;
+    u8 I2CMode;
+    u8 I2CError;
+    u32 I2CErrorReason;
+    // counter to detect i2c interrupt storm (flooding)
+    u32 i2cSafetyCounter;
+    u8 curI2CAddr;
+    int curI2CSpeed;
+    FunctionalState curI2CIsRemapped;
+};
+
+void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data);
+
 volatile struct I2C_Data I2C1_Data;
 volatile struct I2C_Data I2C2_Data;
 
-void resetI2C(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
+struct I2C_CommandQueue;
+u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data);
+
+struct I2C_Handle 
 {
+    u8 hasResult;
+    u8 isSending;
+    struct I2C_CommandResult pendingResult;
+    struct I2C_CommandQueue *queue;
+};
+
+struct I2C_Command {
+    //type of the command
+    enum I2CModes type;
+    //data to be transmitted
+    u8 txData[4];
+    u8 txSize;
+    //number of bytes which should be received
+    u8 rxSize;
+    
+    //adress of the target peer
+    u8 address;
+    
+    //handle of the issuer of the command
+    struct I2C_Handle *handle;
+};
+
+
+#define MAX_I2C_COMMANDS 10
+
+struct I2C_CommandQueue
+{
+    struct I2C_Command queue[MAX_I2C_COMMANDS];
+    volatile u8 writePointer;
+    volatile u8 readPointer;
+    struct I2C_Command *curCommand;
+    volatile struct I2C_Data *I2C_Data;
+    I2C_TypeDef* I2Cx;
+};
+
+struct I2C_CommandQueue I2C1_CommandQueue;
+struct I2C_CommandQueue I2C2_CommandQueue;
+
+static u8 handleCnt = 0;
+
+#define MAX_I2C_HANDLES 5
+struct I2C_Handle handles[MAX_I2C_HANDLES];
+
+struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
+{
+    if(handleCnt >= MAX_I2C_HANDLES)
+    {
+	print("Error no free I2C handles any more\n");
+	assert_failed((u8 *)__FILE__, __LINE__);
+    }
+    
+    struct I2C_Handle *ret = handles + handleCnt;    
+    handleCnt++;
+    
+    if(I2Cx == I2C1)
+    {
+	ret->queue = &I2C1_CommandQueue;
+    }else{
+	ret->queue = &I2C2_CommandQueue;
+    }
+    
+    ret->hasResult = 0;
+    ret->isSending = 0;
+    
+    return ret;
+}
+
+void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
+{
+    //check for errors and handle them
+    if(handleI2CxErrors(cmdQueue->I2Cx, cmdQueue->I2C_Data))
+    {
+	//we do nothing here, the handle function does the right thing
+    }
+    
+    //check if bus is busy
+    if(cmdQueue->I2C_Data->I2CMode != I2C_FINISHED)
+	return;
+    
+    //move finished command to result
+    if(cmdQueue->curCommand)
+    {
+	struct I2C_CommandResult *res = &(cmdQueue->curCommand->handle->pendingResult);
+	cmdQueue->curCommand->handle->hasResult = 1;
+	
+	res->I2CError = cmdQueue->I2C_Data->I2CError;
+	res->I2CErrorReason = cmdQueue->I2C_Data->I2CErrorReason;
+	res->rxSize = cmdQueue->I2C_Data->I2C_Rx_Size;
+	int i;
+	for(i=0; i < res->rxSize;i++)
+	{
+	    res->rxData[i] = cmdQueue->I2C_Data->I2C_Buffer_Rx[i];
+	}
+	
+	cmdQueue->curCommand = 0;
+    }
+    
+    //check if queue is empty
+    if(cmdQueue->readPointer == cmdQueue->writePointer)
+	return;
+
+    //clear bus errors
+    if(cmdQueue->I2C_Data->I2CError) {
+	handleI2CxErrors(cmdQueue->I2Cx, cmdQueue->I2C_Data);
+    }
+
+    if(I2C_GetFlagStatus(cmdQueue->I2Cx, I2C_FLAG_MSL)) {
+	print("BAD, I am still a master \n");
+	return;
+    }
+
+    //issue next command
+    struct I2C_Command *cmd = cmdQueue->queue + cmdQueue->readPointer;
+  
+    cmdQueue->I2C_Data->i2cSafetyCounter = 0;
+
+    //setup interrupt handler state machine
+    cmdQueue->I2C_Data->I2C_Tx_Idx = 0;
+    cmdQueue->I2C_Data->I2C_Tx_Size = cmd->txSize;
+    cmdQueue->I2C_Data->I2C_Rx_Idx = 0;
+    cmdQueue->I2C_Data->I2C_Rx_Size = cmd->rxSize;
+    cmdQueue->I2C_Data->curI2CAddr = cmd->address;
+    cmdQueue->I2C_Data->I2CMode = cmd->type;
+    cmdQueue->I2C_Data->state = START_WRITTEN;
+  
+    int i;  
+    for(i = 0; i < cmd->txSize; i++) {
+	cmdQueue->I2C_Data->I2C_Buffer_Tx[i] = cmd->txData[i];
+    }
+
+    cmdQueue->curCommand = cmd;
+    
+    //move read pointer forward
+    cmdQueue->readPointer = (cmdQueue->readPointer + 1) % MAX_I2C_COMMANDS;
+    
+    //disable orphaned stop conditions
+    I2C_GenerateSTOP(cmdQueue->I2Cx, DISABLE);
+
+    // Enable Acknowledgement
+    I2C_AcknowledgeConfig(cmdQueue->I2Cx, ENABLE);
+
+    /* Send I2C1 START condition */
+    I2C_GenerateSTART(cmdQueue->I2Cx, ENABLE);
+}
+
+u8 I2C_issueCommand(struct I2C_Handle *handle, enum I2CModes type, u8 *txdata, u8 txsize, u8 rxsize, u8 addr)
+{
+    //check if we are allready sending
+    if(handle->isSending)
+	return 1;
+    
+    struct I2C_CommandQueue *cmdQueue = handle->queue;
+    u8 nextWritePointer = (cmdQueue->writePointer + 1) % MAX_I2C_COMMANDS;
+    //check if command queue is full
+    if(nextWritePointer == cmdQueue->readPointer)
+	return 1;
+    
+    struct I2C_Command *cmd = cmdQueue->queue + nextWritePointer;
+    
+    cmd->type = type;
+    cmd->rxSize = rxsize;
+    cmd->txSize = txsize;
+    cmd->address = addr;
+    cmd->handle = handle;
+    int i;
+    for(i = 0; i < txsize; i++)
+    {
+	cmd->txData[i] = txdata[i];
+    }
+
+    handle->isSending = 1;
+    
+    I2C_triggerCommandQueue(handle->queue);
+    
+    return 0;
+}
+
+u8 I2C_writeReadBytes(struct I2C_Handle *handle, u8 *txdata, u8 txsize, u8 rxsize, u8 addr) 
+{
+    return I2C_issueCommand(handle, I2C_WRITE_READ, txdata, txsize, rxsize, addr);
+}
+
+u8 I2C_writeBytes(struct I2C_Handle *handle, u8 *data, u8 size, u8 addr) 
+{
+    return I2C_issueCommand(handle, I2C_WRITE, data, size, 0, addr);    
+}    
+
+u8 I2C_readBytes(struct I2C_Handle *handle, u8 size, u8 addr)
+{
+    return I2C_issueCommand(handle, I2C_READ, 0, 0, size, addr);
+}
+
+/**
+ * Checks if the last issued I2C operation was finished.
+ * If this is the case a pointer to an I2C_CommandResult 
+ * is returned.
+ * 
+ * If the operation is still pending 0 is returned
+ * */
+struct I2C_CommandResult *I2C_getResult(struct I2C_Handle *handle)
+{
+    if(!handle->hasResult)
+	return 0;
+    
+    //mark current operation as finished
+    handle->isSending = 0;
+    return &(handle->pendingResult);
+}
+
+void I2C_writeBytesBlocking(struct I2C_Handle *handle, u8 *data, u8 size, u8 addr)
+{
+    u8 error = 0;
+    error = I2C_writeBytes(handle, data, size, addr);
+    struct I2C_CommandResult *res;
+    
+    while(1)
+    {
+	if(!handle->isSending && error)
+	    error = I2C_writeBytes(handle, data, size, addr);
+	    
+	res = I2C_getResult(handle);
+	if(res)
+	{
+	    if(!res->I2CError)
+		break;
+	    else 
+		print("e");
+	}
+    }
+}
+
+void resetI2C(struct I2C_Handle *handle)
+{
+    //store read and wirite pointer of queue, so that command don't get lost
+    vu8 readP = handle->queue->readPointer;
+    vu8 writeP = handle->queue->writePointer;
+    
+    struct I2C_Command *curCmd = handle->queue->curCommand;
+    
     //resetup bus
-    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx,  I2Cx_Data->curI2CIsRemapped);
+    setupI2Cx(handle->queue->I2C_Data->curI2CAddr, handle->queue->I2C_Data->curI2CSpeed, handle->queue->I2Cx,  handle->queue->I2C_Data->curI2CIsRemapped);
+    
+    handle->queue->readPointer = readP;
+    handle->queue->writePointer = writeP;
+    
+    if(curCmd)
+    {
+	//reissue command
+	I2C_issueCommand(curCmd->handle, curCmd->type, curCmd->txData, curCmd->txSize, curCmd->rxSize, curCmd->address);
+    }
 }
 
 void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) 
@@ -23,6 +309,8 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
     u8 ER_IRQChannel;
     u16 GPIOs;
     GPIO_TypeDef* GPIO_Block = GPIOB;
+
+    struct I2C_CommandQueue *queue = 0;
     
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_AFIO, ENABLE);
     if(I2Cx == I2C1)
@@ -42,6 +330,8 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 	}
 	
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+    	
+	queue = &I2C1_CommandQueue;
     }
     else
     {
@@ -52,7 +342,15 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 	GPIOs = GPIO_Pin_10 | GPIO_Pin_11;
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+	
+	queue = &I2C2_CommandQueue;
     }
+    
+    queue->I2C_Data = I2Cx_Data;
+    queue->I2Cx = I2Cx;
+    queue->curCommand = 0;
+    queue->readPointer = 0;
+    queue->writePointer = 0;
 
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_StructInit(&NVIC_InitStructure);
@@ -143,27 +441,16 @@ void setupI2C1(u16 address, int speed, FunctionalState remapped) {
     setupI2Cx(address, speed, I2C1, remapped);
 }
 
-void I2CSendBytesBlocking(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
-{
-    u8 error = 0;
-    error = I2CSendBytes(data, size, addr, I2Cx, I2Cx_Data);
-    
-    while(!I2C2OperationFinished() || error)
-    {
-	if(handleI2C2Errors() || error)
-	{
-	    error = I2C2SendBytes(data, size, addr);
-	    print("e");
-	}
-    }
-}
-
-void I2C2SendBytesBlocking(u8 *data, u8 size, u8 addr)
-{
-    I2CSendBytesBlocking(data, size, addr, I2C2, &I2C2_Data);
-}
-
-
+/**
+ * This function checks weather an error occured during the
+ * current I2C operation and tries to handle it. If an error
+ * occured the the current operation is canceled and the 
+ * error is stored in the CommandResult
+ *
+ * Known Bugs: In case of Bus error the recovery does not allways work
+ *
+ * Return 1 if an error occured 0 otherwise
+ */
 u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 {
     u8 hasError = 0;
@@ -205,20 +492,7 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
     }
 
     return hasError;
-
 }
-
-
-u8 handleI2C1Errors()
-{
-    return handleI2CxErrors(I2C1, &I2C1_Data);
-}
-
-u8 handleI2C2Errors()
-{
-    return handleI2CxErrors(I2C2, &I2C2_Data);
-}
-
 
 // define I2C register
 #define I2C_SMBALERT (1<<15)
@@ -557,188 +831,3 @@ void I2C2_EV_IRQHandler(void)
   I2C_EV_IRQHandler(I2C2, &I2C2_Data);
 }
 
-u8 I2CxOperationFinished(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
-{
-#ifdef I2C_DEBUG
-    if(I2Cx_Data->i2cSafetyCounter >= 120) {
-	printfI2CDbg();
-    }
-#endif
-    return I2Cx_Data->I2CMode == I2C_FINISHED;
-}
-
-
-u8 I2C1OperationFinished() {
-    return I2CxOperationFinished(I2C1, &I2C1_Data);
-};
-
-u8 I2C2OperationFinished() {
-    return I2CxOperationFinished(I2C2, &I2C2_Data);
-};
-
-u8 I2CSendBytes(u8 *data, u8 size, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
-    
-  if(I2Cx_Data->I2CError) {
-    print("I2C in error status \n");
-    return 1;
-  }
-  
-  if(I2Cx_Data->I2CMode != I2C_FINISHED) {
-    print("I2C still active \n");
-    return 1;
-  }
-  
-  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-//     print("BAD, I am still a master \n");
-    return 1;
-  }
-
-#ifdef I2C_DEBUG
-    if(I2Cx_Data->i2cSafetyCounter >= 120) {
-	printfI2CDbg();
-    }
-#endif
-
-  I2Cx_Data->i2cSafetyCounter = 0;
-
-  //setup interrupt handler state machine
-  I2Cx_Data->I2C_Tx_Idx = 0;
-  I2Cx_Data->I2C_Tx_Size = size;
-  I2Cx_Data->curI2CAddr = addr;
-  I2Cx_Data->I2CMode = I2C_WRITE;
-  int i;
-  I2Cx_Data->state = START_WRITTEN;
-  for(i = 0; i < size; i++) {
-    I2Cx_Data->I2C_Buffer_Tx[i] = data[i];
-  }
-
-  //disable orphaned stop conditions
-  I2C_GenerateSTOP(I2Cx, DISABLE);
-
-  // Enable Acknowledgement
-  I2C_AcknowledgeConfig(I2Cx, ENABLE);
-	
-  /* Send I2C1 START condition */
-  I2C_GenerateSTART(I2Cx, ENABLE);
-  
-  return 0;
-}
-
-u8 I2CReadBytes(u8 size, u8 addr,I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
-  if(I2Cx_Data->I2CError) {
-    //print("I2C1 in error status \n");
-    return 1;
-  }
-  
-  if(I2Cx_Data->I2CMode != I2C_FINISHED) {
-    print("I2C1 still active \n");
-    return 1;
-  }
-  
-  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-//     print("BAD, I am still a master \n");
-    return 1;
-  }
-
-#ifdef I2C_DEBUG
-    if(I2Cx_Data->i2cSafetyCounter >= 120) {
-	printfI2CDbg();
-    }
-#endif
-
-  I2Cx_Data->i2cSafetyCounter = 0;
-
-  //setup interrupt handler state machine
-  I2Cx_Data->I2C_Rx_Idx = 0;
-  I2Cx_Data->I2C_Rx_Size = size;
-  I2Cx_Data->curI2CAddr = addr;
-  I2Cx_Data->I2CMode = I2C_READ;
-  I2Cx_Data->state = START_WRITTEN;
-
-   //disable orphaned stop conditions
-  I2C_GenerateSTOP(I2Cx, DISABLE);
-
-  // Enable Acknowledgement
-  I2C_AcknowledgeConfig(I2Cx, ENABLE);
-  
-  /* Send I2C1 START condition */
-  I2C_GenerateSTART(I2Cx, ENABLE);
-
-  return 0;
-}
-
-u8 I2CWriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr, I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
-  if(I2Cx_Data->I2CError) {
-    //print("I2C1 in error status \n");
-    return 1;
-  }
-  
-  if(I2Cx_Data->I2CMode != I2C_FINISHED) {
-    print("I2C1 still active \n");
-    return 1;
-  }
-  
-  if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL)) {
-//     print("BAD, I am still a master \n");
-    return 1;
-  }
-
-#ifdef I2C_DEBUG
-    if(I2Cx_Data->i2cSafetyCounter >= 120) {
-	printfI2CDbg();
-    }
-#endif
-
-  I2Cx_Data->i2cSafetyCounter = 0;
-
-  //setup interrupt handler state machine
-  I2Cx_Data->I2C_Tx_Idx = 0;
-  I2Cx_Data->I2C_Tx_Size = txsize;
-  I2Cx_Data->I2C_Rx_Idx = 0;
-  I2Cx_Data->I2C_Rx_Size = rxsize;
-  I2Cx_Data->curI2CAddr = addr;
-  I2Cx_Data->I2CMode = I2C_WRITE_READ;
-  I2Cx_Data->state = START_WRITTEN;
-  
-  int i;
-  
-  for(i = 0; i < txsize; i++) {
-    I2Cx_Data->I2C_Buffer_Tx[i] = txdata[i];
-  }
-
-  //disable orphaned stop conditions
-  I2C_GenerateSTOP(I2Cx, DISABLE);
-
-  // Enable Acknowledgement
-  I2C_AcknowledgeConfig(I2Cx, ENABLE);
-
-  /* Send I2C1 START condition */
-  I2C_GenerateSTART(I2Cx, ENABLE);
-
-  return 0;
-}
-
-
-u8 I2C1SendBytes(u8 *data, u8 size, u8 addr) {
-  return I2CSendBytes(data, size, addr, I2C1, &I2C1_Data);
-}
-
-u8 I2C1ReadBytes(u8 size, u8 addr) {
-  return I2CReadBytes(size, addr, I2C1, &I2C1_Data);
-}
-
-u8 I2C1WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr) {
-  return I2CWriteReadBytes(txdata, txsize, rxsize, addr, I2C1, &I2C1_Data);
-}
-
-u8 I2C2SendBytes(u8 *data, u8 size, u8 addr) {
-  return I2CSendBytes(data, size, addr, I2C2, &I2C2_Data);
-}
-
-u8 I2C2ReadBytes(u8 size, u8 addr) {
-  return I2CReadBytes(size, addr, I2C2, &I2C2_Data);
-}
-
-u8 I2C2WriteReadBytes(u8 *txdata, u8 txsize, u8 rxsize, u8 addr) {
-  return I2CWriteReadBytes(txdata, txsize, rxsize, addr, I2C2, &I2C2_Data);
-}
