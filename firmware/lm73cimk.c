@@ -82,22 +82,6 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	print("move state machine\n");
     }
 
-    
-//     //handle I2C errors
-//     if(handleI2CxErrors(lm73Data[sensor].I2C_Bus, lm73Data[sensor].I2C_Data))
-//     {
-// 	statistic2++;
-// 	
-// 	//we were not acked, restart
-// 	//request next temperature
-//     
-// 	//retrigger
-// 	lm73Data[sensor].state = LM73_IDLE;
-// 	//give away bus for other sensor
-// 	curI2COwner = LM73_NONE;
-//     }
-  
-
     switch(lm73Data[sensor].state) {
     case LM73_IDLE:
 	//trigger new conversion

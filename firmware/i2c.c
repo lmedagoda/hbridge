@@ -206,7 +206,7 @@ u8 I2C_issueCommand(struct I2C_Handle *handle, enum I2CModes type, u8 *txdata, u
     if(nextWritePointer == cmdQueue->readPointer)
 	return 1;
     
-    struct I2C_Command *cmd = cmdQueue->queue + nextWritePointer;
+    struct I2C_Command *cmd = cmdQueue->queue + cmdQueue->writePointer;
     
     cmd->type = type;
     cmd->rxSize = rxsize;
@@ -220,6 +220,8 @@ u8 I2C_issueCommand(struct I2C_Handle *handle, enum I2CModes type, u8 *txdata, u
     }
 
     handle->isSending = 1;
+    
+    cmdQueue->writePointer = nextWritePointer;
     
     I2C_triggerCommandQueue(handle->queue);
     
@@ -250,6 +252,8 @@ u8 I2C_readBytes(struct I2C_Handle *handle, u8 size, u8 addr)
  * */
 struct I2C_CommandResult *I2C_getResult(struct I2C_Handle *handle)
 {
+    I2C_triggerCommandQueue(handle->queue);
+    
     if(!handle->hasResult)
 	return 0;
     
