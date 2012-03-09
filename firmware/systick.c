@@ -27,9 +27,9 @@ static s32 currentPwmValue = 0;
 static u16 index = 0;
 static u16 overCurrentCounter = 0;
 static u16 timeoutCounter = 0;
-static u32 temperature = 0;
+static s32 temperature = 0;
 static u32 overTempCounter = 0;
-static u32 motorTemperature = 0;
+static s32 motorTemperature = 0;
 static u32 overMotorTempCounter = 0;
 
 volatile struct ControllerState cs1;
@@ -40,8 +40,8 @@ void checkTimeout();
 void checkTemperature();
 void checkOverCurrent();
 
-void sendStatusMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index);
-void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index);
+void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index);
+void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index);
 
 void resetCounters()
 {
@@ -354,7 +354,7 @@ void SysTickHandler(void) {
     }
 }
 
-void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index)
+void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index)
 {
     //send status message over CAN
     CanTxMsg errorMessage;
@@ -366,6 +366,9 @@ void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motor
     struct errorData *edata = (struct errorData *) errorMessage.Data;
 
     volatile struct ErrorState *es = getErrorState();
+
+    if(temperature < 0)
+	temperature = 0;
 
     edata->temperature = temperature;
     edata->position = getDividedTicks(activeCState->internalEncoder);
@@ -388,7 +391,7 @@ void sendErrorMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motor
     }
 }
 
-void sendStatusMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 motorTemperature, u32 index)
+void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index)
 {
     //send status message over CAN
     CanTxMsg statusMessage;
@@ -424,7 +427,12 @@ void sendStatusMessage(u32 pwmValue, u32 currentValue, u32 temperature, u32 moto
 	extendedStatusMessage.DLC= sizeof(struct extendedStatusData);
 	
 	struct extendedStatusData *esdata = (struct extendedStatusData *) extendedStatusMessage.Data;
+	if(temperature < 0)
+	    temperature = 0;
 	esdata->temperature = temperature;
+	    
+	if(motorTemperature < 0)
+	    motorTemperature = 0;
 	esdata->motorTemperature = motorTemperature;
 	if(CAN_Transmit(&extendedStatusMessage) == CAN_NO_MB) {
 	    print("Error Tranmitting status Message : No free TxMailbox \n");

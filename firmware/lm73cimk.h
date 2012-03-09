@@ -14,6 +14,6 @@ void lm73cimk_init(I2C_TypeDef* I2C_Bus);
 
 void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, u8 i2c_addr);
 
-u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, u32* val);
+u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, s32* val);
 
 #endif

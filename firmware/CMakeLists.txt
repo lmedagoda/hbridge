@@ -77,6 +77,7 @@ add_library(stm32drivers
     can.c
     spi.c
     lm73cimk.c
+    tmp100.c
     pid.c
     cortexm3_macro.s
     stm32f10x_it.c  

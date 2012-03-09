@@ -19,7 +19,7 @@ enum lm73cimkState {
 struct LM73Data {
     u8 enabled;
     enum lm73cimkState state;
-    u32 temperature;
+    s32 temperature;
     u8 address;
     struct I2C_Handle *i2cHandle;
     u32 errorCounter;
@@ -205,7 +205,7 @@ u8 lm73cimk_requestTemperature(enum LM73_SENSORS sensor)
     return I2C_writeReadBytes(lm73Data[sensor].i2cHandle, &tempRequest, 1, 2, lm73Data[sensor].address);
 }
 
-u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, u32* val)
+u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, s32* val)
 {
     moveLM73CIMKStateMachine(sensor);
     if(lm73Data[sensor].state == LM73_ACQUIRED_TEMP) 
