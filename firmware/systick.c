@@ -79,7 +79,7 @@ void checkMotorTemperature(u32 temperature)
 	return;
 	
     //check for overcurrent
-    if(temperature > activeCState->maxMotorTemp) {
+    if(motorTemperature > activeCState->maxMotorTemp) {
 	overMotorTempCounter++;
 
 	if(overMotorTempCounter > activeCState->maxMotorTempCount) {
