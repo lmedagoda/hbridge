@@ -49,8 +49,8 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data);
 
 struct I2C_Handle 
 {
-    u8 hasResult;
-    u8 isSending;
+    vu8 hasResult;
+    vu8 isSending;
     struct I2C_CommandResult pendingResult;
     struct I2C_CommandQueue *queue;
 };
@@ -118,10 +118,12 @@ struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
 
 void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 {
+    u8 hadError = 0;
+    
     //check for errors and handle them
     if(handleI2CxErrors(cmdQueue->I2Cx, cmdQueue->I2C_Data))
     {
-	//we do nothing here, the handle function does the right thing
+	hadError = 1;
     }
     
     //check if bus is busy
@@ -134,7 +136,7 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 	struct I2C_CommandResult *res = &(cmdQueue->curCommand->handle->pendingResult);
 	cmdQueue->curCommand->handle->hasResult = 1;
 	
-	res->I2CError = cmdQueue->I2C_Data->I2CError;
+	res->I2CError = hadError;
 	res->I2CErrorReason = cmdQueue->I2C_Data->I2CErrorReason;
 	res->rxSize = cmdQueue->I2C_Data->I2C_Rx_Size;
 	int i;
@@ -149,11 +151,6 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
     //check if queue is empty
     if(cmdQueue->readPointer == cmdQueue->writePointer)
 	return;
-
-    //clear bus errors
-    if(cmdQueue->I2C_Data->I2CError) {
-	handleI2CxErrors(cmdQueue->I2Cx, cmdQueue->I2C_Data);
-    }
 
     if(I2C_GetFlagStatus(cmdQueue->I2Cx, I2C_FLAG_MSL)) {
 	print("BAD, I am still a master \n");
@@ -196,6 +193,9 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 
 u8 I2C_issueCommand(struct I2C_Handle *handle, enum I2CModes type, u8 *txdata, u8 txsize, u8 rxsize, u8 addr)
 {
+    //trigger queue to get 'other' commands processed
+    I2C_triggerCommandQueue(handle->queue);
+    
     //check if we are allready sending
     if(handle->isSending)
 	return 1;
@@ -259,6 +259,7 @@ struct I2C_CommandResult *I2C_getResult(struct I2C_Handle *handle)
     
     //mark current operation as finished
     handle->isSending = 0;
+    handle->hasResult = 0;
     return &(handle->pendingResult);
 }
 
@@ -286,7 +287,7 @@ void I2C_writeBytesBlocking(struct I2C_Handle *handle, u8 *data, u8 size, u8 add
 
 void resetI2C(struct I2C_Handle *handle)
 {
-    //store read and wirite pointer of queue, so that command don't get lost
+    //store read and write pointer of queue, so that command don't get lost
     vu8 readP = handle->queue->readPointer;
     vu8 writeP = handle->queue->writePointer;
     
