@@ -19,6 +19,7 @@ Encoder::Encoder()
     turns = 0;
     zeroPosition = 0;
     gotValidReading = false;    
+
 }
 
 void Encoder::setConfiguration(EncoderConfiguration& cfg)
@@ -27,7 +28,7 @@ void Encoder::setConfiguration(EncoderConfiguration& cfg)
         return;
     
     encoderConfig = cfg;
-
+    
     //we go sane and reset the encoder if wrap value changes
     lastPositionInTurn = 0;
     turns = 0;
@@ -64,18 +65,33 @@ void Encoder::setRawEncoderValue(uint value)
 	
 	// We assume that a motor rotates less than half a turn per [ms]
 	// (a status packet is sent every [ms])
-	if ((uint) abs(diff) > encoderConfig.ticksPerTurn / 2)
+	if ((uint) abs(diff) > encoderConfig.ticksPerTurnMotorDriver / 2)
 	{
 	    turns += (diff < 0 ? 1 : -1);
 	}
     }
 }
 
-Ticks Encoder::getAbsolutPosition()
+double Encoder::getAbsoluteTurns() const
 {
-    Ticks ret = turns* ((int)encoderConfig.ticksPerTurn) + ((int)lastPositionInTurn) - zeroPosition;
-    return ret;
+    Ticks allMotorTicks = turns* ((int64_t)encoderConfig.ticksPerTurnMotorDriver) + ((int)lastPositionInTurn) - zeroPosition;
+    double turns = allMotorTicks / encoderConfig.ticksPerTurn;
+    return turns;
 }
+
+
+Ticks Encoder::getMotorTicksFromAbsoluteTurn(double targetValue) const
+{
+    double curPos = getAbsoluteTurns();
+    if(fabs(curPos - targetValue) > 1)
+	throw std::runtime_error("Target value is more than one turn apart");
+    
+    int64_t target_ticks = targetValue * encoderConfig.ticksPerTurn + zeroPosition;
+    int64_t targetInTurn_ticks = target_ticks % encoderConfig.ticksPerTurnMotorDriver;
+    
+    return targetInTurn_ticks;
+}
+
 
 const EncoderConfiguration& Encoder::getEncoderConfig() const
 {
@@ -100,7 +116,7 @@ const EncoderConfiguration& Encoder::getEncoderConfig() const
 
 int Driver::getCurrentTickDivider(int index) const
 {
-    int tickDivider;
+    int tickDivider = 1;
     switch(configuration[index].controllerInputEncoder)
     {
 	case INTERNAL:
@@ -169,8 +185,8 @@ int Driver::getCurrentTickDivider(int index) const
 		encoderIntern[index].setRawEncoderValue(edata->position);
 		encoderExtern[index].setRawEncoderValue(edata->externalPosition);
 		
-		this->states[index].position = encoderIntern[index].getAbsolutPosition();
-		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition();
+		this->states[index].position = encoderIntern[index].getAbsoluteTurns();
+		this->states[index].positionExtern = encoderExtern[index].getAbsoluteTurns();
                 this->states[index].can_time = msg.can_time;
 	    }
 	    break;
@@ -186,8 +202,8 @@ int Driver::getCurrentTickDivider(int index) const
 		encoderIntern[index].setRawEncoderValue(data->position);
 		encoderExtern[index].setRawEncoderValue(data->externalPosition);
 
-		this->states[index].position = encoderIntern[index].getAbsolutPosition();
-		this->states[index].positionExtern = encoderExtern[index].getAbsolutPosition();
+		this->states[index].position = encoderIntern[index].getAbsoluteTurns();
+		this->states[index].positionExtern = encoderExtern[index].getAbsoluteTurns();
 
 		//getting an status package is an implicit cleaner for all error states
 	        bzero(&(this->states[index].error), sizeof(struct ErrorState));
@@ -322,13 +338,13 @@ int Driver::getCurrentTickDivider(int index) const
         return msg;
     }
 
-    canbus::Message Driver::setTargetValues(BOARD_SET set, int value1, int value2,
-                                         int value3, int value4) const
+    canbus::Message Driver::setTargetValues(BOARD_SET set, double value1, double value2,
+                                         double value3, double value4) const
     {
-        int value_array[4] = { value1, value2, value3, value4 };
+        double value_array[4] = { value1, value2, value3, value4 };
         return setTargetValues(set, value_array);
     }
-    canbus::Message Driver::setTargetValues(BOARD_SET set, int* targets) const
+    canbus::Message Driver::setTargetValues(BOARD_SET set, double* targets) const
     {
         canbus::Message msg;
 
@@ -352,29 +368,32 @@ int Driver::getCurrentTickDivider(int index) const
 
         for (int i = 0; i < 4; ++i)
         {
-            switch(current_modes_local[i])
+	    if(targets[i] > 1.0 || targets[i] < -1.0)
+                    throw std::out_of_range("Given target value is out of bound. Value Range: [-1.0,1.0]");
+
+	    switch(current_modes_local[i])
             {
             case base::actuators::DM_SPEED:
-                // parameter check
-                if(targets[i] > 32767 || targets[i] < -32767)
-                    throw std::out_of_range("Given speed value is out of bound. Value Range: [-32767,32767]");
-                values[i] = targets[i];
+                values[i] = targets[i] * configuration[i].maxSpeed;
                 break;
 
             case base::actuators::DM_PWM:
-                // parameter check
-                if(targets[i] > 1800 || targets[i] < -1800)
-                    throw std::out_of_range("Given PWM value is out of bound. Value Range: [-1800, 1800]");
-                values[i] = targets[i];
+                values[i] = targets[i] * configuration[i].maxPWM;
                 break;
 
             case base::actuators::DM_POSITION:
             {
-                // parameter check
-                if(targets[i] > encoderIntern[i].getEncoderConfig().ticksPerTurn || targets[i] < 0)
-                    throw std::out_of_range("Given Position value is out of bound. Value Range: [0, ticksPerTurn]");
+		//TODO add min max check
                 int tickDivider = getCurrentTickDivider(i);
-                values[i] = targets[i] / tickDivider;
+		switch(configuration[i].controllerInputEncoder)
+		{
+		    case EXTERNAL:
+			values[i] = encoderExtern[i].getMotorTicksFromAbsoluteTurn(targets[i]) / tickDivider;
+			break;
+		    case INTERNAL:
+			values[i] = encoderIntern[i].getMotorTicksFromAbsoluteTurn(targets[i]) / tickDivider;
+			break;
+		}
                 break;
 	    }
             default:
