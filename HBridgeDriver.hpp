@@ -24,12 +24,18 @@ namespace hbridge
 	    unsigned int lastPositionInTurn;
 	    int turns;
 	    bool gotValidReading;
+
 	public:
 	    Encoder();
 	    void setConfiguration(EncoderConfiguration &cfg);
 	    void setZeroPosition(Ticks zeroPos);
 	    void setRawEncoderValue(unsigned int value);
-	    Ticks getAbsolutPosition();
+	    //returns all motor turns acumulated since configuration
+	    double getAbsoluteTurns() const;
+	    
+	    //computes the motor tick value for a given absolute turn value
+	    Ticks getMotorTicksFromAbsoluteTurn(double targetValue) const;
+	    
 	    const EncoderConfiguration &getEncoderConfig() const;
     };
 
@@ -141,13 +147,13 @@ namespace hbridge
          *
          * @return A new CAN message (PACKET_ID_SET_NEW_VALUE)
          */
-        canbus::Message setTargetValues(BOARD_SET set, int* targets) const;
+        canbus::Message setTargetValues(BOARD_SET set, double* targets) const;
 
         /**
          * \overloaded
          */
-        canbus::Message setTargetValues(BOARD_SET set, int value1, int value2,
-                                     int value3, int value4) const;
+        canbus::Message setTargetValues(BOARD_SET set, double value1, double value2,
+                                         double value3, double value4) const;
 
         /**
          * Generate a CAN message for setting the PID values for the speed

@@ -21,6 +21,8 @@ namespace hbridge
     
     struct Configuration
     {
+	unsigned short maxPWM;
+	unsigned short maxSpeed;
         unsigned char openCircuit;
         unsigned char activeFieldCollapse;
         unsigned char externalTempSensor;
@@ -57,7 +59,18 @@ namespace hbridge
 
     struct EncoderConfiguration
     {
-	unsigned int ticksPerTurn;
+	//real amount of ticks per turn
+	double ticksPerTurn;
+	/**
+	* the value that is passed to the motor driver 
+	* as ticks for one full evolution, as the motor 
+	* driver can only process integers. 
+	* Note that this values needs to be >= ticksPerTurn
+	* and % tickDivider == 0
+	* If these constrains are not met, the encoder will 
+	* loose ticks and drift.
+	**/ 
+	unsigned int ticksPerTurnMotorDriver;
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnDivided;
 	Ticks zeroPosition;
@@ -70,7 +83,7 @@ namespace hbridge
             ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
-        EncoderConfiguration(uint32_t ticksPerTurn, ENCODER_TYPE type) :
+        EncoderConfiguration(double ticksPerTurn, ENCODER_TYPE type) :
 	    ticksPerTurn(ticksPerTurn), tickDivider(1), zeroPosition(0), type(type)
 	{
 	    validate();
@@ -85,6 +98,14 @@ namespace hbridge
 	{
 	    if(tickDivider == 0)
 		throw std::out_of_range("Invalid tick divider given");
+	    
+	    //we calculate a value >= cfg.ticksPerTurn were
+	    //value % cfg.ticksPerTurnDivided = 0;    
+	    int value = ((int)(ticksPerTurn / tickDivider)) * tickDivider;
+	    if(value < ticksPerTurn)
+	    {
+		value = (((int)(ticksPerTurn / tickDivider)) + 1) * tickDivider;
+	    }
 	    
 	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
 	}
@@ -169,8 +190,10 @@ namespace hbridge
     {
         int index;
         int current;
-        Ticks position;
-        Ticks positionExtern;
+	//position of first encoder in turns
+        double position;
+	//position of second encoder in turns
+        double positionExtern;
 	float temperature;
 	float motorTemperature;
         float pwm;
