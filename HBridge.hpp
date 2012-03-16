@@ -107,7 +107,9 @@ namespace hbridge
 		value = (((int)(ticksPerTurn / tickDivider)) + 1) * tickDivider;
 	    }
 	    
-	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
+	    ticksPerTurnMotorDriver = value;
+	    
+	    this->ticksPerTurnDivided = ticksPerTurnMotorDriver / tickDivider;
 	}
     };    
     
