@@ -73,7 +73,7 @@ namespace hbridge
 	unsigned int ticksPerTurnMotorDriver;
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnDivided;
-	Ticks zeroPosition;
+	double zeroPosition;
 	enum ENCODER_TYPE type;
 
 	/**
@@ -89,7 +89,7 @@ namespace hbridge
 	    validate();
 	}
 	
-	void setZeroPosition(Ticks zeroPos) 
+	void setZeroPosition(double zeroPos) 
 	{
 	    zeroPosition = zeroPos;
 	}
