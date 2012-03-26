@@ -8,6 +8,7 @@
 
 #define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
 #include <stdio.h>
+#include <base/float.h>
 
 using namespace std;
 namespace hbridge
@@ -52,11 +53,6 @@ void Encoder::setRawEncoderValue(uint value)
 	    gotValidReading = true;
 	    lastPositionInTurn = value;
 	}
-	else
-	{
-	    //report 0 to the outside world
-	    lastPositionInTurn = 0;
-	}
     }
     else 
     {
@@ -74,6 +70,9 @@ void Encoder::setRawEncoderValue(uint value)
 
 double Encoder::getAbsoluteTurns() const
 {
+    if(!gotValidReading)
+	return base::unknown<double>();
+    
     Ticks allMotorTicks = turns* ((int64_t)encoderConfig.ticksPerTurnMotorDriver) + ((int)lastPositionInTurn) - zeroPosition;
     double turns = allMotorTicks / encoderConfig.ticksPerTurn;
     return turns;
@@ -85,6 +84,9 @@ Ticks Encoder::getMotorTicksFromAbsoluteTurn(double targetValue) const
     double curPos = getAbsoluteTurns();
     if(fabs(curPos - targetValue) > 1)
 	throw std::runtime_error("Target value is more than one turn apart");
+    
+    if(base::isUnknown<double>(curPos))
+	throw std::runtime_error("Tried to access encoder while it is unknown (did not pass zero mark yet)");
     
     int64_t target_ticks = targetValue * encoderConfig.ticksPerTurn + zeroPosition;
     int64_t targetInTurn_ticks = target_ticks % encoderConfig.ticksPerTurnMotorDriver;
