@@ -10,6 +10,7 @@
 #include "inc/stm32f10x_spi.h"
 #include "encoder_adc.h"
 #include "encoder_quadrature.h"
+#include "encoder_ichaus.h"
 
 struct EncoderInterface encoders[NUM_ENCODERS];
 
@@ -407,6 +408,10 @@ void encodersInit()
     encoders[BMMV30_SSI].encoderInit = encoderInitBMMV;
     encoders[BMMV30_SSI].getTicks = getTicksBMMV;
     encoders[BMMV30_SSI].setTicksPerTurn = setTicksPerTurnBMMV;
+
+    encoders[IC_HOUSE_MH_Y].encoderInit = encoderInitIcHaus;
+    encoders[IC_HOUSE_MH_Y].getTicks = getTicksIcHaus;
+    encoders[IC_HOUSE_MH_Y].setTicksPerTurn = setTicksPerTurnIcHaus;
     
     encoders[ANALOG_VOLTAGE].encoderInit = encoderInitADC;
     encoders[ANALOG_VOLTAGE].encoderDeInit = encoderDeInitADC;

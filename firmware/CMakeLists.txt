@@ -99,6 +99,7 @@ add_library(hbridge_common
     encoder.c
     encoder_adc.c
     encoder_quadrature.c    
+    encoder_ichaus.c    
     systick.c
 )
 target_link_libraries(hbridge_common stm32drivers stm32fw)
