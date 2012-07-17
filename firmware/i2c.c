@@ -51,6 +51,7 @@ struct I2C_Handle
 {
     vu8 hasResult;
     vu8 isSending;
+    vu8 hadError;
     struct I2C_CommandResult pendingResult;
     struct I2C_CommandQueue *queue;
 };
@@ -112,22 +113,27 @@ struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
     
     ret->hasResult = 0;
     ret->isSending = 0;
-    
+    ret->hadError = 0;
+
     return ret;
 }
 
 void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 {
-    u8 hadError = 0;
-    
     //check for errors and handle them
     if(handleI2CxErrors(cmdQueue->I2Cx, cmdQueue->I2C_Data))
     {
-	hadError = 1;
+	if(cmdQueue->curCommand)
+	{
+	    cmdQueue->curCommand->handle->hadError = 1;
+	} else
+	{
+	    print("Error, got error while no i2c command was issued\n");
+	}
     }
     
     //check if bus is busy
-    if(cmdQueue->I2C_Data->I2CMode != I2C_FINISHED)
+    if((cmdQueue->I2C_Data->I2CMode != I2C_FINISHED) || (I2C_GetFlagStatus(cmdQueue->I2Cx, I2C_FLAG_MSL) == SET))
 	return;
     
     //move finished command to result
@@ -136,7 +142,7 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 	struct I2C_CommandResult *res = &(cmdQueue->curCommand->handle->pendingResult);
 	cmdQueue->curCommand->handle->hasResult = 1;
 	
-	res->I2CError = hadError;
+	res->I2CError = cmdQueue->curCommand->handle->hadError;
 	res->I2CErrorReason = cmdQueue->I2C_Data->I2CErrorReason;
 	res->rxSize = cmdQueue->I2C_Data->I2C_Rx_Size;
 	int i;
@@ -145,6 +151,7 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 	    res->rxData[i] = cmdQueue->I2C_Data->I2C_Buffer_Rx[i];
 	}
 	
+	cmdQueue->curCommand->handle->hadError = 0;
 	cmdQueue->curCommand = 0;
     }
     
