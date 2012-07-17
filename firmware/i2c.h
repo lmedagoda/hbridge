@@ -13,6 +13,8 @@ struct I2C_CommandResult {
     u32 I2CErrorReason;
 };
 
+void I2C_print_state(struct I2C_Handle *handle);
+
 void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped);
 
 /**

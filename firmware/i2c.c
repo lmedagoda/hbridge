@@ -93,6 +93,21 @@ static u8 handleCnt = 0;
 #define MAX_I2C_HANDLES 5
 struct I2C_Handle handles[MAX_I2C_HANDLES];
 
+void I2C_print_state(struct I2C_Handle* handle)
+{
+    u32 curCmd = (u32) handle->queue->curCommand;
+    u16 hasResult = handle->hasResult;
+    u16 isSending = handle->isSending;
+    u16 rp = handle->queue->readPointer;
+    u16 wp = handle->queue->writePointer;
+    u16 i2cmode = handle->queue->I2C_Data->I2CMode;
+    u16 i2cerror = handle->queue->I2C_Data->I2CError;
+    u32 i2cerrorreason = handle->queue->I2C_Data->I2CErrorReason;
+    u32 i2cSafetyCounter = handle->queue->I2C_Data->i2cSafetyCounter;
+    
+    printf("I2C dbg curCmd %lu, hasRes %hu, sending %hu, rp %hu, wp %hu, i2cmode %hu, i2cError %hu, i2cErRes %lu, i2cScnt %lu\n", curCmd, hasResult, isSending, rp, wp, i2cmode, i2cerror, i2cerrorreason, i2cSafetyCounter);
+}
+
 struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
 {
     if(handleCnt >= MAX_I2C_HANDLES)
