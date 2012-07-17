@@ -220,3 +220,60 @@ void CAN_MarkNextDataAsRead() {
     canRxReadPointer = (canRxReadPointer + 1) % CAN_BUFFER_SIZE;
   }  
 }
+
+int can_send_message_hard(CanTxMsg * message) {
+    int mb;
+    int resend_counter = 0;
+    volatile int counter = 0;
+
+    // need to keep the id of the message since the CAN_Transmit can 
+    // actually change that field!
+    int id = message->StdId;
+
+    while(resend_counter < CAN_SEND_ARBITRATION_RETRIES) {
+      resend_counter++;
+      counter = 0;
+
+      message->StdId = id;
+
+      while((mb = CAN_Transmit(message)) == CAN_NO_MB) {
+	counter++;
+	if (counter > CAN_SEND_RETRIES)
+	  return CANTXFAILED;
+      }
+      
+      counter = 0;
+#define CAN_TSR_RQCP    ((u32)0x00000001)    /* Request completed mailbox0 */
+#define CAN_TSR_TXOK    ((u32)0x00000002)    /* Transmission OK of mailbox0 */
+#define CAN_TSR_ALST    ((u32)0x00000004)    /* Arbitation Lost */
+#define CAN_TSR_TERR    ((u32)0x00000008)    /* Transmission Error */
+
+      //wait till message is written on the bus
+      //check if errors occured
+      while(!(CAN->TSR & (CAN_TSR_ALST << (8*mb))) && !(CAN->TSR & (CAN_TSR_TERR << (8*mb)))) {
+	counter++;
+	if (counter > CAN_SEND_RETRIES) {
+	  print("Timeout sending can message");
+	  break;
+	}
+	
+	//jump out if message was send sucessfull
+	if((CAN->TSR & (CAN_TSR_RQCP << (8*mb))) && (CAN->TSR & (CAN_TSR_TXOK << (8*mb)))) {
+	  return CANTXOK;
+	}
+      }
+      
+      if(CAN->TSR & (CAN_TSR_ALST << (8*mb))) {
+	print("Error ARLO mb is \n");
+      }
+      
+      if(CAN->TSR & (CAN_TSR_TERR << (8*mb))) {
+	print("Error TERR mb is \n");
+      }
+    }
+
+    print("Error sending can message\n");
+    return CANTXFAILED;
+}
+
+
