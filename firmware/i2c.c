@@ -654,13 +654,13 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 	    //this basicly means, we are not in transmission
 	    //mode, but the chip is waiting for data to transmit
 	    //as we had this error, we are going to handle this case
-	    if(sr1 & I2C_TxE && !(sr2 & I2C_TRA)) {
+	    if((sr1 & I2C_TxE) && !(sr2 & I2C_TRA)) {
 		I2C_SendData(I2Cx, 0);		
 	    }
 	    
 	    if(sr2 & I2C_TRA) {
 		//Transmitter
-		if(sr1 & I2C_TxE || sr1 & I2C_BTF) {
+		if((sr1 & I2C_TxE) || (sr1 & I2C_BTF)) {
 		    if(I2Cx_Data->I2C_Tx_Idx < I2Cx_Data->I2C_Tx_Size) {
 			/* Transmit buffer data */
 			I2C_SendData(I2Cx, I2Cx_Data->I2C_Buffer_Tx[I2Cx_Data->I2C_Tx_Idx]);
@@ -705,7 +705,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 	    } else {
 		//receiver
 		//for one byte receiving ack needs to be disabled just after writing the address
-		if(I2Cx_Data->I2C_Rx_Size == 1 && sr1 & I2C_ADDR) {
+		if(I2Cx_Data->I2C_Rx_Size == 1 && (sr1 & I2C_ADDR)) {
 		    // Disable Acknowledgement
 		    I2C_AcknowledgeConfig(I2Cx, DISABLE);
 
@@ -714,7 +714,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data)
 		}
 
 		//read data if rx is not empty
-		if(sr1 & I2C_RxNE || sr1 & I2C_BTF) {
+		if((sr1 & I2C_RxNE) || (sr1 & I2C_BTF)) {
 		    if(I2Cx_Data->I2C_Rx_Idx < I2Cx_Data->I2C_Rx_Size) {
 			I2Cx_Data->I2C_Buffer_Rx[I2Cx_Data->I2C_Rx_Idx] = I2C_ReceiveData(I2Cx);
 			I2Cx_Data->I2C_Rx_Idx++;
@@ -781,7 +781,7 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
     I2Cx_Data->I2CErrorReason = I2C_FLAG_AF;
   
     //Note, master only error handling
-    if(!(cr1 & (1<<9) || cr1 & (1<<8)) && sr2 & I2C_BUSY)
+    if(!((cr1 & (1<<9)) || (cr1 & (1<<8))) && (sr2 & I2C_BUSY))
 	I2C_GenerateSTOP(I2Cx, ENABLE);
 
     /* Clear AF flag */
@@ -791,7 +791,7 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_ARLO)) {
     I2Cx_Data->I2CErrorReason = I2C_FLAG_ARLO;
     // Send STOP Condition
-    if(!(cr1 & (1<<9) || cr1 & (1<<8)) && sr2 & I2C_BUSY)
+    if(!((cr1 & (1<<9)) || (cr1 & (1<<8))) && (sr2 & I2C_BUSY))
 	I2C_GenerateSTOP(I2Cx, ENABLE);
 
     I2C_ClearFlag(I2Cx, I2C_FLAG_ARLO);
@@ -800,7 +800,7 @@ void I2C_ER_IRQHandler(I2C_TypeDef* I2Cx, volatile struct I2C_Data *I2Cx_Data) {
   if(I2C_GetFlagStatus(I2Cx, I2C_FLAG_TIMEOUT)) {
       //I2Cx_Data->I2CErrorReason = I2C_FLAG_TIMEOUT;
     // Send STOP Condition
-    if(!(cr1 & (1<<9) || cr1 & (1<<8)) && sr2 & I2C_BUSY)
+    if(!((cr1 & (1<<9)) || (cr1 & (1<<8))) && (sr2 & I2C_BUSY))
 	I2C_GenerateSTOP(I2Cx, ENABLE);
 
     I2C_ClearFlag(I2Cx, I2C_FLAG_TIMEOUT);
