@@ -509,6 +509,8 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 	    print("OVR");
 	    break;
 	case I2C_FLAG_AF:
+	    if((I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL) == SET))
+		I2C_GenerateSTOP(I2Cx, ENABLE);
 	    printf("AF");
 	    break;	
 	default:
