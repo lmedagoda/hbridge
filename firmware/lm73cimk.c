@@ -91,6 +91,10 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	    lm73Data[sensor].state = LM73_TRIGGERED;
 	    //print("Triggered\n");
 	}    
+	else
+	{
+	    statistic2++;
+	}
 	break;
 	
     case LM73_TRIGGERED:
@@ -108,6 +112,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 		    resetI2C(lm73Data[sensor].i2cHandle);
 		    lm73Data[sensor].errorCounter = 0;
 		}
+		statistic2++;
 	    }
 	    else
 	    {
@@ -124,6 +129,10 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	    statistic_r++;
 	    //print("Requested\n");
 	    lm73Data[sensor].state = LM73_TEMP_REQUESTED;
+	} 
+	else
+	{
+	    statistic2++;
 	}
 	break;
 
@@ -134,6 +143,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	{
 	    if(i2cResult->I2CError)
 	    {
+		statistic2++;
 		lm73Data[sensor].state = LM73_TRIGGER_FINISHED;
 	    } else {
 		s16 value = ((i2cResult->rxData[0]) << 8) + i2cResult->rxData[1];
