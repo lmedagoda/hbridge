@@ -329,7 +329,7 @@ void resetI2C(struct I2C_Handle *handle)
     }
 }
 
-void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped) 
+void setupI2CxIntern(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped, u8 keepQueue) 
 {
     volatile int wait;
     volatile struct I2C_Data *I2Cx_Data;
@@ -374,12 +374,15 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
 	queue = &I2C2_CommandQueue;
     }
     
-    queue->I2C_Data = I2Cx_Data;
-    queue->I2Cx = I2Cx;
-    queue->curCommand = 0;
-    queue->readPointer = 0;
-    queue->writePointer = 0;
-
+    if(!keepQueue)
+    {
+	queue->I2C_Data = I2Cx_Data;
+	queue->I2Cx = I2Cx;
+	queue->curCommand = 0;
+	queue->readPointer = 0;
+	queue->writePointer = 0;
+    }
+    
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_StructInit(&NVIC_InitStructure);
     
@@ -460,6 +463,11 @@ void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapp
     I2C_ITConfig(I2Cx, I2C_IT_EVT | I2C_IT_BUF | I2C_IT_ERR, ENABLE); 
 }
 
+void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped)
+{
+    setupI2CxIntern(address, speed, I2Cx, remapped, 0);
+}
+
 void setupI2C2(u16 address, int speed) {
     //i2c2 can not be remapped
     setupI2Cx(address, speed, I2C2, DISABLE);
@@ -495,7 +503,7 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 	case I2C_FLAG_BERR:
 	    print("BERR");
 	    I2C_SoftwareResetCmd(I2Cx, DISABLE);
-	    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped);
+	    setupI2CxIntern(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped, 1);
 	    break;
 	case I2C_FLAG_OVR:
 	    print("OVR");
@@ -509,7 +517,7 @@ u8 handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
 	    while(wait--)
 		;
 	    I2C_SoftwareResetCmd(I2Cx, DISABLE);
-	    setupI2Cx(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped);
+	    setupI2CxIntern(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped, 1);
 	    printf("Unknown %lu", I2Cx_Data->I2CErrorReason);
 	}
 	
