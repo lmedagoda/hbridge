@@ -104,8 +104,9 @@ void I2C_print_state(struct I2C_Handle* handle)
     u16 i2cerror = handle->queue->I2C_Data->I2CError;
     u32 i2cerrorreason = handle->queue->I2C_Data->I2CErrorReason;
     u32 i2cSafetyCounter = handle->queue->I2C_Data->i2cSafetyCounter;
+    u32 mslIsSet = I2C_GetFlagStatus(handle->queue->I2Cx, I2C_FLAG_MSL);
     
-    printf("I2C dbg curCmd %lu, hasRes %hu, sending %hu, rp %hu, wp %hu, i2cmode %hu, i2cError %hu, i2cErRes %lu, i2cScnt %lu\n", curCmd, hasResult, isSending, rp, wp, i2cmode, i2cerror, i2cerrorreason, i2cSafetyCounter);
+    printf("I2C dbg curCmd %lu, hasRes %hu, sending %hu, rp %hu, wp %hu, i2cmode %hu, i2cError %hu, i2cErRes %lu, i2cScnt %lu i2cMLS %lu\n", curCmd, hasResult, isSending, rp, wp, i2cmode, i2cerror, i2cerrorreason, i2cSafetyCounter, mslIsSet);
 }
 
 struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
