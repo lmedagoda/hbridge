@@ -1,9 +1,11 @@
 #include "usart.h"
 #include <stdarg.h>
+#include "inc/stm32f10x_type.h"
+#include "stm32f10x_conf.h"
 
 #undef printf
 
-typedef u8 (*send_func_t)(const u8 *, const u32);
+typedef signed int (*send_func_t)(const unsigned char *, const unsigned int);
 
 int _print(send_func_t sf, const unsigned char *format) {
   const unsigned char *fmt = format;
@@ -14,11 +16,16 @@ int _print(send_func_t sf, const unsigned char *format) {
     len++;
   }
 
-  int ret = 1;
+  int sent = 0;
+  int ret = 0;
   
-//  while(ret)
-  ret = sf(format, len);
-
+  while(sent < len)
+  {
+    ret = sf(format + sent, len - sent);
+    if(ret < 0)
+	return -1;
+    sent += ret;
+  }
   return len;
 }
 
@@ -89,13 +96,13 @@ int _printf(send_func_t sf, const char *format, va_list* ap) {
       break;
 
       
-    case 'd':              /* int */
     case 'l':               /* unsigned long int */
       fmt++;
+    case 'd':              /* int */
       if(*fmt == 'u') {
 	d = (unsigned long int) va_arg(*ap, long int);
       } else {
-	if(*fmt == 'i') {
+	if(*fmt == 'i' || *fmt == 'd') {
 	    ds = va_arg(*ap, long int);
 
 	    if(ds < 0) {
@@ -151,11 +158,17 @@ int _printf(send_func_t sf, const char *format, va_list* ap) {
   
   assert_param(pos < 128);
 
-  u8 ret = 1;
-//    while(ret) 
-
-  ret = sf(msg, pos);
-
+  int sent = 0;
+  int ret = 0;
+  
+  while(sent < pos)
+  {
+    ret = sf(msg + sent, pos - sent);
+    if(ret < 0)
+	return -1;
+    sent += ret;
+  }
+  
   return pos;
 }
 

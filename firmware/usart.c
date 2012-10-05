@@ -3,6 +3,8 @@
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_lib.h"
+#include "inc/stm32f10x_type.h"
+
 #include "stm32f10x_it.h"
 
 #define USART_BUFFER_SIZE 256
@@ -24,16 +26,18 @@ struct USART_Data {
   FunctionalState usesInterrupts;
 };
 
-u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const u8 *data, const u32 size);
-u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const u32 buffer_length);
+signed int USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const u8 *data, const unsigned int size);
+signed int USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const unsigned int buffer_length);
 void USART_IRQHandler(USART_TypeDef* USARTx, volatile struct USART_Data *data);
 
 volatile struct USART_Data USART1_Data;
 volatile struct USART_Data USART3_Data;
 
-void USART1_Init(FunctionalState useInterrupts)
+void USART1_Init(enum USART_MODE mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
+
+    assert_param(mode == USART_USE_INTERRUPTS || mode == USART_POLL);
 
     //get default GPIO config
     GPIO_StructInit(&GPIO_InitStructure);
@@ -57,9 +61,9 @@ void USART1_Init(FunctionalState useInterrupts)
     
     USART1_Data.TxWritePointer = 0;
     USART1_Data.TxReadPointer = 0;
-    USART1_Data.usesInterrupts = useInterrupts;
+    USART1_Data.usesInterrupts = mode == USART_USE_INTERRUPTS;
 
-    if(useInterrupts)
+    if(mode == USART_USE_INTERRUPTS)
     {
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_StructInit(&NVIC_InitStructure);
@@ -84,8 +88,8 @@ void USART1_Init(FunctionalState useInterrupts)
     USART_Init(USART1, &USART_InitStructure);
 
     /* Enable USART1 Receive and Transmit interrupts */
-    USART_ITConfig(USART1, USART_IT_RXNE, useInterrupts);
-    USART_ITConfig(USART1, USART_IT_TXE, useInterrupts);
+    USART_ITConfig(USART1, USART_IT_RXNE, mode == USART_USE_INTERRUPTS);
+    USART_ITConfig(USART1, USART_IT_TXE, mode == USART_USE_INTERRUPTS);
 
     /* Enable the USART1 */
     USART_Cmd(USART1, ENABLE);
@@ -112,7 +116,20 @@ void USART1_DeInit(void )
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, DISABLE);
 }
 
-void USART3_Init(FunctionalState useInterrupts)
+signed int USART1_SendData(const unsigned char *data, const unsigned int size) {
+  return USARTx_SendData(USART1, &USART1_Data, data, size);
+}
+
+signed int USART1_GetData (unsigned char *buffer, const unsigned int buffer_length) {
+  return USARTx_GetData(USART1, &USART1_Data, buffer, buffer_length);
+}
+
+void USART1_IRQHandler(void)
+{ 
+  USART_IRQHandler(USART1, &USART1_Data);
+}
+
+void USART3_Init(enum USART_MODE mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -139,9 +156,9 @@ void USART3_Init(FunctionalState useInterrupts)
     
     USART3_Data.TxWritePointer = 0;
     USART3_Data.TxReadPointer = 0;
-    USART3_Data.usesInterrupts = useInterrupts;
+    USART3_Data.usesInterrupts = USART_USE_INTERRUPTS;
 
-    if(useInterrupts)
+    if(mode == USART_USE_INTERRUPTS)
     {
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_StructInit(&NVIC_InitStructure);
@@ -166,8 +183,8 @@ void USART3_Init(FunctionalState useInterrupts)
     USART_Init(USART3, &USART_InitStructure);
 
     /* Enable USART1 Receive and Transmit interrupts */
-    USART_ITConfig(USART3, USART_IT_RXNE, useInterrupts);
-    USART_ITConfig(USART3, USART_IT_TXE, useInterrupts);
+    USART_ITConfig(USART3, USART_IT_RXNE, mode == USART_USE_INTERRUPTS);
+    USART_ITConfig(USART3, USART_IT_TXE, mode == USART_USE_INTERRUPTS);
 
     /* Enable the USART1 */
     USART_Cmd(USART3, ENABLE);
@@ -193,28 +210,12 @@ void USART3_DeInit(void )
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, DISABLE);
 }
 
-
-
-u8 USART1_SendData(const u8 *data, const u32 size) {
-  return USARTx_SendData(USART1, &USART1_Data, data, size);
-}
-
-u8 USART3_SendData(const u8* data, const u32 size)
-{
+signed int USART3_SendData(const unsigned char *data, const unsigned int size) {
   return USARTx_SendData(USART3, &USART3_Data, data, size);
 }
 
-u32 USART1_GetData (u8 *buffer, const u32 buffer_length) {
-  return USARTx_GetData(USART1, &USART1_Data, buffer, buffer_length);
-}
-
-u32 USART3_GetData (u8 *buffer, const u32 buffer_length) {
+signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_length) {
   return USARTx_GetData(USART3, &USART3_Data, buffer, buffer_length);
-}
-
-void USART1_IRQHandler(void)
-{ 
-  USART_IRQHandler(USART1, &USART1_Data);
 }
 
 void USART3_IRQHandler(void)
@@ -222,12 +223,10 @@ void USART3_IRQHandler(void)
   USART_IRQHandler(USART3, &USART3_Data);
 }
 
-
 /**
- * return 0 on sucess and 1 tx buffer full error
- *
+ * returns the amount of bytes sent.
  */
-u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const u8 *buffer, const u32 count) {
+signed int USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const unsigned char *buffer, const unsigned int count) {
     if(!usart_data->usesInterrupts)
     {
 	u32 pos = 0;
@@ -241,45 +240,48 @@ u8 USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data
 	    {
 	    }
 	}
-	return 0;
+	return count;
     }
     
-    volatile int free_space = 0;
     u32 size = 0;
 
-    free_space = (USART_BUFFER_SIZE - (usart_data->TxWritePointer - usart_data->TxReadPointer) - 1) % USART_BUFFER_SIZE;
-    if(free_space < count) {
-      return 1;
-    }
-    
-    //write to ringbuffer
-    while(size < count) {
-      usart_data->TxBuffer[usart_data->TxWritePointer] = buffer[size];
-      usart_data->TxWritePointer = (usart_data->TxWritePointer + 1) % USART_BUFFER_SIZE;
-      size++;
+    u16 nextPtr = (usart_data->TxWritePointer + 1) % USART_BUFFER_SIZE; 
+    while(size < count && nextPtr != usart_data->TxReadPointer) {
+	usart_data->TxBuffer[usart_data->TxWritePointer] = buffer[size];
+	usart_data->TxWritePointer = (usart_data->TxWritePointer + 1) % USART_BUFFER_SIZE;
+	size++;
+	nextPtr = (usart_data->TxWritePointer + 1) % USART_BUFFER_SIZE;
     }
 
-
-    //    if(!USART_GetITStatus(USARTx, USART_IT_TXE)) {
-      //Enable the USARTx Transmit interrupt
+    //Enable the USARTx Transmit interrupt
     USART_ITConfig(USARTx, USART_IT_TXE, ENABLE);
-      //}
     
-    return 0;      
+    return size;
 }
 
 /**
  * Fetches Data from the receive queue.
  * returns bytes fetched from rx queue
  */
-u32 USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, u8 *buffer, const u32 buffer_length) {
-  u32 counter = 0;
-  while(counter < buffer_length && usart_data->RxWritePointer != usart_data->RxReadPointer) {
-    buffer[counter] = usart_data->RxBuffer[usart_data->RxReadPointer];
-    counter++;
-    usart_data->RxReadPointer = (usart_data->RxReadPointer + 1) % USART_BUFFER_SIZE;
-  }
-  return counter;
+signed int USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, unsigned char *buffer, const unsigned int buffer_length) {
+    u32 counter = 0;
+    while(counter < buffer_length && usart_data->RxWritePointer != usart_data->RxReadPointer) {
+	buffer[counter] = usart_data->RxBuffer[usart_data->RxReadPointer];
+	counter++;
+	usart_data->RxReadPointer = (usart_data->RxReadPointer + 1) % USART_BUFFER_SIZE;
+    }
+    
+    if(usart_data->RxWritePointer == usart_data->RxReadPointer && usart_data->RxBufferFullError)
+    {
+	//clear error
+	usart_data->RxBufferFullError = 0;
+	//reenable receive interrupt
+	USART_ITConfig(USARTx, USART_IT_RXNE, ENABLE);
+	//inform user space that we had an error
+	return -1;
+    }
+    
+    return counter;
 }
 
 
@@ -323,4 +325,3 @@ void USART_IRQHandler(USART_TypeDef* USARTx,volatile struct USART_Data *data)
     }
   }
 }
-

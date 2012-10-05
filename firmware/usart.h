@@ -1,18 +1,55 @@
 #ifndef __USART_H
 #define __USART_H
 
-#include "stm32f10x_type.h"
-#include "stm32f10x_usart.h"
 
+enum USART_MODE
+{
+    USART_POLL,
+    USART_USE_INTERRUPTS,
+};
 
-void USART1_Init(FunctionalState useInterrupts);
+/**
+ * Initializes the USART 1 with 115200 Baud
+ * 
+ * The parameter mode defines wheather the driver will use 
+ * an interrupt to send and receive the data.
+ **/
+void USART1_Init(enum USART_MODE mode);
+
+/**
+ * Deinitializes the USART1
+ **/
 void USART1_DeInit(void);
-u8 USART1_SendData(const u8 *data, const u32 size);
-u32 USART1_GetData (u8 *buffer, const u32 buffer_length);
 
-void USART3_Init(FunctionalState useInterrupts);
+/**
+ * Sends data out via USART1. 
+ * 
+ * Arguments are a pointer to the data and the size of the
+ * data to be send.
+ *
+ * returns nr ob bytes send or -1 in case the data could not be sent.
+ **/
+signed int USART1_SendData(const unsigned char *data, const unsigned int size);
+
+/**
+ * Receives data via USART1
+ *
+ * Arguments are a pointer to an array were the received data
+ * should be saved. Also the maximum number of bytes which may
+ * be stored in the array, is given.
+ *
+ * Note this function will only work if the driver uses the 
+ * interrupt mode.
+ *
+ * Returns the amount of received bytes. Or -1 in case that
+ * the internal receive buffer overrun. 
+ **/
+signed int USART1_GetData (unsigned char *buffer, const unsigned int buffer_length);
+
+void USART3_Init(enum USART_MODE mode);
 void USART3_DeInit(void);
-u8 USART3_SendData(const u8 *data, const u32 size);
-u32 USART3_GetData (u8 *buffer, const u32 buffer_length);
+signed int USART3_SendData(const unsigned char *data, const unsigned int size);
+signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_length);
+
 
 #endif
