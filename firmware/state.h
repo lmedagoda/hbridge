@@ -23,25 +23,15 @@ struct ErrorState {
     u8 hardwareShutdown;
 };
 
-struct PIDValues {
-  s16 kp;
-  s16 ki;
-  s16 kd;
-  u16 minMaxPidOutput;
-};
 
 struct ControllerState {
   enum controllerModes controllMode;
   enum internalState internalState;
-  struct PIDValues speedPIDValues;
-  struct PIDValues positionPIDValues;
   enum encoderTypes internalEncoder;
   enum encoderTypes externalEncoder;
   enum controllerInputEncoder controllerInputEncoder;
   u8 useExternalTempSensor;
   u8 useOpenLoop;
-  u8 enablePIDDebug;
-  u8 cascadedPositionController;
   u16 pwmStepPerMillisecond;
   u16 maxCurrent;
   u8 maxCurrentCount;

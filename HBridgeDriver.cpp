@@ -453,10 +453,7 @@ int Driver::getCurrentTickDivider(int index) const
             reinterpret_cast<firmware::configure2Data *>(msgs.second.data);
     
         cfg1->openCircuit                = cfg.openCircuit;
-        cfg1->activeFieldCollapse        = cfg.activeFieldCollapse;
         cfg1->externalTempSensor         = cfg.externalTempSensor;
-        cfg1->cascadedPositionController = cfg.cascadedPositionController;
-        cfg1->enablePIDDebug             = cfg.pidDebugActive;
         cfg1->unused                     = 0;
         cfg1->maxMotorTemp               = cfg.maxMotorTemp;
         cfg1->maxMotorTempCount          = cfg.maxMotorTempCount;

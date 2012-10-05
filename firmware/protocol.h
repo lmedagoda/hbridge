@@ -1,10 +1,7 @@
 #ifndef __PROTOCOL_H
 #define __PROTOCOL_H
 
-#ifndef __NO_STM32
-#include "inc/stm32f10x_type.h"
-#include "inc/stm32f10x_can.h"
-#endif
+#include <stdint.h>
 
 enum hostIDs {
   RECEIVER_ID_H_BRIDGE_1 = (1<<5),
@@ -25,24 +22,32 @@ enum controllerModes {
 
 enum packetIDs {
   PACKET_ID_EMERGENCY_STOP = 0,
-  PACKET_ID_ERROR = 1,
-  PACKET_ID_STATUS = 2,
-  PACKET_ID_SET_VALUE14 = 3,
-  PACKET_ID_SET_VALUE58 = 4,
-  PACKET_ID_SET_MODE14 = 5,
-  PACKET_ID_SET_MODE58 = 6,
-  PACKET_ID_SET_PID_POS = 7,
-  PACKET_ID_SET_PID_SPEED = 8,
-  PACKET_ID_SET_CONFIGURE = 9,
-  PACKET_ID_SET_CONFIGURE2 = 10,
-  PACKET_ID_ENCODER_CONFIG_INTERN = 11,
-  PACKET_ID_ENCODER_CONFIG_EXTERN = 12,
-  PACKET_ID_PID_DEBUG_POS = 13,
-  PACKET_ID_POS_DEBUG = 14,
-  PACKET_ID_PID_DEBUG_SPEED = 15,
-  PACKET_ID_SPEED_DEBUG = 16,
-  PACKET_ID_POS_CONTROLLER_DATA = 17,
-  PACKET_ID_EXTENDED_STATUS = 18, 
+  PACKET_ID_ACK,
+  PACKET_ID_ERROR,
+  PACKET_ID_STATUS,
+  PACKET_ID_EXTENDED_STATUS,   
+  PACKET_ID_ENCODER_CONFIG_INTERN,
+  PACKET_ID_ENCODER_CONFIG_EXTERN,
+  PACKET_ID_SET_CONFIGURE,
+  PACKET_ID_SET_CONFIGURE2,
+  PACKET_ID_SET_MODE14,
+  //10
+  PACKET_ID_SET_MODE58,
+  PACKET_ID_SET_VALUE14,
+  PACKET_ID_SET_VALUE58,
+
+  END_BASE_PACKETS,
+  
+  PACKET_ID_SET_PID_SPEED,
+  PACKET_ID_SPEED_DEBUG,
+  PACKET_ID_PID_DEBUG_SPEED,
+  
+  PACKET_ID_SET_PID_POS,
+  PACKET_ID_PID_DEBUG_POS,
+  PACKET_ID_POS_DEBUG,
+  //20 (?)
+  PACKET_ID_POS_CONTROLLER_DATA,
+  NUM_PACKET_IDS,
 };
 
 #define NUM_ENCODERS 6
@@ -60,39 +65,44 @@ enum controllerInputEncoder {
     EXTERNAL = 1,
 };
 
+struct ackData {
+    unsigned short packetId;
+};
+
 struct speedDebugData {
-  s16 targetVal;
-  s16 pwmVal;
-  u16 encoderVal;
-  s16 speedVal;
+  int16_t targetVal;
+  int16_t pwmVal;
+  unsigned short encoderVal;
+  int16_t speedVal;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct posDebugData {
-  u16 targetVal;
-  s16 pwmVal;
-  u16 encoderVal;
-  u16 posVal;
+  uint16_t targetVal;
+  int16_t pwmVal;
+  uint16_t encoderVal;
+  uint16_t posVal;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct pidDebugData {
-  s16 pPart;
-  s16 iPart;
-  s16 dPart;
-  u16 minMaxPidOutput;
+  int16_t pPart;
+  int16_t iPart;
+  int16_t dPart;
+  uint16_t minMaxPidOutput;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct posControllerData {
-    u16 minHystDist;
-    u16 maxHystDist;
+    uint16_t minHystDist;
+    uint16_t maxHystDist;
     unsigned hysteresisActive:1;
     unsigned allowWrapAround:1;
-    unsigned unused:6;
-    u8 overDistCount;
+    unsigned debugActive:1;
+    unsigned unused:5;
+    uint8_t overDistCount;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct errorData {
-    u8 temperature;
-    u16 position;
+    uint8_t temperature;
+    uint16_t position;
     unsigned index :10;
     unsigned externalPosition:12;
     unsigned motorOverheated:1;
@@ -108,21 +118,21 @@ struct errorData {
 struct statusData {
   signed pwm :12;
   unsigned externalPosition:12;
-  u16 position;
+  uint16_t position;
   unsigned currentValue :14;
   unsigned index :10;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct extendedStatusData {
-    u8 temperature;
-    u8 motorTemperature;
+    uint8_t temperature;
+    uint8_t motorTemperature;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setValueData {
-  s16 board1Value;
-  s16 board2Value;
-  s16 board3Value;
-  s16 board4Value;
+  int16_t board1Value;
+  int16_t board2Value;
+  int16_t board3Value;
+  int16_t board4Value;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setModeData {
@@ -133,45 +143,47 @@ struct setModeData {
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setPidData {
-  s16 kp;
-  s16 ki;
-  s16 kd;
-  u16 minMaxPidOutput;
+  int16_t kp;
+  int16_t ki;
+  int16_t kd;
+  uint16_t minMaxPidOutput;
 } __attribute__ ((packed)) __attribute__((__may_alias__)) ;
 
 struct encoderConfiguration {
     enum encoderTypes encoderType:8;
-    u32 ticksPerTurn;
-    u8 tickDivider;
+    uint32_t ticksPerTurn;
+    uint8_t tickDivider;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct configure1Data {
   unsigned openCircuit :1;
-  unsigned activeFieldCollapse :1;
   unsigned externalTempSensor :1;
-  unsigned cascadedPositionController :1;
-  unsigned enablePIDDebug :1;
   unsigned externalEncoder : 1;
   enum controllerInputEncoder controllerInputEncoder :1;
-  unsigned unused :9;
-  u8 maxMotorTemp;
-  u8 maxMotorTempCount;
-  u8 maxBoardTemp;
-  u8 maxBoardTempCount;
-  u16 timeout;
+  unsigned unused :12;
+  uint8_t maxMotorTemp;
+  uint8_t maxMotorTempCount;
+  uint8_t maxBoardTemp;
+  uint8_t maxBoardTempCount;
+  uint16_t timeout;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct configure2Data {
-  u16 maxCurrent;
-  u8 maxCurrentCount;
-  u16 pwmStepPerMs;
+  uint16_t maxCurrent;
+  uint8_t maxCurrentCount;
+  uint16_t pwmStepPerMs;
+  uint16_t statusEveryMs;
   //  unsigned unused :24;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 #ifndef __NO_STM32
+#include "inc/stm32f10x_can.h"
 struct ControllerState;
-u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId);
+uint8_t updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId);
 enum hostIDs getOwnHostId();
+void protocol_init(enum hostIDs ownHostId);
+void protocol_registerHandler(int id, void (*handler)(int id, unsigned char *data, unsigned short size));
+void protocol_ackPacket(int id);
 #endif
 
 

@@ -2,13 +2,58 @@
 #include "state.h"
 #include "encoder.h"
 #include "inc/stm32f10x_can.h"
-#include "inc/stm32f10x_gpio.h"
 #include "printf.h"
+#include "can.h"
 
 //HACK this should be moved to a callback interface for message ids...
 void positionControllerSetControllerConfiguration(volatile struct posControllerData* data);
 
-u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
+void (*protocolHandlers[NUM_PACKET_IDS - END_BASE_PACKETS])(int id, unsigned char *data, unsigned short size);
+
+void protocol_defaultHandler(int id, unsigned char *data, unsigned short size)
+{
+    unsigned short idl = id;
+    printf("Warning, packet with id %hu was not handled \n", idl);
+}
+
+volatile enum hostIDs ownHostId;
+
+void protocol_init(enum hostIDs id)
+{
+    ownHostId = id;
+    
+    int i = 0;
+    for(i = 0; i < NUM_PACKET_IDS - END_BASE_PACKETS; i++)
+    {
+	protocolHandlers[i] = protocol_defaultHandler;
+    }
+}
+
+void protocol_registerHandler(int id, void (*handler)(int id, unsigned char *data, unsigned short size))
+{
+    protocolHandlers[id - END_BASE_PACKETS] = handler;
+}
+
+void protocol_ackPacket(int id)
+{
+    CanTxMsg ackMessage;
+
+    //send status message over CAN
+    ackMessage.StdId= PACKET_ID_ACK + ownHostId;
+    ackMessage.RTR=CAN_RTR_DATA;
+    ackMessage.IDE=CAN_ID_STD;
+    ackMessage.DLC= sizeof(struct ackData);
+
+    struct ackData *data = (struct ackData *) ackMessage.Data;
+    data->packetId = id + ownHostId;
+
+    while(CAN_SendMessage(&ackMessage))
+	;
+
+}
+
+
+uint8_t updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, enum hostIDs ownHostId) {
     //clear device specific adress bits
     curMsg->StdId &= ~ownHostId;
 
@@ -95,38 +140,6 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    }
 	    break;
 	}
-	  
-        case PACKET_ID_SET_PID_POS: {
-	  if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
-	    struct setPidData *data = (struct setPidData *) curMsg->Data;
-	    state->positionPIDValues.kp = data->kp;
-	    state->positionPIDValues.ki = data->ki;
-	    state->positionPIDValues.kd = data->kd;
-	    state->positionPIDValues.minMaxPidOutput = data->minMaxPidOutput;
-	    printf("Got PACKET_ID_SET_PI_POS Msg %hi %hi %hi %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
-	  
-	  } else {
-	    print("Error, not configured \n");
-	    state->internalState = STATE_ERROR;
-	    getErrorState()->badConfig = 1;
-	  }
-	  break;
-	}
-        case PACKET_ID_SET_PID_SPEED: {
-	  if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
-	    struct setPidData *data = (struct setPidData *) curMsg->Data;
-	    state->speedPIDValues.kp = data->kp;
-	    state->speedPIDValues.ki = data->ki;
-	    state->speedPIDValues.kd = data->kd;
-	    state->speedPIDValues.minMaxPidOutput = data->minMaxPidOutput;
-	    printf("Got PACKET_ID_SET_PID_SET Msg %hi %hi %hi %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
-	  } else {
-	    print("Error, not configured \n");
-	    state->internalState = STATE_ERROR;
-	    getErrorState()->badConfig = 1;
-	  }
-	  break;
-	}
         case PACKET_ID_SET_CONFIGURE: {
             if(!encoderConfigured(state->internalEncoder) || !encoderConfigured(state->externalEncoder)) {
                 state->internalState = STATE_ERROR;
@@ -137,9 +150,7 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
 	    struct configure1Data *data = (struct configure1Data *) curMsg->Data;
 	    state->useExternalTempSensor = data->externalTempSensor;
 	    state->useOpenLoop = data->openCircuit;
-	    state->cascadedPositionController = data->cascadedPositionController;
             state->controllerInputEncoder = data->controllerInputEncoder;
-	    state->enablePIDDebug = data->enablePIDDebug;
 
 	    state->maxMotorTemp = data->maxMotorTemp;
 	    state->maxMotorTempCount = data->maxMotorTempCount;
@@ -215,24 +226,45 @@ u8 updateStateFromMsg(CanRxMsg *curMsg, volatile struct ControllerState *state, 
             forceSynchronisation = 1;
 	}
 	break;
-	case PACKET_ID_POS_CONTROLLER_DATA:
-	{
-	    print("Got Pos Ctrl data");
-	    if(curMsg->DLC != sizeof(struct posControllerData))
-	    {
-		print("Error PosCtrlData has wrong size");
-		break;
-	    }
-	    struct posControllerData *data = (struct posControllerData *) curMsg->Data;
-	    positionControllerSetControllerConfiguration(data);
-	}
-	break;
+	
+		  
+//         case PACKET_ID_SET_PID_SPEED: {
+// 	  if(state->internalState == STATE_CONFIGURED || state->internalState == STATE_GOT_TARGET_VAL) {
+// 	    struct setPidData *data = (struct setPidData *) curMsg->Data;
+// 	    state->speedPIDValues.kp = data->kp;
+// 	    state->speedPIDValues.ki = data->ki;
+// 	    state->speedPIDValues.kd = data->kd;
+// 	    state->speedPIDValues.minMaxPidOutput = data->minMaxPidOutput;
+// 	    printf("Got PACKET_ID_SET_PID_SET Msg %hi %hi %hi %hu\n", data->kp, data->ki, data->kd, data->minMaxPidOutput);
+// 	  } else {
+// 	    print("Error, not configured \n");
+// 	    state->internalState = STATE_ERROR;
+// 	    getErrorState()->badConfig = 1;
+// 	  }
+// 	  break;
+// 	}
+
+	
      default: 
 	{
-	  u16 id = curMsg->StdId;
-	  
-	  printf("Got unknown packet id : %hu ! \n", id);
-	  break;
+	    if(curMsg->StdId > END_BASE_PACKETS)
+	    {
+		if(state->internalState == STATE_GOT_TARGET_VAL) {
+		    print("Error, configuring controllers is not allowed while running \n");
+		    state->internalState = STATE_ERROR;
+		    getErrorState()->badConfig = 1;
+		}
+		else
+		{
+		    protocolHandlers[curMsg->StdId - END_BASE_PACKETS](curMsg->StdId, curMsg->Data, curMsg->DLC);
+		}
+	    }
+	    else
+	    {
+		u16 id = curMsg->StdId;
+		printf("Got unknown packet id : %hu ! \n", id);
+	    }
+	    break;
 	}
     }
 

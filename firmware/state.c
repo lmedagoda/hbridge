@@ -15,7 +15,6 @@ void initStateStruct(volatile struct ControllerState *cs) {
     cs->internalState = STATE_UNCONFIGURED;
     cs->useExternalTempSensor = 0;
     cs->useOpenLoop = 0;
-    cs->cascadedPositionController = 0;
     cs->pwmStepPerMillisecond = 0;
     cs->maxCurrent = 0;
     cs->maxCurrentCount = 0;
@@ -25,18 +24,9 @@ void initStateStruct(volatile struct ControllerState *cs) {
     cs->maxBoardTempCount = 0;
     cs->timeout = 1;
     cs->targetValue = 0;
-    cs->speedPIDValues.kp = 0;
-    cs->speedPIDValues.ki = 0;
-    cs->speedPIDValues.kd = 0;
-    cs->speedPIDValues.minMaxPidOutput = 0;
-    cs->positionPIDValues.kp = 0;
-    cs->positionPIDValues.ki = 0;
-    cs->positionPIDValues.kd = 0;
-    cs->positionPIDValues.minMaxPidOutput = 0;
     cs->internalEncoder = NO_ENCODER;
     cs->externalEncoder = NO_ENCODER;
     cs->controllerInputEncoder = INTERNAL;
-    cs->enablePIDDebug = 0;
     cs->resetTimeoutCounter = 0;
 };
 

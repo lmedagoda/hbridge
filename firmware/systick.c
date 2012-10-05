@@ -20,7 +20,7 @@
 #define MIN_S16 (-(1<<15))
 #define MAX_S16 ((1<<15) -1)
 
-volatile enum hostIDs ownHostId;
+extern volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
 static s32 currentPwmValue = 0;
@@ -132,6 +132,8 @@ void baseInit()
     //read out dip switches
     ownHostId = getOwnHostId();
 
+    protocol_init(ownHostId);
+    
     hbridgeInit();
 
     currentMeasurementInit();
@@ -193,10 +195,8 @@ void pollCanMessages()
 	    printf("Error is %hu \n", errorDbg);
 	    print("ActiveCstate: ");
 	    printStateDebug(activeCState);
-	    printf("P:%hi I:%hi D:%hi \n", activeCState->speedPIDValues.kp,  activeCState->speedPIDValues.ki,  activeCState->speedPIDValues.kd );
 	    print(" LastActiveCstate: ");
 	    printStateDebug(lastActiveCState);
-	    printf("P:%hi I:%hi D:%hi \n", lastActiveCState->speedPIDValues.kp,  lastActiveCState->speedPIDValues.ki, lastActiveCState->speedPIDValues.kd );
 	} else {
 	    cnt++;
 	}
@@ -231,9 +231,6 @@ void SysTickHandler(void) {
     if(index >= (1<<10))
 	index = 0;
 
-    setNewSpeedPIDValues(activeCState->speedPIDValues.kp, activeCState->speedPIDValues.ki, activeCState->speedPIDValues.kd, activeCState->speedPIDValues.minMaxPidOutput);
-    setNewPosPIDValues(activeCState->positionPIDValues.kp, activeCState->positionPIDValues.ki, activeCState->positionPIDValues.kd, activeCState->positionPIDValues.minMaxPidOutput);
-  
     //wait for adc struct to be switched
     waitForNewADCValues();
 
@@ -281,34 +278,7 @@ void SysTickHandler(void) {
 	//only run controllers if we got an target value
 	if(activeCState->internalState == STATE_GOT_TARGET_VAL) {
 	    //calculate pwm value
-	    switch(activeCState->controllMode) {
-		case CONTROLLER_MODE_PWM:
-		    pwmValue = activeCState->targetValue;
-		    break;
-		
-		case CONTROLLER_MODE_POSITION: {
-                    //the target value needs to be multiplied by the tickDivider
-                    //in case of position mode, as the "external" and "internal" ticks 
-                    //differ by the factor of tickDivider
-                    //TargetValue is divided by TickDivider
-                    //wheelPos is not divided
-                    u32 targetPositionValue = activeCState->targetValue * tickDivider;
-                    if(activeCState->cascadedPositionController) {
-			pwmValue = cascadedPositionController(targetPositionValue, wheelPos, ticksPerTurn, activeCState->enablePIDDebug);
-		    } else {
-			controllers[CONTROLLER_MODE_POSITION].setDebugActive(activeCState->enablePIDDebug);
-			pwmValue =  controllers[CONTROLLER_MODE_POSITION].step(targetPositionValue, wheelPos, ticksPerTurn);
-		    }
-		    break;
-		}   
-		case CONTROLLER_MODE_SPEED:
-		    controllers[CONTROLLER_MODE_SPEED].setDebugActive(activeCState->enablePIDDebug);
-		    pwmValue = controllers[CONTROLLER_MODE_SPEED].step(activeCState->targetValue, wheelPos, ticksPerTurn);
-		    break; 
-		default:
-		    pwmValue = 0;
-		    break;
-	    }
+	    pwmValue =  controllers[activeCState->controllMode].step(activeCState->targetValue, wheelPos, ticksPerTurn);
 
 	    //trunkcate to s16
 	    if(pwmValue > MAX_S16) 
