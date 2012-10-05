@@ -382,9 +382,9 @@ void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motor
     edata->encodersNotInitalized = es->encodersNotInitalized;
 
     //cancel out old messages
-    CAN_CancelAllTransmits();
+//     CAN_CancelAllTransmits();
 
-    if(CAN_Transmit(&errorMessage) == CAN_NO_MB) {
+    if(CAN_SendMessage(&errorMessage)) {
 	print("Error Tranmitting status Message : No free TxMailbox \n");
     } else {
     //print("Tranmitting status Message : OK \n");  
@@ -409,9 +409,9 @@ void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 moto
     sdata->index = index;
     
     //cancel out old messages
-    CAN_CancelAllTransmits();
+//     CAN_CancelAllTransmits();
     
-    if(CAN_Transmit(&statusMessage) == CAN_NO_MB) {
+    if(CAN_SendMessage(&statusMessage)) {
 	print("Error Tranmitting status Message : No free TxMailbox \n");
     } else {
 	//print("Tranmitting status Message : OK \n");  
@@ -434,7 +434,7 @@ void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 moto
 	if(motorTemperature < 0)
 	    motorTemperature = 0;
 	esdata->motorTemperature = motorTemperature;
-	if(CAN_Transmit(&extendedStatusMessage) == CAN_NO_MB) {
+	if(CAN_SendMessage(&extendedStatusMessage)) {
 	    print("Error Tranmitting status Message : No free TxMailbox \n");
 	} else {
 	    //print("Tranmitting status Message : OK \n");  

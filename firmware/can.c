@@ -131,6 +131,20 @@ void CAN_CancelAllTransmits() {
     }    
 }
 
+unsigned char CAN_SendMessage(CanTxMsg* TxMessage)
+{
+    unsigned char ret = 0;
+    
+    //make this thread non interruptable
+    NVIC_SETPRIMASK();
+    if(CAN_Transmit(TxMessage) == CAN_NO_MB)
+	ret = 1;
+    //finished, let's allow interrupts again
+    NVIC_RESETPRIMASK();
+    
+    return ret;
+}
+
 void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitTypeDef  CAN_FilterInitStructure;
 

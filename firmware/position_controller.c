@@ -168,11 +168,11 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
 	pdbgdata->encoderVal = wheelPos / tickDivider;
 	pdbgdata->posVal = curVal / tickDivider;
 	
-	while(CAN_Transmit(&pidMessagePos) == CAN_NO_MB){
+	while(CAN_SendMessage(&pidMessagePos)){
 	    ;
 	}
 	
-	while(CAN_Transmit(&posDbgMessage) == CAN_NO_MB) {
+	while(CAN_SendMessage(&posDbgMessage)) {
 	    ;
 	}
     }

@@ -1,9 +1,8 @@
 #ifndef __CAN_H
 #define __CAN_H
 
-#include "inc/stm32f10x_type.h"
-#include "inc/stm32f10x_can.h"
 #include "protocol.h"
+#include "inc/stm32f10x_can.h"
 
 #define CAN_SEND_RETRIES 5000
 #define CAN_SEND_ARBITRATION_RETRIES 20 
@@ -33,5 +32,10 @@ void CAN_MarkNextDataAsRead();
 */
 int can_send_message_hard(CanTxMsg * message);
 
+/**
+ * Tries to send out the can message. Note this method is thread safe.
+ * Return 0 on success 1 on failure.
+ * */
+unsigned char CAN_SendMessage(CanTxMsg* TxMessage);
 
 #endif

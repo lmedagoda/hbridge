@@ -4,6 +4,7 @@
 #include "encoder.h"
 #include "state.h"
 #include <stdlib.h>
+#include "can.h"
 
 extern volatile enum hostIDs ownHostId;
 
@@ -94,12 +95,12 @@ s32 speedControllerStep(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn)
 	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
 	sdata->minMaxPidOutput = speedControllerData.pidData.max_command_val;
 	
-	while(CAN_Transmit(&pidMessageSpeed) == CAN_NO_MB){
+	while(CAN_SendMessage(&pidMessageSpeed)){
 	    ;
 	}
 	
 	//send speed status message
-	while(CAN_Transmit(&speedDbgMessage) == CAN_NO_MB) {
+	while(CAN_SendMessage(&speedDbgMessage)) {
 	    ;
 	}
     }    
