@@ -215,7 +215,7 @@ u8 lm73cimk_requestTemperature(enum LM73_SENSORS sensor)
     return I2C_writeReadBytes(lm73Data[sensor].i2cHandle, &tempRequest, 1, 2, lm73Data[sensor].address);
 }
 
-u8 lm73cimk_getTemperature(enum LM73_SENSORS sensor, s32* val)
+uint8_t lm73cimk_getTemperature(enum LM73_SENSORS sensor, int32_t* val)
 {
     moveLM73CIMKStateMachine(sensor);
     if(lm73Data[sensor].state == LM73_ACQUIRED_TEMP) 

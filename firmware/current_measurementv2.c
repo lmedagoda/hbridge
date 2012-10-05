@@ -46,7 +46,7 @@ void waitForNewADCValues() {
     }
 };
 
-u32 calculateCurrent() {
+uint32_t calculateCurrent() {
     /*
 	PWM period: 25000 ns
 	adc sample time:	1666.67 ns/sample

@@ -1,21 +1,21 @@
 #ifndef __I2C_H
 #define __I2C_H
 
-#include "inc/stm32f10x_type.h"
-#include "inc/stm32f10x_i2c.h"
+#include "inc/stm32f10x_map.h"
+#include <stdint.h>
 
 struct I2C_Handle;
 
 struct I2C_CommandResult {
-    u8 rxData[4];
-    u8 rxSize;
-    u8 I2CError;
-    u32 I2CErrorReason;
+    uint8_t rxData[4];
+    uint8_t rxSize;
+    uint8_t I2CError;
+    uint32_t I2CErrorReason;
 };
 
 void I2C_print_state(struct I2C_Handle *handle);
 
-void setupI2Cx(u16 address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped);
+void setupI2Cx(uint16_t address, int speed, I2C_TypeDef* I2Cx, FunctionalState remapped);
 
 /**
  * This function resets the I2C bus, this may be called from
@@ -41,9 +41,9 @@ struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx);
  *
  * Returns 0 on success and 1 on failure
  */
-u8 I2C_writeBytes(struct I2C_Handle *handle, u8 *data, u8 size, u8 addr);
-u8 I2C_writeReadBytes(struct I2C_Handle *handle, u8 *txdata, u8 txsize, u8 rxsize, u8 addr);
-u8 I2C_readBytes(struct I2C_Handle *handle, u8 size, u8 addr);
+uint8_t I2C_writeBytes(struct I2C_Handle *handle, uint8_t *data, uint8_t size, uint8_t addr);
+uint8_t I2C_writeReadBytes(struct I2C_Handle *handle, uint8_t *txdata, uint8_t txsize, uint8_t rxsize, uint8_t addr);
+uint8_t I2C_readBytes(struct I2C_Handle *handle, uint8_t size, uint8_t addr);
 
 /**
  * This function tries to write the given data on 
@@ -53,7 +53,7 @@ u8 I2C_readBytes(struct I2C_Handle *handle, u8 size, u8 addr);
  * Note if this function fails it will block the
  * programm infinite.
  */
-void I2C_writeBytesBlocking(struct I2C_Handle *handle, u8 *data, u8 size, u8 addr);
+void I2C_writeBytesBlocking(struct I2C_Handle *handle, uint8_t *data, uint8_t size, uint8_t addr);
 
 /**
  * Checks if the last issued I2C operation was finished.
@@ -70,7 +70,7 @@ struct I2C_CommandResult *I2C_getResult(struct I2C_Handle *handle);
  * the given speed. It will also configure the IO Pins,
  * activate the interrupts and the RCC.
  */
-void setupI2C2(u16 address, int speed);
+void setupI2C2(uint16_t address, int speed);
 
 /**
  * This function sets up the I2C1 bus with the given
@@ -78,7 +78,7 @@ void setupI2C2(u16 address, int speed);
  * the given speed. It will also configure the IO Pins,
  * activate the interrupts and the RCC.
  */
-void setupI2C1(u16 address, int speed, FunctionalState remapped);
+void setupI2C1(uint16_t address, int speed, FunctionalState remapped);
 
 
 #endif

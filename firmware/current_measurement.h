@@ -1,16 +1,16 @@
 #ifndef __CURRENT_MEASUREMENT_H
 #define __CURRENT_MEASUREMENT_H
-#include "inc/stm32f10x_type.h"
-#include "inc/stm32f10x_adc.h"
+
+#include <stdint.h>
 
 #define USED_REGULAR_ADC_CHANNELS 12
 
-extern vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
+extern volatile uint16_t adc_values[USED_REGULAR_ADC_CHANNELS];
 
 void requestNewADCValues();
 void waitForNewADCValues();
 void currentMeasurementInit();
-u32 calculateCurrent();
+uint32_t calculateCurrent();
 void measureACS712BaseVoltage();
 
 
