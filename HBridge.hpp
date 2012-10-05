@@ -244,6 +244,14 @@ namespace hbridge
 	PID_Debug pidDebug;
     };
 
+    struct MotorConfiguration {
+        Configuration base_config;
+	EncoderConfiguration encoder_config_intern;
+	EncoderConfiguration encoder_config_extern;
+        base::actuators::DRIVE_MODE    mode;
+        base::actuators::PIDValues     pid_position;
+        base::actuators::PIDValues     pid_speed;
+    };
 }
 
 #endif /* HBRIDGE_DRIVER_HPP */

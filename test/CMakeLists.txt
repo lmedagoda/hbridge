@@ -17,4 +17,10 @@ else(Boost_FOUND)
     message(STATUS "boost/unit not found, disabled unit test")
 endif (Boost_FOUND)
 
+ADD_EXECUTABLE(new_driver_test new_driver_test.cpp)
+include_directories(${Boost_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(new_driver_test hbridge2 ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
+
+
+#add_subdirectory(firmware-stubs)

@@ -29,3 +29,5 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/hbridge.pc DESTINATION lib/pkgconfig)
 
 add_subdirectory(test)
 
+
+add_subdirectory(src)
