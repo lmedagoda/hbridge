@@ -21,6 +21,7 @@ void positionControllerSetDebugActive(u8 debugActive);
 s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
 void positionControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax);
 
+s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
 
 
 #endif

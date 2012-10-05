@@ -13,8 +13,6 @@ struct ControllerData {
 struct ControllerInterface {
     void (*init) (void);
     void (*reset) (s32 wheelPos);
-    void (*setDebugActive) (u8 debugActive);
-    void (*setConfiguration) (s32 p, s32 i, s32 d, s32 minMax);
     s32 (*step) (s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
     void (*deInit) (void);
 };
@@ -36,11 +34,5 @@ void initControllers();
 **/
 void resetControllers(s32 wheelPos);
 
-
-void setNewSpeedPIDValues(s32 p, s32 i, s32 d, s32 minMax);
-void setNewPosPIDValues(s32 p, s32 i, s32 d, s32 minMax);
-s32 positionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug);
-s32 speedController(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn, u8 debug);
-s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug);
 
 #endif

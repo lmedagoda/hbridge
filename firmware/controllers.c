@@ -23,14 +23,6 @@ void defaultControllerReset(s32 wheelPos)
 {
 }
 
-void defaultControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax)
-{
-}
-
-void defaultControllerSetDebugActive(u8 debugActive)
-{
-}
-
 s32 defaultControllerStep(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn)
 {
     return 0;
@@ -40,8 +32,6 @@ void defaultInit(struct ControllerInterface *cont)
 {
     cont->init = defaultControllerInit;
     cont->reset = defaultControllerReset;
-    cont->setDebugActive = defaultControllerSetDebugActive;
-    cont->setConfiguration = defaultControllerSetConfiguration;
     cont->step = defaultControllerStep;
     cont->deInit = defaultControllerDeInit;
 }
@@ -56,15 +46,11 @@ void initControllers()
     
     controllers[CONTROLLER_MODE_POSITION].init = positionControllerInit;
     controllers[CONTROLLER_MODE_POSITION].reset = positionControllerReset;
-    controllers[CONTROLLER_MODE_POSITION].setDebugActive = positionControllerSetDebugActive;
-    controllers[CONTROLLER_MODE_POSITION].setConfiguration = positionControllerSetConfiguration;
     controllers[CONTROLLER_MODE_POSITION].step = positionControllerStep;
     controllers[CONTROLLER_MODE_POSITION].deInit = positionControllerDeInit;    
     
     controllers[CONTROLLER_MODE_SPEED].init = speedControllerInit;
     controllers[CONTROLLER_MODE_SPEED].reset = speedControllerReset;
-    controllers[CONTROLLER_MODE_SPEED].setDebugActive = speedControllerSetDebugActive;
-    controllers[CONTROLLER_MODE_SPEED].setConfiguration = speedControllerSetConfiguration;
     controllers[CONTROLLER_MODE_SPEED].step = speedControllerStep;
     controllers[CONTROLLER_MODE_SPEED].deInit = speedControllerDeInit;            
     
@@ -84,19 +70,3 @@ void resetControllers(s32 wheelPos)
     }
 }
 
-void setNewPosPIDValues(s32 p, s32 i, s32 d, s32 minMax) {
-    controllers[CONTROLLER_MODE_POSITION].setConfiguration(p,i,d,minMax);
-}
-
-void setNewSpeedPIDValues(s32 p, s32 i, s32 d, s32 minMax) {
-    controllers[CONTROLLER_MODE_SPEED].setConfiguration(p,i,d,minMax);
-}
-
-s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn, u8 debug) {
-    controllers[CONTROLLER_MODE_POSITION].setDebugActive(debug);
-    s32 pwmValue = controllers[CONTROLLER_MODE_POSITION].step(targetPos, wheelPos, ticksPerTurn);
-    controllers[CONTROLLER_MODE_SPEED].setDebugActive(debug);
-    pwmValue = controllers[CONTROLLER_MODE_SPEED].step(pwmValue / 10, wheelPos, ticksPerTurn);
-   
-    return pwmValue;
-}
