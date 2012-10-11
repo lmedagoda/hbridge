@@ -1,10 +1,10 @@
 #ifndef ENCODER_ADC_H
 #define ENCODER_ADC_H
-#include "inc/stm32f10x_type.h"
+#include <stdint.h>
 
 void encoderInitADC();
-void setTicksPerTurnADC(u32 ticks, u8 tickDivider);
-u32 getTicksADC(void);
+void setTicksPerTurnADC(uint32_t ticks, uint8_t tickDivider);
+uint32_t getTicksADC(void);
 void encoderDeInitADC(void);
 
 #endif

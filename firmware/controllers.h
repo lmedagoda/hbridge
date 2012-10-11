@@ -1,19 +1,19 @@
 #ifndef __CONTROLLERS_H
 #define __CONTROLLERS_H
 
-#include "inc/stm32f10x_type.h"
-#include "pid.h"
+#include <stdint.h>
+#include "drivers/pid.h"
 
 struct ControllerData {
     struct pid_data pidData;
-    s32 lastWheelPos;
-    u8 debugActive;
+    int32_t lastWheelPos;
+    uint8_t debugActive;
 };
 
 struct ControllerInterface {
     void (*init) (void);
-    void (*reset) (s32 wheelPos);
-    s32 (*step) (s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
+    void (*reset) (int32_t wheelPos);
+    int32_t (*step) (int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn);
     void (*deInit) (void);
 };
 
@@ -32,7 +32,7 @@ void initControllers();
 * controllers should be reset, so that no quirks occure on
 * reactivation, but configuration data should be kept.
 **/
-void resetControllers(s32 wheelPos);
+void resetControllers(int32_t wheelPos);
 
 
 #endif

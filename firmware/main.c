@@ -1,4 +1,3 @@
-#include "inc/stm32f10x_lib.h"
 #include "inc/stm32f10x_gpio.h"
 #include "inc/stm32f10x_tim.h"
 #include "inc/stm32f10x_rcc.h"
@@ -38,7 +37,7 @@ enum hostIDs getOwnHostId() {
     GPIO_Init(GPIOC, &GPIO_InitStructure);
     
     enum hostIDs id = RECEIVER_ID_H_BRIDGE_1; 
-    u16 gpioData = 0;
+    uint16_t gpioData = 0;
     gpioData |= GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13);
     gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_14) << 1);
     gpioData |= (GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_15) << 2);
@@ -52,7 +51,7 @@ enum hostIDs getOwnHostId() {
     {
         printf("Wrong host ide configured %hu\n", gpioData);
 	//blink and do nothing
-	assert_failed((u8 *)__FILE__, __LINE__);
+	assert_failed((uint8_t *)__FILE__, __LINE__);
     }    
     return (id << 5);
 }
@@ -100,7 +99,7 @@ int main(void)
     lm73cimk_setup_sensor(LM73_SENSOR2, 148);
     
     //wait until 5V rail get's stable
-    vu32 delay = 20000000;
+    volatile uint32_t delay = 20000000;
     while(delay)
 	delay--;
     
@@ -118,16 +117,16 @@ int main(void)
  
   /** DEBUG**/
 /*
-  u16 lastTime = 0;
-  u16 time;
-  u16 counter = 0;  
+  uint16_t lastTime = 0;
+  uint16_t time;
+  uint16_t counter = 0;  
 */
 
-  u16 cnt = 0;
+  uint16_t cnt = 0;
     
-//   u32 temp = 0;
-//   u32 gotTmpCnt = 0;
-//   u8 lmk72addr = (0x4E<<1);
+//   uint32_t temp = 0;
+//   uint32_t gotTmpCnt = 0;
+//   uint8_t lmk72addr = (0x4E<<1);
 
   /** END DEBUG **/
  
@@ -145,8 +144,8 @@ int main(void)
       gotTmpCnt = 0;
       counter = 0;
       print(".");
-      u32 eet = getTicksExtern();
-      u32 iet = getTicks();
+      uint32_t eet = getTicksExtern();
+      uint32_t iet = getTicks();
       printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);
       //printf("Error is %h \n", error);
       //print("ActiveCstate: ");

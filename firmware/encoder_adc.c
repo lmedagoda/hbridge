@@ -1,16 +1,16 @@
 #include "encoder.h"
 #include "inc/stm32f10x_adc.h"
 #include "inc/stm32f10x_rcc.h"
-#include "inc/stm32f10x_nvic.h"
 #include "inc/stm32f10x_gpio.h"
+#include "core_cm3.h"
 
 #define ADC_VALUES_PER_MS 17
 
-u32 adcEncoderValue = 0;
-u32 adcTicksPerTurn;
-u8 adcTickDivider;
-vu8 adcEncDone = 0; 
-vu16 adcValues[ADC_VALUES_PER_MS];
+uint32_t adcEncoderValue = 0;
+uint32_t adcTicksPerTurn;
+uint8_t adcTickDivider;
+volatile uint8_t adcEncDone = 0; 
+volatile uint16_t adcValues[ADC_VALUES_PER_MS];
 
 void encoderInitADC()
 {
@@ -28,7 +28,7 @@ void encoderInitADC()
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Configure and enable ADC interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -88,13 +88,13 @@ void ADC1_2_IRQHandler(void)
     }
 }
 
-void setTicksPerTurnADC(u32 ticks, u8 tickDivider)
+void setTicksPerTurnADC(uint32_t ticks, uint8_t tickDivider)
 {
     adcTicksPerTurn = ticks;
     adcTickDivider = tickDivider;
 }
 
-u32 getTicksADC(void)
+uint32_t getTicksADC(void)
 {
     if(adcEncDone)
     {
@@ -119,7 +119,7 @@ void encoderDeInitADC(void)
     NVIC_InitTypeDef NVIC_InitStructure;
 
     /* Configure and enable ADC interrupt */
-    NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannel = ADC1_2_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;

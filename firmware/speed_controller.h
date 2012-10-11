@@ -1,7 +1,7 @@
 #ifndef SPEED_CONTROLLER_H
 #define SPEED_CONTROLLER_H
 
-#include <inc/stm32f10x_type.h>
+#include <stdint.h>
 #include "protocol.h"
 
 
@@ -15,11 +15,11 @@ struct ControllerData;
 void speedControllerSetControllerConfiguration(volatile struct posControllerData* data);
 void speedControllerInit(void);
 void speedControllerDeInit(void);
-void speedControllerReset(s32 wheelPos);
-void speedControllerSetDebugActive(u8 debugActive);
+void speedControllerReset(int32_t wheelPos);
+void speedControllerSetDebugActive(uint8_t debugActive);
 
-s32 speedControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
-void speedControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax);
+int32_t speedControllerStep(int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn);
+void speedControllerSetConfiguration(int32_t p, int32_t i, int32_t d, int32_t minMax);
 
 
 

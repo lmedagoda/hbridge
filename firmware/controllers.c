@@ -1,7 +1,6 @@
-#include "pid.h"
+#include "drivers/pid.h"
 #include "protocol.h"
 #include <stdlib.h>
-#include "inc/stm32f10x_type.h"
 #include "inc/stm32f10x_can.h"
 #include "encoder.h"
 #include "state.h"
@@ -19,11 +18,11 @@ void defaultControllerDeInit(void )
 {
 }
 
-void defaultControllerReset(s32 wheelPos)
+void defaultControllerReset(int32_t wheelPos)
 {
 }
 
-s32 defaultControllerStep(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn)
+int32_t defaultControllerStep(int32_t targetSpeed, int32_t wheelPos, uint32_t ticksPerTurn)
 {
     return 0;
 }
@@ -61,7 +60,7 @@ void initControllers()
     }
 }
 
-void resetControllers(s32 wheelPos)
+void resetControllers(int32_t wheelPos)
 {
     int i;
     for(i = 0; i < NUM_CONTROLLERS; i++)

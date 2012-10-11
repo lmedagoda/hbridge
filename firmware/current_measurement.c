@@ -1,33 +1,32 @@
-#include "inc/stm32f10x_type.h"
+#include <stdint.h>
 #include "inc/stm32f10x_adc.h"
 #include "inc/stm32f10x_dma.h"
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_tim.h"
-#include "inc/stm32f10x_nvic.h"
 #include "printf.h"
 #include "current_measurement.h"
 #include <stdlib.h>
 
-#define ADC1_DR_Address    ((u32)0x4001244C)
+#define ADC1_DR_Address    ((uint32_t)0x4001244C)
 #define AVERAGE_THRESHOLD 10
 #define SLOPE_1 1388
 #define SLOPE_2 1275
 
-vu16 adc_values[USED_REGULAR_ADC_CHANNELS];
+volatile uint16_t adc_values[USED_REGULAR_ADC_CHANNELS];
 
 static ADC_InitTypeDef ADC_InitSingleShot;
 static DMA_InitTypeDef DMA_InitStructure;
 
 
-vu32 acs712BaseVoltage = 0;
-vu32 currentValue = 0;
+volatile uint32_t acs712BaseVoltage = 0;
+volatile uint32_t currentValue = 0;
 
 struct adcValues{
-  u32 currentValues[USED_REGULAR_ADC_CHANNELS];
-  u32 currentValueCount;
+  uint32_t currentValues[USED_REGULAR_ADC_CHANNELS];
+  uint32_t currentValueCount;
 };
 
-vu8 switchAdcValues = 0;
+volatile uint8_t switchAdcValues = 0;
 
 //need to be static, so that they 
 //are initalized with zero
@@ -37,12 +36,12 @@ static struct adcValues avs2;
 volatile struct adcValues *activeAdcValues = &avs1;
 volatile struct adcValues *inActiveAdcValues = &avs2;
 
-extern vu8 actualDirection;
-vu8 oldDirection;
+extern volatile uint8_t actualDirection;
+volatile uint8_t oldDirection;
 
 // hall sensor values
-vu32 h1[USED_REGULAR_ADC_CHANNELS/2];
-vu32 h2[USED_REGULAR_ADC_CHANNELS/2];
+volatile uint32_t h1[USED_REGULAR_ADC_CHANNELS/2];
+volatile uint32_t h2[USED_REGULAR_ADC_CHANNELS/2];
 
 void requestNewADCValues() {
     switchAdcValues = 1;
@@ -57,7 +56,7 @@ void waitForNewADCValues() {
 void measureACS712BaseVoltage()
 {
   int k, i;
-  u32 meanacs712base = 0;
+  uint32_t meanacs712base = 0;
 
   //disable pwm output, so that ADC is not triggered any more
   TIM_CtrlPWMOutputs(TIM1, DISABLE);
@@ -108,7 +107,7 @@ void measureACS712BaseVoltage()
 }
 
 
-u32 calculateCurrent() {
+uint32_t calculateCurrent() {
 
     /*
 	PWM period: 25000 ns
@@ -117,19 +116,19 @@ u32 calculateCurrent() {
     */
 
     // pointer to active value struct
-    u32 adcValueCount =  inActiveAdcValues->currentValueCount;
-    vu32 *currentValues = inActiveAdcValues->currentValues;
+    uint32_t adcValueCount =  inActiveAdcValues->currentValueCount;
+    volatile uint32_t *currentValues = inActiveAdcValues->currentValues;
 
     // init all used values
-    u32 rawCurrentValueH1 = 0;
-    u32 rawCurrentValueH2 = 0;
-    u32 currentValueH1 = 0;
-    u32 currentValueH2 = 0;
-    u32 currentValue = 0;
-    u8 i = 0;
-    u8 k = 0;
-    u8 cntH1 = 0;
-    u8 cntH2 = 0;
+    uint32_t rawCurrentValueH1 = 0;
+    uint32_t rawCurrentValueH2 = 0;
+    uint32_t currentValueH1 = 0;
+    uint32_t currentValueH2 = 0;
+    uint32_t currentValue = 0;
+    uint8_t i = 0;
+    uint8_t k = 0;
+    uint8_t cntH1 = 0;
+    uint8_t cntH2 = 0;
 
     // sum up all values for hall-sensor 1 and 2
     for(k = 0; k < USED_REGULAR_ADC_CHANNELS / 2; k++) {
@@ -147,11 +146,11 @@ u32 calculateCurrent() {
     rawCurrentValueH2 = rawCurrentValueH2 / (USED_REGULAR_ADC_CHANNELS / 2);
 
     //  set thresholds with respect to adcValueCount
-    u32 threshold = AVERAGE_THRESHOLD * adcValueCount;
-    u32 thresholdMinH1 = rawCurrentValueH1 - threshold;
-    u32 thresholdMaxH1 = rawCurrentValueH1 + threshold;
-    u32 thresholdMinH2 = rawCurrentValueH2 - threshold;
-    u32 thresholdMaxH2 = rawCurrentValueH2 + threshold;
+    uint32_t threshold = AVERAGE_THRESHOLD * adcValueCount;
+    uint32_t thresholdMinH1 = rawCurrentValueH1 - threshold;
+    uint32_t thresholdMaxH1 = rawCurrentValueH1 + threshold;
+    uint32_t thresholdMinH2 = rawCurrentValueH2 - threshold;
+    uint32_t thresholdMaxH2 = rawCurrentValueH2 + threshold;
 
     // search for corrupted values and sum up only usable values
     for(k = 0; k < (USED_REGULAR_ADC_CHANNELS / 2); k++) {
@@ -187,8 +186,8 @@ u32 calculateCurrent() {
     //return (currentValue/100);
 
     // calculate offsets with respect to base voltage
-    u32 offset1 = SLOPE_1 * 2 * acs712BaseVoltage;
-    u32 offset2 = SLOPE_2 * 2 * acs712BaseVoltage;
+    uint32_t offset1 = SLOPE_1 * 2 * acs712BaseVoltage;
+    uint32_t offset2 = SLOPE_2 * 2 * acs712BaseVoltage;
 
     if (currentValueH1 < currentValueH2) {
 	if ((currentValue * SLOPE_1) > offset1)
@@ -238,7 +237,7 @@ void currentMeasurementInit()
   //DMA1 channel1 configuration
   DMA_DeInit(DMA1_Channel1);
   DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32) adc_values;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t) adc_values;
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
   DMA_InitStructure.DMA_BufferSize = USED_REGULAR_ADC_CHANNELS;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
@@ -251,10 +250,9 @@ void currentMeasurementInit()
   DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   
   NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_StructInit(&NVIC_InitStructure);
-
+  
   // Configure and enable ADC interrupt
-  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQChannel;
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel1_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -317,10 +315,10 @@ void DMA1_Channel1_IRQHandler(void) {
   int i;
 
   // set pointer to active value struct
-  vu32 *cvp = activeAdcValues->currentValues;
+  volatile uint32_t *cvp = activeAdcValues->currentValues;
 
   // set pointer to converted value struct
-  vu16 *avp = adc_values;
+  volatile uint16_t *avp = adc_values;
 
   // all channels are sampled
   if(DMA1->ISR & DMA1_IT_TC1) {

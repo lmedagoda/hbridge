@@ -27,7 +27,8 @@ macro(OBJCOPY_FILE EXE_NAME)
 endmacro(OBJCOPY_FILE)
 
 #compile asm files with gcc
-set_source_files_properties(cortexm3_macro.s PROPERTIES LANGUAGE C)
+set_source_files_properties(startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
+set_source_files_properties(core_cm3.c PROPERTIES LANGUAGE C)
 
 set(CMAKE_EXE_LINKER_FLAGS "-T ${STM32_SOURCE_DIR}/stm_h103_rom.ld -nostartfiles")
 
@@ -35,53 +36,55 @@ add_definitions(
   -Wall
   -mcpu=cortex-m3 -mthumb -Wall -fno-unwind-tables -fno-common
   -O3 -ggdb
+  -D STM32F10X_MD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
   )
 
 include_directories(
   ${STM32_SOURCE_DIR}/.
-  ${STM32_SOURCE_DIR}/inc
+  ${STM32_SOURCE_DIR}/drivers/
+  ${STM32_SOURCE_DIR}/lib/STM32F10x_StdPeriph_Driver/
+  ${STM32_SOURCE_DIR}/lib/STM32F10x_StdPeriph_Driver/inc
+  ${STM32_SOURCE_DIR}/lib/CMSIS/CM3/CoreSupport/
+  ${STM32_SOURCE_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x
   )
 
 add_library(stm32fw 
-  src/stm32f10x_adc.c
-  src/stm32f10x_dma.c
-  src/stm32f10x_iwdg.c
-  src/stm32f10x_sdio.c
-  src/stm32f10x_bkp.c
-  src/stm32f10x_exti.c
-  src/stm32f10x_lib.c
-  src/stm32f10x_spi.c
-  src/stm32f10x_can.c
-  src/stm32f10x_flash.c
-  src/stm32f10x_nvic.c
-  src/stm32f10x_systick.c
-  src/stm32f10x_crc.c
-  src/stm32f10x_fsmc.c
-  src/stm32f10x_pwr.c
-  src/stm32f10x_tim.c
-  src/stm32f10x_dac.c
-  src/stm32f10x_gpio.c
-  src/stm32f10x_rcc.c
-  src/stm32f10x_usart.c
-  src/stm32f10x_dbgmcu.c
-  src/stm32f10x_i2c.c
-  src/stm32f10x_rtc.c
-  src/stm32f10x_wwdg.c
+  lib/CMSIS/CM3/CoreSupport/core_cm3.c
+  lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
+  lib/STM32F10x_StdPeriph_Driver/src/misc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_iwdg.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_bkp.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_exti.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_flash.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_crc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_tim.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_gpio.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_usart.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c
+  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c
 )
 
 add_library(stm32drivers
-    assert.c
-    i2c.c           
-    printf.c  
-    usart.c
-    can.c
-    spi.c
-    lm73cimk.c
-    tmp100.c
-    pid.c
-    cortexm3_macro.s
-    stm32f10x_it.c  
-    stm32f10x_vector.c
+    drivers/assert.c
+    drivers/i2c.c           
+    drivers/printf.c  
+    drivers/usart.c
+    drivers/can.c
+    drivers/spi.c
+    drivers/lm73cimk.c
+    drivers/tmp100.c
+    drivers/pid.c
 ) 
 
 target_link_libraries(stm32drivers stm32fw)

@@ -1,5 +1,5 @@
 #include "state.h"
-#include "printf.h"
+#include "drivers/printf.h"
 
 volatile struct ControllerState state1;
 volatile struct ControllerState state2;
@@ -68,7 +68,7 @@ void printStateDebug(volatile struct ControllerState* cs)
     printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetValue, cs->useOpenLoop, cs->pwmStepPerMillisecond);    
 }
 
-u8 inErrorState() {
+uint8_t inErrorState() {
     return  errorState.motorOverheated ||
             errorState.boardOverheated ||
             errorState.overCurrent ||
@@ -76,6 +76,24 @@ u8 inErrorState() {
             errorState.badConfig ||
             errorState.encodersNotInitalized ||
             errorState.hardwareShutdown;
+}
+
+void printErrorState()
+{
+    if(errorState.motorOverheated)
+	print("Error: Motor overheated\n");
+    if(errorState.boardOverheated)
+	print("Error: Board overheated\n");
+    if(errorState.overCurrent)
+	print("Error: Overcurrent\n");
+    if(errorState.timeout)
+	print("Error: Timeout\n");
+    if(errorState.badConfig)
+	print("Error: Bad Config\n");
+    if(errorState.encodersNotInitalized)
+	print("Error: Encoders not initialized\n");
+    if(errorState.hardwareShutdown)
+	print("Error: Hardware shutdown\n");
 }
 
 volatile struct ErrorState *getErrorState() {

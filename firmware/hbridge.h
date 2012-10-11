@@ -1,9 +1,10 @@
 #ifndef __HBRIDGE_H
 #define __HBRIDGE_H
 
+#include <stdint.h>
 
 void hbridgeInit();
 
-void setNewPWM(const s16 value2, u8 useOpenLoop);
+void setNewPWM(const int16_t value2, uint8_t useOpenLoop);
 
 #endif

@@ -1,7 +1,7 @@
 #ifndef __STATE_H
 #define __STATE_H
 
-#include "inc/stm32f10x_type.h"
+#include <stdint.h>
 #include "protocol.h"
 
 enum internalState {
@@ -14,13 +14,13 @@ enum internalState {
 };
 
 struct ErrorState {
-    u8 motorOverheated;
-    u8 boardOverheated;
-    u8 overCurrent;
-    u8 timeout;
-    u8 badConfig;
-    u8 encodersNotInitalized;
-    u8 hardwareShutdown;
+    uint8_t motorOverheated;
+    uint8_t boardOverheated;
+    uint8_t overCurrent;
+    uint8_t timeout;
+    uint8_t badConfig;
+    uint8_t encodersNotInitalized;
+    uint8_t hardwareShutdown;
 };
 
 
@@ -30,18 +30,18 @@ struct ControllerState {
   enum encoderTypes internalEncoder;
   enum encoderTypes externalEncoder;
   enum controllerInputEncoder controllerInputEncoder;
-  u8 useExternalTempSensor;
-  u8 useOpenLoop;
-  u16 pwmStepPerMillisecond;
-  u16 maxCurrent;
-  u8 maxCurrentCount;
-  u8 maxMotorTemp;
-  u8 maxMotorTempCount;
-  u8 maxBoardTemp;
-  u8 maxBoardTempCount;
-  u16 timeout;
-  s32 targetValue;
-  u8 resetTimeoutCounter;
+  uint8_t useExternalTempSensor;
+  uint8_t useOpenLoop;
+  uint16_t pwmStepPerMillisecond;
+  uint16_t maxCurrent;
+  uint8_t maxCurrentCount;
+  uint8_t maxMotorTemp;
+  uint8_t maxMotorTempCount;
+  uint8_t maxBoardTemp;
+  uint8_t maxBoardTempCount;
+  uint16_t timeout;
+  int32_t targetValue;
+  uint8_t resetTimeoutCounter;
 };
 
 
@@ -51,7 +51,8 @@ extern volatile struct ControllerState *lastActiveCState;
 void initStateStruct(volatile struct ControllerState *cs);
 void printStateDebug(volatile struct ControllerState *cs);
 
-u8 inErrorState();
+void printErrorState();
+uint8_t inErrorState();
 volatile struct ErrorState *getErrorState();
 void clearErrors();
 

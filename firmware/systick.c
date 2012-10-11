@@ -1,20 +1,18 @@
 #include "inc/stm32f10x_can.h"
 #include "inc/stm32f10x_gpio.h"
-#include "inc/stm32f10x_systick.h"
-#include "inc/stm32f10x_nvic.h"
-#include "spi.h"
-#include "i2c.h"
-#include "pid.h"
-#include "usart.h"
+#include "drivers/spi.h"
+#include "drivers/i2c.h"
+#include "drivers/pid.h"
+#include "drivers/usart.h"
 #include "protocol.h"
-#include "can.h"
+#include "drivers/can.h"
 #include "state.h"
 #include "controllers.h"
 #include "hbridge.h"
 #include "encoder.h"
 #include "current_measurement.h"
-#include "lm73cimk.h"
-#include "printf.h"
+#include "drivers/lm73cimk.h"
+#include "drivers/printf.h"
 #include <stdlib.h>
 
 #define MIN_S16 (-(1<<15))
@@ -23,14 +21,14 @@
 extern volatile enum hostIDs ownHostId;
 
 unsigned int systemTick;
-static s32 currentPwmValue = 0;
-static u16 index = 0;
-static u16 overCurrentCounter = 0;
-static u16 timeoutCounter = 0;
-static s32 temperature = 0;
-static u32 overTempCounter = 0;
-static s32 motorTemperature = 0;
-static u32 overMotorTempCounter = 0;
+static int32_t currentPwmValue = 0;
+static uint16_t index = 0;
+static uint16_t overCurrentCounter = 0;
+static uint16_t timeoutCounter = 0;
+static int32_t temperature = 0;
+static uint32_t overTempCounter = 0;
+static int32_t motorTemperature = 0;
+static uint32_t overMotorTempCounter = 0;
 
 volatile struct ControllerState cs1;
 volatile struct ControllerState cs2;
@@ -40,8 +38,8 @@ void checkTimeout();
 void checkTemperature();
 void checkOverCurrent();
 
-void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index);
-void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index);
+void sendStatusMessage(uint32_t pwmValue, uint32_t currentValue, int32_t temperature, int32_t motorTemperature, uint32_t index);
+void sendErrorMessage(uint32_t pwmValue, uint32_t currentValue, int32_t temperature, int32_t motorTemperature, uint32_t index);
 
 void resetCounters()
 {
@@ -59,7 +57,7 @@ void checkTimeout()
     }
 }
 
-void checkOverCurrent(u32 currentValue)
+void checkOverCurrent(uint32_t currentValue)
 {
     //check for overcurrent
     if(currentValue > activeCState->maxCurrent) {
@@ -73,7 +71,7 @@ void checkOverCurrent(u32 currentValue)
     }
 }
 
-void checkMotorTemperature(u32 temperature)
+void checkMotorTemperature(uint32_t temperature)
 {
     if(!activeCState->useExternalTempSensor)
 	return;
@@ -90,7 +88,7 @@ void checkMotorTemperature(u32 temperature)
     }
 }
 
-void checkTemperature(u32 temperature)
+void checkTemperature(uint32_t temperature)
 {
     //check for overcurrent
     if(temperature > activeCState->maxBoardTemp) {
@@ -106,14 +104,14 @@ void checkTemperature(u32 temperature)
 
 void baseNvicInit()
 {
-    /* Set the Vector Table base location at 0x08000000 */ 
-    NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);   
-
-    /* 2 bit for pre-emption priority, 2 bits for subpriority */
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+//     /* Set the Vector Table base location at 0x08000000 */ 
+//     NVIC_SetVectorTable(NVIC_VectTab_FLASH, 0x0);   
+// 
+//     /* 2 bit for pre-emption priority, 2 bits for subpriority */
+//     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
     /* Systick with Preemption Priority 2 and Sub Priority as 0 */ 
-    NVIC_SystemHandlerPriorityConfig(SystemHandler_SysTick, 3, 0);    
+//     NVIC_SystemHandlerPriorityConfig(SysTick_IRQn, 3, 0);    
 }
 
 void baseInit()
@@ -155,7 +153,7 @@ void baseInit()
 
 void pollCanMessages() 
 {
-    static u16 cnt = 0;
+    static uint16_t cnt = 0;
 
     CanRxMsg *curMsg;
     
@@ -165,7 +163,7 @@ void pollCanMessages()
 	//print("Got a Msg \n");
 	print("P");
 
-	u8 forceSynchronisation = updateStateFromMsg(curMsg, lastActiveCState, ownHostId);
+	uint8_t forceSynchronisation = updateStateFromMsg(curMsg, lastActiveCState, ownHostId);
 	
 	//mark current message als processed
 	CAN_MarkNextDataAsRead();
@@ -189,10 +187,11 @@ void pollCanMessages()
 		;
 	}
 
-	u16 errorDbg = inErrorState();
+	uint16_t errorDbg = inErrorState();
 	if((curMsg->StdId != PACKET_ID_SET_VALUE14 && curMsg->StdId != PACKET_ID_SET_VALUE58)  || cnt == 50) {
 	    cnt = 0;  
 	    printf("Error is %hu \n", errorDbg);
+	    printErrorState();
 	    print("ActiveCstate: ");
 	    printStateDebug(activeCState);
 	    print(" LastActiveCstate: ");
@@ -208,10 +207,10 @@ void SysTickHandler(void) {
     //request switch of adc value struct
     requestNewADCValues();
 
-    s32 pwmValue = 0;
-    s32 wheelPos = 0;
-    u32 ticksPerTurn = 0;
-    u8 tickDivider = 0;
+    int32_t pwmValue = 0;
+    int32_t wheelPos = 0;
+    uint32_t ticksPerTurn = 0;
+    uint8_t tickDivider = 0;
     
     switch(activeCState->controllerInputEncoder) {
         case INTERNAL:
@@ -234,7 +233,7 @@ void SysTickHandler(void) {
     //wait for adc struct to be switched
     waitForNewADCValues();
 
-    u32 currentValue = calculateCurrent(currentPwmValue);
+    uint32_t currentValue = calculateCurrent(currentPwmValue);
 
     // get temperature
     lm73cimk_getTemperature(LM73_SENSOR1,&temperature);
@@ -280,7 +279,7 @@ void SysTickHandler(void) {
 	    //calculate pwm value
 	    pwmValue =  controllers[activeCState->controllMode].step(activeCState->targetValue, wheelPos, ticksPerTurn);
 
-	    //trunkcate to s16
+	    //trunkcate to int16_t
 	    if(pwmValue > MAX_S16) 
 		pwmValue = MAX_S16;
 	    if(pwmValue < MIN_S16)
@@ -324,7 +323,7 @@ void SysTickHandler(void) {
     }
 }
 
-void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index)
+void sendErrorMessage(uint32_t pwmValue, uint32_t currentValue, int32_t temperature, int32_t motorTemperature, uint32_t index)
 {
     //send status message over CAN
     CanTxMsg errorMessage;
@@ -361,7 +360,7 @@ void sendErrorMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motor
     }
 }
 
-void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 motorTemperature, u32 index)
+void sendStatusMessage(uint32_t pwmValue, uint32_t currentValue, int32_t temperature, int32_t motorTemperature, uint32_t index)
 {
     //send status message over CAN
     CanTxMsg statusMessage;
@@ -412,17 +411,21 @@ void sendStatusMessage(u32 pwmValue, u32 currentValue, s32 temperature, s32 moto
     }
 }
 
-
-
-void SysTick_Configuration(void) {
-    SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+#ifndef __SANDBOX__
+void SysTick_Init(void )
+{
     
-    // SysTick end of count event each 1ms with input clock equal to 9MHz (HCLK/8)
-    SysTick_SetReload(9000);
-
-    // Enable SysTick interrupt
-    SysTick_ITConfig(ENABLE);
-
-    // Enable the SysTick Counter
-    SysTick_CounterCmd(SysTick_Counter_Enable);
+    SysTick_Config(9000 * 8);
+    
+//     SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+//     
+//     // SysTick end of count event each 1ms with input clock equal to 9MHz (HCLK/8)
+//     SysTick_SetReload(9000);
+// 
+//     // Enable SysTick interrupt
+//     SysTick_ITConfig(ENABLE);
+// 
+//     // Enable the SysTick Counter
+//     SysTick_CounterCmd(SysTick_Counter_Enable);
 }
+#endif

@@ -1,19 +1,19 @@
 #include "encoder.h"
 #include "inc/stm32f10x_tim.h"
 #include "inc/stm32f10x_rcc.h"
-#include "inc/stm32f10x_nvic.h"
 #include "inc/stm32f10x_gpio.h"
+#include "core_cm3.h"
 #include <stdlib.h>
 #include "printf.h"
 
 struct TimerQuadratureEncoderData
 {
-    u32 maxWraps;
-    u32 maxTicksPerTurnIntern;
-    s32 lastEncoderValue;
-    s16 wrapCounter;
-    u8 usesZero;
-    vu8 hasZero;
+    uint32_t maxWraps;
+    uint32_t maxTicksPerTurnIntern;
+    int32_t lastEncoderValue;
+    int16_t wrapCounter;
+    uint8_t usesZero;
+    volatile uint8_t hasZero;
 };
 
 struct TimerQuadratureEncoderData tqeTim2Data;
@@ -28,7 +28,7 @@ void TIM2_IRQHandler(void){
     tqeTim2Data.hasZero = 1;
 }  
 
-void timerQuadratureEncoderEnableZero(TIM_TypeDef *timer, u8 irq_channel)
+void timerQuadratureEncoderEnableZero(TIM_TypeDef *timer, uint8_t irq_channel)
 {
     TIM_ICInitTypeDef  TIM_ICInitStructure;
 
@@ -48,7 +48,6 @@ void timerQuadratureEncoderEnableZero(TIM_TypeDef *timer, u8 irq_channel)
 
     //programm encoder interrutps to highest priority
     NVIC_InitTypeDef NVIC_InitStructure;
-    NVIC_StructInit(&NVIC_InitStructure);    
     NVIC_InitStructure.NVIC_IRQChannel = irq_channel;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -119,7 +118,7 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
 	    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	    GPIO_Init(GPIOA, &GPIO_InitStructure);
 	    
-	    timerQuadratureEncoderEnableZero(timer, TIM2_IRQChannel);
+	    timerQuadratureEncoderEnableZero(timer, TIM2_IRQn);
 	}
     } else
 	if(timer == TIM3)
@@ -178,7 +177,7 @@ void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncode
     TIM_Cmd(timer, DISABLE);    
 }
 
-void timerQuadratureEncoderSetTicksPerTurn(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data, u32 ticks, u8 tickDivider) 
+void timerQuadratureEncoderSetTicksPerTurn(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data, uint32_t ticks, uint8_t tickDivider) 
 {
     if(ticks == 0)
         ticks = 1;
@@ -212,17 +211,17 @@ void timerQuadratureEncoderSetTicksPerTurn(TIM_TypeDef *timer, struct TimerQuadr
     data->hasZero = !data->usesZero;
 }
 
-u32 timerQuadratureEncoderGetTicks(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data)
+uint32_t timerQuadratureEncoderGetTicks(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data)
 {
     //if have never seen a zero mark, return the 'magic' value zero
     if(!data->hasZero)
 	return 0;
     
     //get encoder value
-    s32 encoderValue = TIM_GetCounter(timer);
+    int32_t encoderValue = TIM_GetCounter(timer);
     
-    u32 wheelPos = encoderValue;
-    s32 diff = encoderValue - data->lastEncoderValue;
+    uint32_t wheelPos = encoderValue;
+    int32_t diff = encoderValue - data->lastEncoderValue;
     //we got a wraparound
     if(abs(diff) > data->maxTicksPerTurnIntern / 2) {
 	//test if we wrapped "forward" or "backwards"
@@ -252,12 +251,12 @@ void encoderInitQuadrature() {
     timerQuadratureEncoderInit(TIM4, &tqeTim4Data, 0);
 }
 
-void setTicksPerTurnQuadrature(u32 ticks, u8 tickDivider) 
+void setTicksPerTurnQuadrature(uint32_t ticks, uint8_t tickDivider) 
 {
     timerQuadratureEncoderSetTicksPerTurn(TIM4, &tqeTim4Data, ticks, tickDivider);
 }
 
-u32 getTicksQuadrature()
+uint32_t getTicksQuadrature()
 {
     return timerQuadratureEncoderGetTicks(TIM4, &tqeTim4Data);
 }
@@ -267,12 +266,12 @@ void encoderInitQuadratureV2()
     timerQuadratureEncoderInit(TIM3, &tqeTim3Data, 0);
 }
 
-void setTicksPerTurnQuadratureV2(u32 ticks, u8 tickDivider)
+void setTicksPerTurnQuadratureV2(uint32_t ticks, uint8_t tickDivider)
 {
     timerQuadratureEncoderSetTicksPerTurn(TIM3, &tqeTim3Data, ticks, tickDivider);
 }
 
-u32 getTicksQuadratureV2()
+uint32_t getTicksQuadratureV2()
 {
     return timerQuadratureEncoderGetTicks(TIM3, &tqeTim3Data);
 }
@@ -282,14 +281,15 @@ void encoderInitQuadratureWithZeroV2()
     timerQuadratureEncoderInit(TIM2, &tqeTim2Data, 1);
 }
 
-void setTicksPerTurnQuadratureWithZeroV2(u32 ticks, u8 tickDivider)
+void setTicksPerTurnQuadratureWithZeroV2(uint32_t ticks, uint8_t tickDivider)
 {
     timerQuadratureEncoderSetTicksPerTurn(TIM2, &tqeTim2Data, ticks, tickDivider);
 }
 
-u32 getTicksQuadratureWithZeroV2()
+uint32_t getTicksQuadratureWithZeroV2()
 {
     return timerQuadratureEncoderGetTicks(TIM2, &tqeTim2Data);
 }
+
 
 

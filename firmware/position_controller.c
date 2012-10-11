@@ -1,25 +1,26 @@
 #include "position_controller.h"
-#include "pid.h"
+#include "drivers/pid.h"
 #include "controllers.h"
 #include "encoder.h"
 #include "state.h"
 #include <stdlib.h>
-#include "can.h"
+#include "drivers/printf.h"
+#include "drivers/can.h"
 
 extern volatile enum hostIDs ownHostId;
 
 struct PositionControllerConfig {
-    u16 minHysteresisDistance;
-    u16 maxHysteresisDistance;
-    u8 maxOverDistanceCount;
-    u8 hysteresisActive;
-    u8 allowWrapArround;
+    uint16_t minHysteresisDistance;
+    uint16_t maxHysteresisDistance;
+    uint8_t maxOverDistanceCount;
+    uint8_t hysteresisActive;
+    uint8_t allowWrapArround;
 
     struct pid_data pidData;
-    s32 lastWheelPos;
-    u8 debugActive;
-    u8 inHystesis;
-    u8 hystLeavingCount;
+    int32_t lastWheelPos;
+    uint8_t debugActive;
+    uint8_t inHystesis;
+    uint8_t hystLeavingCount;
 };
 
 volatile struct PositionControllerConfig posContData;
@@ -57,10 +58,10 @@ void positionControllerProtocolHandler(int id, unsigned char *idata, unsigned sh
 	case PACKET_ID_SET_PID_POS:
 	{
 	    struct setPidData *data = (struct setPidData *) idata;
-	    setKp(&(posContData.pidData), data->kp);
-	    setKi(&(posContData.pidData), data->ki);
-	    setKd(&(posContData.pidData), data->kd);
-	    setMinMaxCommandVal(&(posContData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
+	    setKp((struct pid_data *) &(posContData.pidData), data->kp);
+	    setKi((struct pid_data *) &(posContData.pidData), data->ki);
+	    setKd((struct pid_data *) &(posContData.pidData), data->kd);
+	    setMinMaxCommandVal((struct pid_data *) &(posContData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
 	    break;
 	}
     }
@@ -82,18 +83,18 @@ void positionControllerDeInit()
 
 }
 
-void positionControllerReset(s32 wheelPos)
+void positionControllerReset(int32_t wheelPos)
 {
     posContData.inHystesis = 0;
     posContData.hystLeavingCount = 0;
     posContData.lastWheelPos = wheelPos;
-    resetPIDStruct(&(posContData.pidData));
+    resetPIDStruct((struct pid_data *) &(posContData.pidData));
 }
 
-s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
+int32_t positionControllerStep(int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    s32 pwmValue = 0;
-    s32 curVal = wheelPos;
+    int32_t pwmValue = 0;
+    int32_t curVal = wheelPos;
 
     //correct wraparounds
     if(posContData.allowWrapArround && abs((targetPos) - curVal) > ticksPerTurn / 2) {
@@ -104,8 +105,8 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
     }
 
     //calculate PID value
-    setTargetValue(&(posContData.pidData), targetPos);
-    pwmValue = pid(&(posContData.pidData), curVal);
+    setTargetValue((struct pid_data *) &(posContData.pidData), targetPos);
+    pwmValue = pid((struct pid_data *) &(posContData.pidData), curVal);
     
     if(posContData.hysteresisActive)
     {
@@ -127,11 +128,11 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
 		posContData.inHystesis = 0;
 
 		//reset pid to avoid funny behaviour
-		resetPIDStruct(&(posContData.pidData));
+		resetPIDStruct((struct pid_data *) &(posContData.pidData));
 
 		//generate correct pwm
-		setTargetValue(&(posContData.pidData), targetPos);
-		pwmValue = pid(&(posContData.pidData), curVal);
+		setTargetValue((struct pid_data *) &(posContData.pidData), targetPos);
+		pwmValue = pid((struct pid_data *) &(posContData.pidData), curVal);
 	    }
 	} else {	    
 	    //test if we enterd the corridor
@@ -146,7 +147,7 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
     }
 
     if(posContData.debugActive) {
-	u8 tickDivider = getTickDivider(activeCState->controllerInputEncoder);
+	uint8_t tickDivider = getTickDivider(activeCState->controllerInputEncoder);
 	
         CanTxMsg pidMessagePos;
         CanTxMsg posDbgMessage;
@@ -183,8 +184,8 @@ s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn)
     return pwmValue;
 }
 
-s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn) {
-    s32 pwmValue = controllers[CONTROLLER_MODE_POSITION].step(targetPos, wheelPos, ticksPerTurn);
+int32_t cascadedPositionController(int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn) {
+    int32_t pwmValue = controllers[CONTROLLER_MODE_POSITION].step(targetPos, wheelPos, ticksPerTurn);
     pwmValue = controllers[CONTROLLER_MODE_SPEED].step(pwmValue / 10, wheelPos, ticksPerTurn);
    
     return pwmValue;

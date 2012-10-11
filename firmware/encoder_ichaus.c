@@ -61,7 +61,7 @@ void encoderInitIcHaus()
     printf("encoderInitICHaus finished \n ");
 }
 
-void setTicksPerTurnIcHaus(u32 ticks, u8 tickDivider)
+void setTicksPerTurnIcHaus(uint32_t ticks, uint8_t tickDivider)
 {
 }
 
@@ -74,7 +74,7 @@ void setTicksPerTurnIcHaus(u32 ticks, u8 tickDivider)
 unsigned int bissCRC6(unsigned int data)
 {
     unsigned int const poly = 0b1000011;
-    u32 dividend = data << 6;
+    uint32_t dividend = data << 6;
     int currPos = 31;
     
     while (currPos >= 6)
@@ -94,7 +94,7 @@ unsigned int bissCRC6(unsigned int data)
     return (~dividend) & ((1 << 6) - 1);
 }
 
-int isInvalidData_IcHaus(u32 data)
+int isInvalidData_IcHaus(uint32_t data)
 {
     unsigned int result = (data >> 13) & 16383;
     int ret = 0;
@@ -162,11 +162,11 @@ int isInvalidData_IcHaus(u32 data)
     return ret;
 }
 
-u32 getTicksIcHaus(void)
+uint32_t getTicksIcHaus(void)
 {
        print("#");
     static unsigned int lastTick = 0;
-    static u32 lastValue = 0;
+    static uint32_t lastValue = 0;
 
 //     if (lastTick == systemTick) // if sensor was already polled in this system tick
 //     {
@@ -179,7 +179,7 @@ u32 getTicksIcHaus(void)
     }
     GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 
-    u16 dataArray[2] = {0, 0};
+    uint16_t dataArray[2] = {0, 0};
     SPI_I2S_SendData(SPI2, 0);
 
     /* Wait for SPI2 data reception */
@@ -200,7 +200,7 @@ u32 getTicksIcHaus(void)
 
     //read current data from data register
     dataArray[0] = SPI_I2S_ReceiveData(SPI2);
-    u32 value = (dataArray[1] << 16) | dataArray[0];
+    uint32_t value = (dataArray[1] << 16) | dataArray[0];
     unsigned int result = (value >> 15) & 4095;
 
     lastTick = systemTick;
@@ -237,12 +237,12 @@ u32 getTicksIcHaus(void)
     return lastValue = value;
 }
 
-u16 getTicks16IcHaus(void)
+uint16_t getTickint16_tIcHaus(void)
 {
   return getTicksIcHaus() & 0xffff;
 }
 
-u32 from16BitIcHaus(u16 const ticks)
+uint32_t from16BitIcHaus(uint16_t const ticks)
 {
   return ticks;
 }

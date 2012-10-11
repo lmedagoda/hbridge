@@ -1,10 +1,10 @@
 #include "speed_controller.h"
-#include "pid.h"
+#include "drivers/pid.h"
 #include "controllers.h"
 #include "encoder.h"
 #include "state.h"
 #include <stdlib.h>
-#include "can.h"
+#include "drivers/can.h"
 
 extern volatile enum hostIDs ownHostId;
 
@@ -13,10 +13,27 @@ struct SpeedControllerConfig {
 
 struct ControllerData speedControllerData;
 
+void speedControllerProtocolHandler(int id, unsigned char *idata, unsigned short size)
+{
+    switch(id)
+    {
+        case PACKET_ID_SET_PID_SPEED: {
+	    struct setPidData *data = (struct setPidData *) idata;
+	    setKp((struct pid_data *) &(speedControllerData.pidData), data->kp);
+	    setKi((struct pid_data *) &(speedControllerData.pidData), data->ki);
+	    setKd((struct pid_data *) &(speedControllerData.pidData), data->kd);
+	    setMinMaxCommandVal((struct pid_data *) &(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
+	    break;
+	}
+    }
+    protocol_ackPacket(id);
+}
+
 void speedControllerInit(void )
 {
     speedControllerData.debugActive = 0;
     speedControllerReset(0);
+    protocol_registerHandler(PACKET_ID_SET_PID_SPEED, speedControllerProtocolHandler);
 }
 
 void speedControllerDeInit(void )
@@ -24,13 +41,13 @@ void speedControllerDeInit(void )
 
 }
 
-void speedControllerReset(s32 wheelPos)
+void speedControllerReset(int32_t wheelPos)
 {
     speedControllerData.lastWheelPos = wheelPos;
     resetPIDStruct(&(speedControllerData.pidData));
 }
 
-void speedControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax)
+void speedControllerSetConfiguration(int32_t p, int32_t i, int32_t d, int32_t minMax)
 {
     setKp(&(speedControllerData.pidData), p);
     setKi(&(speedControllerData.pidData), i);
@@ -38,16 +55,16 @@ void speedControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax)
     setMinMaxCommandVal(&(speedControllerData.pidData), -minMax, minMax);
 }
 
-void speedControllerSetDebugActive(u8 debugActive)
+void speedControllerSetDebugActive(uint8_t debugActive)
 {
     speedControllerData.debugActive = debugActive;
 }
 
-s32 speedControllerStep(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn)
+int32_t speedControllerStep(int32_t targetSpeed, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    s32 pwmValue = 0;
+    int32_t pwmValue = 0;
 
-    s32 curSpeed = wheelPos - speedControllerData.lastWheelPos;
+    int32_t curSpeed = wheelPos - speedControllerData.lastWheelPos;
 
     //this assumes, that the motor will never turn faster than
     //a quarter wheel turn (or 12.5 motor turns) in a ms 
@@ -69,7 +86,7 @@ s32 speedControllerStep(s32 targetSpeed, s32 wheelPos, u32 ticksPerTurn)
     pwmValue = pid(&(speedControllerData.pidData), curSpeed);
 
     if(speedControllerData.debugActive) {
-	u8 tickDivider = getTickDivider(activeCState->controllerInputEncoder);
+	uint8_t tickDivider = getTickDivider(activeCState->controllerInputEncoder);
 
 	CanTxMsg speedDbgMessage;
         CanTxMsg pidMessageSpeed;

@@ -5,7 +5,7 @@
 #include "hbridge.h"
 #include <stdlib.h>
 
-vu8 lastDirection = 0;
+volatile uint8_t lastDirection = 0;
 
 
 void initHbridgeTimers()
@@ -118,27 +118,27 @@ void hbridgeInit() {
     setNewPWM(0, 0);    
 }
 
-void setNewPWM(const s16 value2, u8 useOpenLoop) {
-    s16 value = value2 / 2;
-    u16 leftHighCC = 0;
-    u16 rightHighCC = 0;
-    u16 leftLowCC = 0;
-    u16 rightLowCC = 0;
+void setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
+    int16_t value = value2 / 2;
+    uint16_t leftHighCC = 0;
+    uint16_t rightHighCC = 0;
+    uint16_t leftLowCC = 0;
+    uint16_t rightLowCC = 0;
 
     //set dead time to 500ns
-    const s16 dead_time = 36;  
+    const int16_t dead_time = 36;  
 
-    const u16 low_allways_on = 0;
-    const u16 low_allways_off = 900;
-    const u16 high_allways_off = 0;
+    const uint16_t low_allways_on = 0;
+    const uint16_t low_allways_off = 900;
+    const uint16_t high_allways_off = 0;
 
     //time low side needs to be high 
     //so that boost capacitor get's recharged
-    const u16 half_recharge_time = 30;
+    const uint16_t half_recharge_time = 30;
 
-    const s16 maxValue = 900;
+    const int16_t maxValue = 900;
 
-    s16 dutyTime = abs(value);
+    int16_t dutyTime = abs(value);
 
     //limit duty cycle to maximum possilbe pwm
     if(dutyTime + dead_time + half_recharge_time > maxValue)
@@ -146,7 +146,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
 	dutyTime = maxValue - dead_time - half_recharge_time;
     }
 
-    u8 desiredDirection = 0;
+    uint8_t desiredDirection = 0;
 
     if(value != 0) {
 	desiredDirection = value > 0;

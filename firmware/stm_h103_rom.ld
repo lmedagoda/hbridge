@@ -8,12 +8,19 @@ MEMORY
 
 /* inital stack pointer at end of memory */
 _estack =  0x20005000;
-
 SECTIONS
+/*  .isr_vector :
+  {
+    . = ALIGN(4);
+    _isr_vector_start = .;
+    KEEP(*(.isr_vector))
+    . = ALIGN(4);
+  } >FLASH*/
+
   {
 	.  = 0x00000000;          /* From 0x00000000 */
   .text : {
-    *(.vectors)      /* Vector table */
+    *(.isr_vector)      /* Vector table */
 /* this is negated sum over all int32s in final .text and .data, without this
    int32. the firmware just needs to check that the sum over all int32s is 0. */
     *(.checksum)
@@ -25,13 +32,14 @@ SECTIONS
     } >flash
         .  = 0x20000000;   /* From 0x20000000 */
   .data : {
-    _data = .;
+    _sidata = .;
+    _sdata = .;
     *(.data)        /* Data memory */
     _edata = .;
     } >ram AT > flash
   .bss : {
     . = ALIGN(4);
-    _bss = .;
+    _sbss = .;
     *(.bss)         /* Zero-filled run time allocate data memory */
     _ebss = .;
     } >ram AT > flash

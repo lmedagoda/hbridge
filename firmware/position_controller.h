@@ -1,7 +1,7 @@
 #ifndef POSITION_CONTROLLER_H
 #define POSITION_CONTROLLER_H
 
-#include <inc/stm32f10x_type.h>
+#include <stdint.h>
 #include "protocol.h"
 
 
@@ -15,13 +15,13 @@ struct ControllerData;
 void positionControllerSetControllerConfiguration(volatile struct posControllerData* data);
 void positionControllerInit(void);
 void positionControllerDeInit(void);
-void positionControllerReset(s32 wheelPos);
-void positionControllerSetDebugActive(u8 debugActive);
+void positionControllerReset(int32_t wheelPos);
+void positionControllerSetDebugActive(uint8_t debugActive);
 
-s32 positionControllerStep(s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
-void positionControllerSetConfiguration(s32 p, s32 i, s32 d, s32 minMax);
+int32_t positionControllerStep(int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn);
+void positionControllerSetConfiguration(int32_t p, int32_t i, int32_t d, int32_t minMax);
 
-s32 cascadedPositionController(s32 targetPos, s32 wheelPos, u32 ticksPerTurn);
+int32_t cascadedPositionController(int32_t targetPos, int32_t wheelPos, uint32_t ticksPerTurn);
 
 
 #endif

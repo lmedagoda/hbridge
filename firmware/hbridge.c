@@ -2,19 +2,19 @@
 #include "inc/stm32f10x_rcc.h"
 #include "inc/stm32f10x_adc.h"
 #include "inc/stm32f10x_gpio.h"
-#include "inc/stm32f10x_nvic.h"
 #include "hbridge.h"
 #include "current_measurement.h"
+#include "core_cm3.h"
 #include <stdlib.h>
 
 /// direction, that was given to setNewPWM
-vu8 desiredDirection = 2;
+volatile uint8_t desiredDirection = 2;
 
 /// direction in which the hbridge is configured atm
-vu8 actualDirection = 0;
+volatile uint8_t actualDirection = 0;
 
 ///indicates, if a new pwm-value was set since the last pwm-cycle
-volatile u8 newPWM = 0;
+volatile uint8_t newPWM = 0;
 
 volatile TIM_OCInitTypeDef TIM1_OC2InitStructure;
 volatile TIM_OCInitTypeDef TIM1_OC3InitStructure;
@@ -31,7 +31,7 @@ volatile TIM_OCInitTypeDef TIM3_OC2InitStructure;
  * pwmvalue in ranges from 0 to 1800
  *
  */
-void InitTimerStructAsPWM(volatile TIM_OCInitTypeDef *ocstruct, u16 pwmvalue) {
+void InitTimerStructAsPWM(volatile TIM_OCInitTypeDef *ocstruct, uint16_t pwmvalue) {
   assert_param(pwmvalue <= 1800);
   TIM_OCStructInit((TIM_OCInitTypeDef *) ocstruct);
   ocstruct->TIM_OCMode = TIM_OCMode_PWM1;
@@ -40,7 +40,7 @@ void InitTimerStructAsPWM(volatile TIM_OCInitTypeDef *ocstruct, u16 pwmvalue) {
   ocstruct->TIM_Pulse = pwmvalue;
 }
 
-void InitTimerStructAsInternalTimer(volatile TIM_OCInitTypeDef *ocstruct, u16 value) {
+void InitTimerStructAsInternalTimer(volatile TIM_OCInitTypeDef *ocstruct, uint16_t value) {
   TIM_OCStructInit((TIM_OCInitTypeDef *) ocstruct);
   ocstruct->TIM_OCMode = TIM_OCMode_Timing;
   ocstruct->TIM_Pulse = value;
@@ -158,10 +158,9 @@ void initHbridgeTimers()
 
     //enable interrupts
     NVIC_InitTypeDef NVIC_InitStructure;
-    NVIC_StructInit(&NVIC_InitStructure);
-
+    
     //Configure and enable TIM1 Update interrupt
-    NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQChannel;
+    NVIC_InitStructure.NVIC_IRQChannel = TIM1_CC_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -240,9 +239,9 @@ void hbridgeInit() {
     
 }
 
-void setNewPWM(const s16 value2, u8 useOpenLoop) {
+void setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
     
-  s16 value = value2;
+  int16_t value = value2;
 
   //truncate to max of 95% PWM, needed to charge boost circuit
   if(value < -1710)
@@ -257,7 +256,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
     }
   }  
 
-  u16 dutyTime = abs(value);
+  uint16_t dutyTime = abs(value);
   
   //disable transfer of values from config register
   //to timer intern shadow register 
@@ -337,33 +336,33 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
   if(actualDirection != desiredDirection) {
 
     //Disable PWM by pulling ADSD and BDSD low 
-    u16 tmpccer = TIM3->CCER;
+    uint16_t tmpccer = TIM3->CCER;
 
-    tmpccer &= (~TIM_OutputState_Enable) | (u16)(~(TIM_OutputState_Enable << 4));
+    tmpccer &= (~TIM_OutputState_Enable) | (uint16_t)(~(TIM_OutputState_Enable << 4));
  
     TIM3->CCER = tmpccer;
 
     //programm correct polarity
 
     //disable OC1 and OC2 before changing polarity
-    TIM2->CCER &= (u16) (~TIM_OutputState_Enable) | (u16) ~(TIM_OutputState_Enable << 4);
+    TIM2->CCER &= (uint16_t) (~TIM_OutputState_Enable) | (uint16_t) ~(TIM_OutputState_Enable << 4);
 
     // Get the TIM2 CCER register value 
     tmpccer = TIM2->CCER;
     
     // Reset the Output Polarity level 
-    tmpccer &= ((u16) (~TIM_OCPolarity_Low)) & (u16) ~(TIM_OCPolarity_Low << 4) & ((u16) (~(TIM_OutputState_Enable << 4)));
+    tmpccer &= ((uint16_t) (~TIM_OCPolarity_Low)) & (uint16_t) ~(TIM_OCPolarity_Low << 4) & ((uint16_t) (~(TIM_OutputState_Enable << 4)));
   
     if(desiredDirection) {
       //OC1 low OC2 high
       tmpccer |= TIM_OCPolarity_Low;
     } else {
       //OC1 high OC2 low
-      tmpccer |= (u16)(TIM_OCPolarity_Low << 4);
+      tmpccer |= (uint16_t)(TIM_OCPolarity_Low << 4);
     }
 
     //reenable OC1 and OC2
-    tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);
+    tmpccer |= TIM_OutputState_Enable | (uint16_t)(TIM_OutputState_Enable << 4);
 
     // Write to TIMx CCER 
     TIM2->CCER = tmpccer;
@@ -383,7 +382,7 @@ void setNewPWM(const s16 value2, u8 useOpenLoop) {
  * the next update event.
  */
 void TIM1_CC_IRQHandler(void) {
-  static vu8 directionChangeLastTime = 0;
+  static volatile uint8_t directionChangeLastTime = 0;
 
   if(TIM_GetITStatus(TIM1, TIM_IT_CC4) != RESET) {
 
@@ -399,8 +398,8 @@ void TIM1_CC_IRQHandler(void) {
       actualDirection = desiredDirection;
 
       //ReEnable ASD and BSD
-      u16 tmpccer = TIM3->CCER;
-      tmpccer |= TIM_OutputState_Enable | (u16)(TIM_OutputState_Enable << 4);      
+      uint16_t tmpccer = TIM3->CCER;
+      tmpccer |= TIM_OutputState_Enable | (uint16_t)(TIM_OutputState_Enable << 4);      
       TIM3->CCER = tmpccer;
 
     }
