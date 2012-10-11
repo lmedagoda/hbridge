@@ -2,7 +2,7 @@ pkg_check_modules(CANBUS REQUIRED "canbus")
 INCLUDE_DIRECTORIES(${CANBUS_INCLUDE_DIRS})
 LINK_DIRECTORIES(${CANBUS_LIBRARY_DIRS})
 
-find_package( Boost COMPONENTS unit_test_framework )
+find_package( Boost COMPONENTS unit_test_framework thread)
 if (Boost_FOUND)
     message(STATUS "boost/unit found, compiling unit test")
     ADD_EXECUTABLE(hbridge-test test.cpp)
@@ -21,6 +21,10 @@ ADD_EXECUTABLE(new_driver_test new_driver_test.cpp)
 include_directories(${Boost_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(new_driver_test hbridge2 ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
+add_subdirectory(firmware-stubs)
+
+ADD_EXECUTABLE(sandbox_test sandbox_test.cpp)
+include_directories(${Boost_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(sandbox_test sandbox_lib stubs hbridge2 ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
 
-#add_subdirectory(firmware-stubs)
