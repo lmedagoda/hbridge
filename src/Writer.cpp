@@ -6,7 +6,7 @@
 namespace hbridge
 {
 
-Writer::Writer(int id, Protocol* protocol, Reader *reader): boardId(id), protocol(protocol), reader(reader)
+Writer::Writer(int id, Protocol* protocol, Reader *reader): boardId(id), curController(0) ,protocol(protocol), reader(reader)
 {
 
 }
@@ -26,7 +26,8 @@ void Writer::setController(unsigned int controllerId)
     if(boardId > 3)
 	canId = firmware::PACKET_ID_SET_MODE58;
   
-    canbus::Message &sharedMsg(protocol->getSharedMsg(canId));    
+    canbus::Message &sharedMsg(protocol->getSharedMsg(canId));
+    sharedMsg.size = sizeof(firmware::setModeData);
 
     firmware::setModeData *data =
 	reinterpret_cast<firmware::setModeData *>(sharedMsg.data);
@@ -64,6 +65,7 @@ void Writer::setTargetValue(double value)
 	canId = firmware::PACKET_ID_SET_VALUE58;
 
     canbus::Message &sharedMsg(protocol->getSharedMsg(canId));
+    sharedMsg.size = sizeof(firmware::setValueData);
     
     firmware::setValueData *data =
 	reinterpret_cast<firmware::setValueData *>(sharedMsg.data);
