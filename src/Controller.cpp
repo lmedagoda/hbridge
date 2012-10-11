@@ -3,6 +3,7 @@
 #include <boost/bind.hpp>
 #include "../protocol.hpp"
 #include "Reader.hpp"
+#include <limits>
 
 namespace hbridge 
 {
@@ -20,18 +21,21 @@ void Controller::setReader(Reader* reader)
     
     for(std::vector<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
     {
-	registerForCanMsg(*it);
+	reader->registerControllerForCanMsg(this, *it);
     }
-}
-
-void Controller::registerForCanMsg(int canbusId)
-{
-    reader->registerCanMsgHandler(boost::bind(&Controller::processMsg, this, _1), canbusId);
+    
+    ids = getSendCanIds();
+    
+    for(std::vector<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
+    {
+	reader->registerControllerForSendError(this, *it);
+    }
+    
 }
 
 void Controller::sendCanMsg(const canbus::Message& msg, bool isAcked)
 {
-    reader->protocol->sendCanPacket(reader->boardId, msg, isAcked, boost::bind(&Reader::configurationError, reader));
+    reader->protocol->sendCanPacket(reader->boardId, msg, isAcked, boost::bind(&Reader::configurationError,reader, _1));
 }
 
 unsigned short Controller::getTargetValue(double value)
@@ -46,8 +50,7 @@ SpeedPIDController::SpeedPIDController()
 
 unsigned short SpeedPIDController::getTargetValue(double value)
 {
-    
-    return hbridge::Controller::getTargetValue(value);
+    return value * std::numeric_limits<uint16_t>::max();
 }
 
 void SpeedPIDController::processMsg(const canbus::Message& msg)
@@ -78,6 +81,24 @@ void SpeedPIDController::processMsg(const canbus::Message& msg)
 	}
     }
 }
+
+void SpeedPIDController::printSendError(const canbus::Message& msg)
+{
+    switch(msg.can_id)
+    {
+	case firmware::PACKET_ID_SET_PID_SPEED:
+	    std::cout << "SpeedPIDController:: SetPid message was not acked" << std::endl;
+	    break;
+    }
+}
+
+std::vector< int > SpeedPIDController::getSendCanIds()
+{
+    std::vector<int> ids;
+    ids.push_back(firmware::PACKET_ID_SET_PID_SPEED);
+    return ids;
+}
+
 
 void SpeedPIDController::sendControllerConfig()
 {
@@ -152,6 +173,27 @@ void PosPIDController::processMsg(const canbus::Message& msg)
 	    break;
 	}
 	default:
+	    break;
+    }
+}
+
+std::vector< int > PosPIDController::getSendCanIds()
+{
+    std::vector<int> ids;
+    ids.push_back(firmware::PACKET_ID_SET_PID_POS);
+    ids.push_back(firmware::PACKET_ID_POS_CONTROLLER_DATA);
+    return ids;
+}
+
+void PosPIDController::printSendError(const canbus::Message& msg)
+{
+    switch(msg.can_id)
+    {
+	case firmware::PACKET_ID_SET_PID_POS:
+	    std::cout << "PosPIDController:: SetPid message was not acked" << std::endl;
+	    break;
+	case firmware::PACKET_ID_POS_CONTROLLER_DATA:
+	    std::cout << "PosPIDController:: Set controller data message was not acked" << std::endl;
 	    break;
     }
 }

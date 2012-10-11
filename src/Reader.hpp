@@ -51,7 +51,8 @@ private:
     
     Protocol *protocol;
     CallbackInterface *callbacks;
-    std::vector<boost::function<void (const canbus::Message &)> > canMsgHandlers;    
+    std::vector<Controller *> canMsgHandlers;    
+    std::vector<Controller *> sendErrorHandlers;
     int boardId;
     bool configured;
     
@@ -72,12 +73,13 @@ private:
     
     void sendConf1Msg();
     void sendConf2Msg();
-    
-    void registerCanMsgHandler(boost::function<void (const canbus::Message &)> cb, int canId);
-    void unregisterCanMsgHandler(int canId);
+
+    void registerControllerForSendError(Controller *ctrl, int canId);
+    void registerControllerForCanMsg(Controller *ctrl, int canId);
+    void unregisterController(Controller *ctrl);
     
     void configureDone();
-    void configurationError();
+    void configurationError(const canbus::Message &msg);
     
     void gotError(const ErrorState &error);
 public:

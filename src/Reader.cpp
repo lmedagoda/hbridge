@@ -10,6 +10,7 @@ namespace hbridge {
 Reader::Reader(int id, Protocol* protocol): protocol(protocol), callbacks(NULL), boardId(id), configured(false)
 {
     canMsgHandlers.resize(firmware::NUM_PACKET_IDS - firmware::END_BASE_PACKETS);
+    sendErrorHandlers.resize(firmware::NUM_PACKET_IDS - firmware::END_BASE_PACKETS);
 }
 
 void Reader::setCallbacks(Reader::CallbackInterface* cbs)
@@ -86,7 +87,7 @@ void Reader::sendConf1Msg()
     cfgMsg1.can_id = HBRIDGE_BOARD_ID(boardId) | firmware::PACKET_ID_SET_CONFIGURE;
     cfgMsg1.size = sizeof(firmware::configure1Data);
     
-    protocol->sendCanPacket(boardId, cfgMsg1, true, boost::bind(&Reader::configurationError, this));
+    protocol->sendCanPacket(boardId, cfgMsg1, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 void Reader::sendConf2Msg()
@@ -104,7 +105,7 @@ void Reader::sendConf2Msg()
     cfgMsg2.can_id = HBRIDGE_BOARD_ID(boardId) | firmware::PACKET_ID_SET_CONFIGURE2;
     cfgMsg2.size = sizeof(firmware::configure2Data);
 
-    protocol->sendCanPacket(boardId, cfgMsg2, true, boost::bind(&Reader::configurationError, this), boost::bind(&Reader::configureDone, this));
+    protocol->sendCanPacket(boardId, cfgMsg2, true, boost::bind(&Reader::configurationError, this, _1), boost::bind(&Reader::configureDone, this));
 
 }
 
@@ -128,7 +129,7 @@ void Reader::sendEncConf1()
     msg.can_id = HBRIDGE_BOARD_ID(boardId) | firmware::PACKET_ID_ENCODER_CONFIG_INTERN;
     msg.size = sizeof(firmware::encoderConfiguration);
     
-    protocol->sendCanPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this));
+    protocol->sendCanPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 
@@ -140,7 +141,7 @@ void Reader::sendEncConf2()
     msg.can_id = HBRIDGE_BOARD_ID(boardId) | firmware::PACKET_ID_ENCODER_CONFIG_EXTERN;
     msg.size = sizeof(firmware::encoderConfiguration);
 
-    protocol->sendCanPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this));
+    protocol->sendCanPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 
@@ -159,21 +160,35 @@ int Reader::getCurrentTickDivider() const
     return tickDivider;
 }
 
-void Reader::registerCanMsgHandler(boost::function<void (const canbus::Message &)> cb, int canId)
+void Reader::registerControllerForSendError(Controller* ctrl, int canId)
+{
+    int newId = canId - firmware::END_BASE_PACKETS;
+    int size = sendErrorHandlers.size();
+    if(newId < 0 || newId > size)
+	throw std::runtime_error("Reader::registerControllerForSendError: Error tried to register controller for base protocol id");
+	
+    sendErrorHandlers[canId - firmware::END_BASE_PACKETS] = ctrl;
+}
+
+
+void Reader::registerControllerForCanMsg(Controller* ctrl, int canId)
 {
     int newId = canId - firmware::END_BASE_PACKETS;
     int size = canMsgHandlers.size();
     if(newId < 0 || newId > size)
-	throw std::runtime_error("Reader::registerCanMsgHandler: Error tried to register callback for invalid id");
+	throw std::runtime_error("Reader::registerControllerForCanMsg: Error tried to register controller for base protocol id");
 	
-    canMsgHandlers[canId - firmware::END_BASE_PACKETS] = cb;
+    canMsgHandlers[canId - firmware::END_BASE_PACKETS] = ctrl;
 }
 
-void Reader::unregisterCanMsgHandler(int canId)
+void Reader::unregisterController(Controller* ctrl)
 {
-    canMsgHandlers[canId - firmware::END_BASE_PACKETS] = NULL;
+    for(std::vector<Controller *>::iterator it = canMsgHandlers.begin(); it != canMsgHandlers.end(); it++)
+    {
+	if(*it == ctrl)
+	    *it = NULL;
+    }
 }
-
 
 void Reader::processMsg(const canbus::Message& msg)
 {
@@ -251,8 +266,11 @@ void Reader::processMsg(const canbus::Message& msg)
     }
     else
     {	
-	if(canMsgHandlers[msgId])
+	if(canMsgHandlers[msgId - firmware::END_BASE_PACKETS])
 	{
+	    canbus::Message &nmsg = const_cast<canbus::Message &>(msg); 
+	    nmsg.can_id = msgId;
+	    canMsgHandlers[msgId - firmware::END_BASE_PACKETS]->processMsg(nmsg);
 	}
 	else
 	{
@@ -261,8 +279,48 @@ void Reader::processMsg(const canbus::Message& msg)
     }
 }
 
-void Reader::configurationError()
+void Reader::configurationError(const canbus::Message &msg)
 {
+    std::cout << "Error: Configure failed for hbridge " << boardId << std::endl;
+    std::cout << "Reason:" << std::endl;
+    unsigned int msgId = msg.can_id & 0x1f;
+    if(msgId < firmware::END_BASE_PACKETS)
+    {
+	switch(msgId)
+	{
+	    case firmware::PACKET_ID_SET_CONFIGURE:
+		std::cout << "Configure 1 message was not acked" << std::endl;
+		break;
+	    case firmware::PACKET_ID_SET_CONFIGURE2:
+		std::cout << "Configure 2 message was not acked" << std::endl;
+		break;
+	    case firmware::PACKET_ID_ENCODER_CONFIG_INTERN:
+		std::cout << "Internal encoder config message was not acked" << std::endl;
+		break;
+	    case firmware::PACKET_ID_ENCODER_CONFIG_EXTERN:
+		std::cout << "Externalfa encoder config message was not acked" << std::endl;
+		break;
+	    default:
+		std::cout << "Driver error: This means there is a bug in the driver" << std::endl;
+		std::cout << "Driver error: Got send error for unknown package with id " << msg.can_id << std::endl;
+		break;
+	};
+    }
+    else
+    {
+	if(sendErrorHandlers[msgId - firmware::END_BASE_PACKETS])
+	{
+	    canbus::Message tmp = msg;
+	    tmp.can_id = msgId;
+	    sendErrorHandlers[msgId - firmware::END_BASE_PACKETS]->printSendError(tmp);
+	}
+	else
+	{
+	    std::cout << "Driver error: Got send error for unknown package with id " << msg.can_id << std::endl;
+	}
+
+    }
+    
     if(callbacks)
 	callbacks->configurationError();
 

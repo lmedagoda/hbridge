@@ -17,6 +17,7 @@ public:
     Controller();
     virtual void sendControllerConfig() {};
     virtual void processMsg(const canbus::Message &msg) {};
+    virtual void printSendError(const canbus::Message &msg) {};
     
     virtual unsigned short getTargetValue(double value) = 0;
     virtual Controller *getCopy() const = 0;
@@ -28,17 +29,14 @@ public:
      * by this controller.
      * */
     virtual std::vector<int> getAcceptedCanIds() {return std::vector<int>();};
-    
+
+    /**
+     * Returns an vector of can id that this controller will use to send data
+     * */
+    virtual std::vector<int> getSendCanIds() {return std::vector<int>();};
+
     void sendCanMsg(const canbus::Message &msg, bool isAcked);
 private:
-    /**
-     * Registeres the given canbus id.
-     * The result will be that processMsg will
-     * be called whenever a matching canbus packet
-     * is received.
-     * */
-    void registerForCanMsg(int canbusId);
-    
     Reader *reader;
 
 };
@@ -69,8 +67,10 @@ public:
     void setConfig(const Config &config);
     virtual short unsigned int getTargetValue(double value);
     virtual void processMsg(const canbus::Message& msg);
+    virtual void printSendError(const canbus::Message& msg);
     virtual void sendControllerConfig();
     virtual Controller* getCopy() const;
+    virtual std::vector< int > getSendCanIds();
 private:
     Config config;
     SpeedControllerDebug speedControllerDebug;
@@ -89,10 +89,11 @@ public:
     void setConfig(const Config &config);
     virtual short unsigned int getTargetValue(double value);
     virtual void processMsg(const canbus::Message& msg);
+    virtual void printSendError(const canbus::Message& msg);
     virtual void sendControllerConfig();
     virtual Controller* getCopy() const;
     virtual std::vector< int > getAcceptedCanIds();
-    
+    virtual std::vector< int > getSendCanIds();
 private:
     Config config;
     PositionControllerDebug positionControllerDebug;
