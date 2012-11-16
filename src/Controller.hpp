@@ -4,41 +4,57 @@
 #include <canmessage.hh>
 #include <vector>
 #include <base/actuators/commands.h>
+#include "../protocol.hpp"
 #include "../HBridge.hpp"
+#include "Protocol.hpp"
 
 namespace hbridge 
 {
 
 class Reader;
     
-class Controller
+class Controller: public PacketReveiver
 {
 public:
-    Controller();
+    Controller(HbridgeHandle *handle, firmware::controllerModes controllerId);
     virtual void sendControllerConfig() {};
-    virtual void processMsg(const canbus::Message &msg) {};
-    virtual void printSendError(const canbus::Message &msg) {};
+    virtual void printSendError(int packetId) {};
     
     virtual unsigned short getTargetValue(double value) = 0;
-    virtual Controller *getCopy() const = 0;
     
-    void setReader(Reader *reader);
-
     /**
-     * Returns an vector of can id that are processed
-     * by this controller.
+     * Registeres the controller for the given packet Id.
+     * Whenever a packet packet with this id is received,
+     * processMsg will be called;
      * */
-    virtual std::vector<int> getAcceptedCanIds() {return std::vector<int>();};
-
+    void registerForCanId(int packetId);
+    
     /**
-     * Returns an vector of can id that this controller will use to send data
+     * Callback, gets called if an error while sending
+     * a packet message occured
      * */
-    virtual std::vector<int> getSendCanIds() {return std::vector<int>();};
-
-    void sendCanMsg(const canbus::Message &msg, bool isAcked);
+    void packetSendError(const Packet &msg);
+    
+    /**
+     * Switched the hbrige to this controller by using 
+     * the set mode message;
+     * */
+    void activateController();
+    
+    /**
+     * Transmittes the given value to the hbridge
+     * */
+    void setTargetValue(double value);
+    
+    firmware::controllerModes getControllerId() const
+    {
+	return mode;
+    };
+    
+    void sendPacket(const Packet &msg, bool isAcked);
 private:
-    Reader *reader;
-
+    firmware::controllerModes mode;
+    HbridgeHandle *handle;
 };
 
 
@@ -49,7 +65,10 @@ private:
  * */
 class PWMController : public Controller
 {
-    virtual Controller* getCopy() const;
+public:
+    PWMController(HbridgeHandle* handle);
+    virtual void processMsg(const hbridge::Packet& msg) {};
+private:
     virtual short unsigned int getTargetValue(double value);
 };
 
@@ -63,14 +82,12 @@ public:
     public:
 	base::actuators::PIDValues pidValues;
     };
-    SpeedPIDController();
+    SpeedPIDController(hbridge::HbridgeHandle* handle);
     void setConfig(const Config &config);
     virtual short unsigned int getTargetValue(double value);
-    virtual void processMsg(const canbus::Message& msg);
-    virtual void printSendError(const canbus::Message& msg);
+    virtual void processMsg(const hbridge::Packet& msg);
+    virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
-    virtual Controller* getCopy() const;
-    virtual std::vector< int > getSendCanIds();
 private:
     Config config;
     SpeedControllerDebug speedControllerDebug;
@@ -85,15 +102,12 @@ public:
 	base::actuators::PIDValues pidValues;
 	PositionControllerConfiguration posCtrlConfig;
     };
-    PosPIDController();
+    PosPIDController(hbridge::HbridgeHandle* handle);
     void setConfig(const Config &config);
     virtual short unsigned int getTargetValue(double value);
-    virtual void processMsg(const canbus::Message& msg);
-    virtual void printSendError(const canbus::Message& msg);
+    virtual void processMsg(const hbridge::Packet& msg);
+    virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
-    virtual Controller* getCopy() const;
-    virtual std::vector< int > getAcceptedCanIds();
-    virtual std::vector< int > getSendCanIds();
 private:
     Config config;
     PositionControllerDebug positionControllerDebug;

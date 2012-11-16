@@ -2,9 +2,6 @@
 #define PROTOCOLL_HPP
 
 #include <canmessage.hh>
-#include "Reader.hpp"
-#include "Writer.hpp"
-#include "Controller.hpp"
 
 #include <vector>
 #include <queue>
@@ -14,13 +11,28 @@
 
 namespace hbridge {
     
-class CanbusInterface
+class Controller;
+class Protocol;
+class Reader;
+class Writer;
+    
+class Packet
 {
 public:
-    virtual bool sendCanPacket(const canbus::Message &packet) = 0;
-    virtual bool readCanPacket(canbus::Message &packet) = 0;
+    int senderId;
+    int receiverId;
+    int packetId;
+    bool broadcastMsg;
+    std::vector<uint8_t> data;
 };
-    
+
+class BusInterface
+{
+public:
+    virtual bool sendPacket(const Packet &packet) = 0;
+    virtual bool readPacket(Packet &packet) = 0;
+};
+
 class SendQueue
 {
 public:
@@ -28,13 +40,76 @@ public:
     {
     public:
 	base::Time sendTime;
-	canbus::Message msg;
+	Packet msg;
 	int retryCnt;
-	boost::function<void (const canbus::Message &)> errorCallback;
+	boost::function<void (const Packet &msg)> errorCallback;
 	boost::function<void (void)> ackedCallback;
     };
     
     std::queue<Entry> queue;
+};
+
+class PacketReveiver
+{
+public:
+    /**
+     * Callback function get's called whenever there
+     * is a new can message received.
+     * */
+    virtual void processMsg(const Packet &msg) = 0;
+};
+
+class HbridgeHandle
+{
+    friend class Protocol;
+    friend class Writer;
+    friend class Reader;
+    friend class Controller;
+private:
+    HbridgeHandle(int id, Protocol *protocol);
+    int boardId;
+    SendQueue queue;
+    Reader * reader;
+    Writer * writer;
+    Protocol *protocol;
+    
+    std::vector<PacketReveiver *> msgHandlers;    
+    std::vector<Controller *> controllers;
+    std::vector<Controller *> &getControllers()
+    {
+	return controllers;
+    };
+    
+    void registerForMsg(PacketReveiver *reveiver, int packetId);
+    void unregisterForMsg(PacketReveiver *reveiver);
+
+    /**
+    * 
+    * */
+    void registerController(hbridge::Controller *ctrl);
+public:
+
+
+    int getBoardId()
+    {
+	return boardId;
+    }
+    
+    Reader *getReader()
+    {
+	return reader;
+    };
+    
+    Writer *getWriter()
+    {
+	return writer;
+    };
+    
+    Protocol *getProtocol() 
+    {
+	return protocol;
+    }
+
 };
 
 class Protocol
@@ -42,27 +117,6 @@ class Protocol
     friend class Controller;
     friend class Reader;
     friend class Writer;
-public:
-    class HbridgeHandle
-    {
-	friend class Protocol;
-    private:
-	HbridgeHandle(int id, Protocol *protocol);
-	SendQueue queue;
-	Reader * reader;
-	Writer * writer;
-	std::vector<Controller *> controllers;
-    public:
-	Reader *getReader()
-	{
-	    return reader;
-	};
-	
-	Writer *getWriter()
-	{
-	    return writer;
-	};
-    };
 private:
     static Protocol *instance;
     Protocol();
@@ -71,17 +125,15 @@ private:
     base::Time sendTimout;
 
     std::vector<HbridgeHandle *> handles;
-    std::vector<std::vector<Controller *> > controllers;
-    std::vector<canbus::Message> sharedCanMessages;
+    std::vector<Packet> sharedMessages;
     std::map<unsigned int, bool> markedForSending;
-    CanbusInterface *canbus;
+    BusInterface *bus;
     
     int getBoardIdFromMessage(const canbus::Message& msg) const;
     bool isInProtocol(const canbus::Message& msg) const;
 
-    void sendCanPacket(int boardId, const canbus::Message &packet, bool isAcked, boost::function<void (const canbus::Message &)> errorCallback, boost::function<void (void)> ackedCallback = NULL);
-    std::vector<Controller *> &getControllers(int id);
-    canbus::Message &getSharedMsg(unsigned int canbusId);
+    void sendPacket(int boardId, const Packet &msg, bool isAcked, boost::function<void (const Packet &msg)> errorCallback, boost::function<void (void)> ackedCallback = NULL);
+    Packet &getSharedMsg(unsigned int packetId);
     void registerHbridge(int id);
         
 public:
@@ -91,7 +143,7 @@ public:
      * canbus driver which should be used with this 
      * hbridge driver.
      * */
-    void setCanbusInterface(CanbusInterface *canbus);
+    void setBusInterface(BusInterface *bus);
     
     /**
      * This function creates and returns a handle
@@ -99,13 +151,6 @@ public:
      * can be accessed.
      * */
     HbridgeHandle *getHbridgeHandle(int id);
-
-    /**
-     * This registeres a controller on the driver side. 
-     * Note, this method may only be called after all
-     * handled for all used hbridges were requested.
-     * */
-    void registerController(unsigned int controllerId, const hbridge::Controller &ctrl);
 
     /**
      * Return the Protocol singleton

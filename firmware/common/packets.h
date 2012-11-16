@@ -1,0 +1,203 @@
+#ifndef PACKET_H
+#define PACKET_H
+
+enum STATES
+{
+    STATE_UNCONFIGURED,
+    STATE_SENSORS_CONFIGURED,
+    STATE_ACTUATOR_CONFIGURED,
+    STATE_CONTROLLER_CONFIGURED,
+    STATE_RUNNING,
+    STATE_ERROR,
+};
+
+enum HIGH_PRIORITY_IDs
+{
+    PACKET_ID_SET_OVERWRITE,
+    PACKET_ID_ERROR,
+    PACKET_ID_STATUS,
+    PACKET_ID_EXTENDED_STATUS,
+    PACKET_ID_ACK,
+    
+    PACKET_ID_SET_VALUE,
+    PACKET_ID_SET_VALUE14,
+    PACKET_ID_SET_VALUE58,
+    
+    PACKET_LOW_PRIORITY_ACK,
+    PACKET_LOW_PRIORITY_DATA,
+};
+
+enum LOW_PRIORITY_IDs
+{
+    /**
+     * DO NOT USE THIS ENTRY
+     * This is a 'trick' to have coninous 
+     * ids over both enums
+     */
+    PACKET_ID_LOWIDS_START = PACKET_LOW_PRIORITY_DATA,
+    
+//     PACKET_ID_ENCODER_CONFIG_INTERN,
+//     PACKET_ID_ENCODER_CONFIG_EXTERN,
+    PACKET_ID_SET_BASE_CONFIG,
+    PACKET_ID_SET_ACTIVE_CONTROLLER,
+    
+    PACKED_ID_REQUEST_VERSION,
+    PACKED_ID_VERSION,
+
+    PACKET_ID_SET_SPEED_CONTROLLER_DATA,
+    PACKET_ID_SPEED_CONTROLLER_DEBUG,
+
+    PACKET_ID_POS_CONTROLLER_DEBUG,
+    PACKET_ID_SET_POS_CONTROLLER_DATA,
+    
+    /**
+     * DO NOT USE THIS ENTRY
+     * This is a trick to get the total number of
+     * of IDs in use. This entry must allway be 
+     * the last one in the enum.
+     * */
+    PACKET_ID_TOTAL_COUNT,
+};
+
+
+enum encoderTypes {
+    NO_ENCODER = 0,
+    QUADRATURE,
+    QUADRATURE_WITH_ZERO,
+    IC_HOUSE_MH_Y,
+    BMMV30_SSI,
+    ANALOG_VOLTAGE,
+    NUM_ENCODERS,
+};
+
+enum controllerModes {
+  CONTROLLER_MODE_NONE = 0,
+  CONTROLLER_MODE_PWM = 1,
+  CONTROLLER_MODE_SPEED = 2,
+  CONTROLLER_MODE_POSITION = 3,
+  NUM_CONTROLLERS
+};
+
+enum controllerInputEncoder {
+    INTERNAL = 0,
+    EXTERNAL = 1,
+};
+
+struct ackData {
+    unsigned short packetId;
+    unsigned short crc;
+};
+
+struct encoderConfiguration {
+    enum encoderTypes encoderType:8;
+    uint32_t ticksPerTurn;
+    uint8_t tickDivider;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct sensorConfig 
+{
+    unsigned externalTempSensor :1;
+    uint16_t statusEveryMs;
+    struct encoderConfiguration encoder1Config;
+    struct encoderConfiguration encoder2Config; 
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct actuatorConfig
+{
+  unsigned openCircuit :1;
+  enum controllerInputEncoder controllerInputEncoder :1;
+  unsigned unused :6;
+  uint8_t maxMotorTemp;
+  uint8_t maxMotorTempCount;
+  uint8_t maxBoardTemp;
+  uint8_t maxBoardTempCount;
+  uint16_t timeout;
+  uint16_t maxCurrent;
+  uint8_t maxCurrentCount;
+  uint16_t pwmStepPerMs;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+
+struct pidDebugData {
+  int16_t pPart;
+  int16_t iPart;
+  int16_t dPart;
+  uint16_t minMaxPidOutput;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct speedDebugData {
+  int16_t targetVal;
+  int16_t pwmVal;
+  unsigned short encoderVal;
+  int16_t speedVal;
+  struct pidDebugData pidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct posDebugData {
+  uint16_t targetVal;
+  int16_t pwmVal;
+  uint16_t encoderVal;
+  uint16_t posVal;
+  struct pidDebugData pidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct setPidData {
+  int16_t kp;
+  int16_t ki;
+  int16_t kd;
+  uint16_t minMaxPidOutput;
+} __attribute__ ((packed)) __attribute__((__may_alias__)) ;
+
+struct posControllerData {
+    uint16_t minHystDist;
+    uint16_t maxHystDist;
+    unsigned hysteresisActive:1;
+    unsigned allowWrapAround:1;
+    unsigned debugActive:1;
+    unsigned unused:5;
+    uint8_t overDistCount;
+    struct setPidData pidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct errorData {
+    uint8_t temperature;
+    uint16_t position;
+    unsigned index :10;
+    unsigned externalPosition:12;
+    unsigned motorOverheated:1;
+    unsigned boardOverheated:1;
+    unsigned overCurrent:1;
+    unsigned timeout:1;
+    unsigned badConfig:1;
+    unsigned encodersNotInitalized:1;
+    unsigned hardwareShutdown:1;
+    unsigned unused:3;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct statusData {
+  signed pwm :12;
+  unsigned externalPosition:12;
+  uint16_t position;
+  unsigned currentValue :14;
+  unsigned index :10;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct extendedStatusData {
+    uint8_t temperature;
+    uint8_t motorTemperature;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct setValueData {
+  int16_t board1Value;
+  int16_t board2Value;
+  int16_t board3Value;
+  int16_t board4Value;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct setActiveControllerData {
+  enum controllerModes controllerId:8;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+
+
+#endif

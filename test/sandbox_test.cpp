@@ -2,6 +2,8 @@
 #include "../src/Controller.hpp"
 #include "../protocol.hpp"
 #include "firmware-stubs/can_stub.hpp"
+#include "../src/Reader.hpp"
+#include "../src/Writer.hpp"
 
 
 using namespace hbridge;
@@ -10,8 +12,14 @@ using namespace hbridge;
 int boardId = 0;
 int error = 0;
 
-class CanbusStub : public hbridge::CanbusInterface
+class CanbusStub : public hbridge::BusInterface
 {
+    virtual bool readPacket(Packet& packet)
+    {
+    }
+    virtual bool sendPacket(const hbridge::Packet& packet)
+    {
+    }
     virtual bool readCanPacket(canbus::Message& packet)
     {
 	bool ret = false;
@@ -67,19 +75,14 @@ int main(int argc, char **argv)
     boost::thread fwThread(fw_main);
     hbridge::Protocol *proto = hbridge::Protocol::getInstance();
 
-    proto->setCanbusInterface(new CanbusStub());
+    proto->setBusInterface(new CanbusStub());
 
-    hbridge::Protocol::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
+    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
     
-    PWMController pwmCtrl;
-    SpeedPIDController speedCtrl;
-    PosPIDController posCtrl;
+    PWMController pwmCtrl(handle);
+    SpeedPIDController speedCtrl(handle);
+    PosPIDController posCtrl(handle);
     
-    proto->registerController(firmware::CONTROLLER_MODE_PWM, pwmCtrl);
-    proto->registerController(firmware::CONTROLLER_MODE_SPEED, speedCtrl);
-    proto->registerController(firmware::CONTROLLER_MODE_POSITION, posCtrl);
-    
- 
     MotorConfiguration conf;
     
     Reader *reader = handle->getReader();
@@ -87,6 +90,7 @@ int main(int argc, char **argv)
     reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf);
     reader->startConfigure();
+    
     
     while(!error)
     {    
@@ -96,8 +100,8 @@ int main(int argc, char **argv)
 
 	if(reader->isWritable())
 	{
-	    writer->setController(firmware::CONTROLLER_MODE_SPEED);
-	    writer->setTargetValue(10.0);
+	    writer->setActiveController(&speedCtrl);
+	    writer->setTargetValue(0.20);
 // 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();

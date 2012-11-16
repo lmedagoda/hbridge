@@ -1,11 +1,11 @@
 NAME   = stm103_stk_rom
 
-CC      = arm-none-linux-gnueabi-gcc
-LD      = arm-none-linux-gnueabi-ld -v
-AR      = arm-none-linux-gnueabi-ar
-AS      = arm-none-linux-gnueabi-as
-CP      = arm-none-linux-gnueabi-objcopy
-OD	= arm-none-linux-gnueabi-objdump
+CC      = arm-none-eabi-gcc
+LD      = arm-none-eabi-ld -v
+AR      = arm-none-eabi-ar
+AS      = arm-none-eabi-as
+CP      = arm-none-eabi-objcopy
+OD	= arm-none-eabi-objdump
 
 HOST_CC = gcc
 HOST_CFLAGS = -Wall
@@ -40,7 +40,8 @@ OBJS = main_pcbv2.o stm32f10x_it.o systick.o\
 	current_measurement.o controllers.o \
 	protocol.o state.o hbridgev2.o \
 	position_controller.o speed_controller.o \
-	encoder.o encoder_ichaus.o encoder_quadrature.o encoder_adc.o
+	encoder.o encoder_ichaus.o encoder_quadrature.o encoder_adc.o \
+	encoder_quadrature_exti.o encoder_bmmv.o
 
 all: bin
 

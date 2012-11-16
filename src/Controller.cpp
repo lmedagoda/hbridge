@@ -8,44 +8,42 @@
 namespace hbridge 
 {
 
-Controller::Controller()
+Controller::Controller(HbridgeHandle* handle, firmware::controllerModes controllerId):mode(controllerId), handle(handle)
 {
-
+    handle->registerController(this);
 }
 
-void Controller::setReader(Reader* reader)
+void Controller::sendPacket(const hbridge::Packet& msg, bool isAcked)
 {
-    this->reader = reader;
-    
-    std::vector<int> ids = getAcceptedCanIds();
-    
-    for(std::vector<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
-    {
-	reader->registerControllerForCanMsg(this, *it);
-    }
-    
-    ids = getSendCanIds();
-    
-    for(std::vector<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
-    {
-	reader->registerControllerForSendError(this, *it);
-    }
-    
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, isAcked, boost::bind(&Controller::packetSendError, this, _1));
 }
 
-void Controller::sendCanMsg(const canbus::Message& msg, bool isAcked)
+void Controller::packetSendError(const hbridge::Packet& msg)
 {
-    reader->protocol->sendCanPacket(reader->boardId, msg, isAcked, boost::bind(&Reader::configurationError,reader, _1));
+    printSendError(msg.packetId);
+    handle->getReader()->callbacks->configurationError();
 }
+
+
+void Controller::registerForCanId(int canId)
+{
+    handle->registerForMsg(this, canId);
+}
+
 
 unsigned short Controller::getTargetValue(double value)
 {
     return 0;
 }
 
-SpeedPIDController::SpeedPIDController()
+void Controller::setTargetValue(double value)
 {
 
+}
+
+SpeedPIDController::SpeedPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_SPEED)
+{
+    registerForCanId(firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG);
 }
 
 unsigned short SpeedPIDController::getTargetValue(double value)
@@ -53,123 +51,86 @@ unsigned short SpeedPIDController::getTargetValue(double value)
     return value * std::numeric_limits<uint16_t>::max();
 }
 
-void SpeedPIDController::processMsg(const canbus::Message& msg)
+void SpeedPIDController::processMsg(const hbridge::Packet& msg)
 {
-    switch(msg.can_id)
+    switch(msg.packetId)
     {
-	case firmware::PACKET_ID_PID_DEBUG_SPEED:
+	case firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG:
 	{
-	    const firmware::pidDebugData * data =
-		reinterpret_cast<const firmware::pidDebugData *> (msg.data);
-
-	    speedControllerDebug.pidDebug.dPart = data->dPart;
-	    speedControllerDebug.pidDebug.iPart = data->iPart;
-	    speedControllerDebug.pidDebug.pPart = data->pPart;
-	    speedControllerDebug.pidDebug.minMaxPidOutput = data->minMaxPidOutput;
-	    break;
-	}	
-	case firmware::PACKET_ID_SPEED_DEBUG: {
 	    const firmware::speedDebugData *data =
-		reinterpret_cast<const firmware::speedDebugData *>(msg.data);
+		reinterpret_cast<const firmware::speedDebugData *>(msg.data.data());
 		
 		//BUG fix encoder value
 	    speedControllerDebug.encoderValue = data->encoderVal;
 	    speedControllerDebug.pwmValue = data->pwmVal;
 	    speedControllerDebug.speedValue = data->speedVal;
 	    speedControllerDebug.targetValue = data->targetVal;
+	    speedControllerDebug.pidDebug.dPart = data->pidData.dPart;
+	    speedControllerDebug.pidDebug.iPart = data->pidData.iPart;
+	    speedControllerDebug.pidDebug.pPart = data->pidData.pPart;
+	    speedControllerDebug.pidDebug.minMaxPidOutput = data->pidData.minMaxPidOutput;
 	    break;
 	}
     }
 }
 
-void SpeedPIDController::printSendError(const canbus::Message& msg)
+void SpeedPIDController::printSendError(const hbridge::Packet& msg)
 {
-    switch(msg.can_id)
+    switch(msg.packetId)
     {
-	case firmware::PACKET_ID_SET_PID_SPEED:
+	case firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA:
 	    std::cout << "SpeedPIDController:: SetPid message was not acked" << std::endl;
 	    break;
     }
 }
 
-std::vector< int > SpeedPIDController::getSendCanIds()
-{
-    std::vector<int> ids;
-    ids.push_back(firmware::PACKET_ID_SET_PID_SPEED);
-    return ids;
-}
-
-
 void SpeedPIDController::sendControllerConfig()
 {
-    canbus::Message msg;
+    Packet msg;
 
-    msg.can_id = firmware::PACKET_ID_SET_PID_SPEED;
+    msg.packetId = firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA;
     
     //check if values exceed signed short
     if(config.pidValues.kp * 100 > (1<<16) || config.pidValues.kp * 100 < -(1<<16) ||
 	config.pidValues.ki * 100 > (1<<16) || config.pidValues.ki * 100 < -(1<<16) ||
 	config.pidValues.kd * 100 > (1<<16) || config.pidValues.kd * 100 < -(1<<16))
 	throw std::runtime_error("Given PID Parameters are out of bound");
+
+    msg.data.resize(sizeof(firmware::setPidData));
     
-    firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data);
+    firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data.data());
     //convert given parameters to fixed point values for transmission
     data->kp = config.pidValues.kp * 100;
     data->ki = config.pidValues.ki * 100;
     data->kd = config.pidValues.kd * 100;
     data->minMaxPidOutput = config.pidValues.maxPWM;
     
-    msg.size = sizeof(firmware::setPidData);
-    
-    sendCanMsg(msg, true);
+    sendPacket(msg, true);
 }
 
-Controller* SpeedPIDController::getCopy() const
+PosPIDController::PosPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_POSITION)
 {
-    return new SpeedPIDController();
+    registerForCanId(firmware::PACKET_ID_POS_CONTROLLER_DEBUG);
 }
 
-
-
-PosPIDController::PosPIDController()
+void PosPIDController::processMsg(const hbridge::Packet& msg)
 {
-}
-
-std::vector< int > PosPIDController::getAcceptedCanIds()
-{
-    std::vector<int> ids;
-    ids.push_back(firmware::PACKET_ID_POS_DEBUG);
-    ids.push_back(firmware::PACKET_ID_PID_DEBUG_POS);
-    return ids;
-}
-
-
-void PosPIDController::processMsg(const canbus::Message& msg)
-{
-    switch(msg.can_id)
+    switch(msg.packetId)
     {
-	case firmware::PACKET_ID_POS_DEBUG:
+	case firmware::PACKET_ID_POS_CONTROLLER_DEBUG:
 	{
 	    const firmware::posDebugData * data =
-		reinterpret_cast<const firmware::posDebugData *> (msg.data);
+		reinterpret_cast<const firmware::posDebugData *> (msg.data.data());
 
 		//BUG fix encoder value
 	    positionControllerDebug.encoderValue = data->encoderVal;
 	    positionControllerDebug.pwmValue = data->pwmVal;
 	    positionControllerDebug.positionValue = data->posVal;
 	    positionControllerDebug.targetValue = data->targetVal;
-	    break;
-	}
-
-	case firmware::PACKET_ID_PID_DEBUG_POS:
-	{
-	    const firmware::pidDebugData * data =
-		reinterpret_cast<const firmware::pidDebugData *> (msg.data);
-
-	    positionControllerDebug.pidDebug.dPart = data->dPart;
-	    positionControllerDebug.pidDebug.iPart = data->iPart;
-	    positionControllerDebug.pidDebug.pPart = data->pPart;
-	    positionControllerDebug.pidDebug.minMaxPidOutput = data->minMaxPidOutput;
+	    positionControllerDebug.pidDebug.dPart = data->pidData.dPart;
+	    positionControllerDebug.pidDebug.iPart = data->pidData.iPart;
+	    positionControllerDebug.pidDebug.pPart = data->pidData.pPart;
+	    positionControllerDebug.pidDebug.minMaxPidOutput = data->pidData.minMaxPidOutput;
 	    break;
 	}
 	default:
@@ -177,22 +138,11 @@ void PosPIDController::processMsg(const canbus::Message& msg)
     }
 }
 
-std::vector< int > PosPIDController::getSendCanIds()
+void PosPIDController::printSendError(const hbridge::Packet& msg)
 {
-    std::vector<int> ids;
-    ids.push_back(firmware::PACKET_ID_SET_PID_POS);
-    ids.push_back(firmware::PACKET_ID_POS_CONTROLLER_DATA);
-    return ids;
-}
-
-void PosPIDController::printSendError(const canbus::Message& msg)
-{
-    switch(msg.can_id)
+    switch(msg.packetId)
     {
-	case firmware::PACKET_ID_SET_PID_POS:
-	    std::cout << "PosPIDController:: SetPid message was not acked" << std::endl;
-	    break;
-	case firmware::PACKET_ID_POS_CONTROLLER_DATA:
+	case firmware::PACKET_ID_SET_POS_CONTROLLER_DATA:
 	    std::cout << "PosPIDController:: Set controller data message was not acked" << std::endl;
 	    break;
     }
@@ -200,10 +150,10 @@ void PosPIDController::printSendError(const canbus::Message& msg)
 
 void PosPIDController::sendControllerConfig()
 {
-    canbus::Message ret;
-    ret.can_id = firmware::PACKET_ID_POS_CONTROLLER_DATA;
-    ret.size = sizeof(firmware::posControllerData);
-    firmware::posControllerData *data = (firmware::posControllerData *) ret.data;
+    Packet msg;
+    msg.packetId = firmware::PACKET_ID_SET_POS_CONTROLLER_DATA;
+    msg.data.resize(sizeof(firmware::posControllerData));
+    firmware::posControllerData *data = (firmware::posControllerData *) msg.data.data();
     data->hysteresisActive = config.posCtrlConfig.hysteresisActive;
     data->allowWrapAround = config.posCtrlConfig.allowWrapAround;
     data->minHystDist = config.posCtrlConfig.maxHystDist;
@@ -211,27 +161,18 @@ void PosPIDController::sendControllerConfig()
     data->overDistCount = config.posCtrlConfig.overDistCount;
     data->unused = 0;
     
-    sendCanMsg(ret, true);
-    
-    canbus::Message msg;
-    msg.can_id = firmware::PACKET_ID_SET_PID_POS;
-
     //check if values exceed signed short
     if(config.pidValues.kp * 100 > (1<<16) || config.pidValues.kp * 100 < -(1<<16) ||
 	config.pidValues.ki * 100 > (1<<16) || config.pidValues.ki * 100 < -(1<<16) ||
 	config.pidValues.kd * 100 > (1<<16) || config.pidValues.kd * 100 < -(1<<16))
 	throw std::runtime_error("Given PID Parameters are out of bound");
-    
-    firmware::setPidData *data2 = reinterpret_cast<firmware::setPidData *>(msg.data);
     //convert given parameters to fixed point values for transmission
-    data2->kp = config.pidValues.kp * 100;
-    data2->ki = config.pidValues.ki * 100;
-    data2->kd = config.pidValues.kd * 100;
-    data2->minMaxPidOutput = config.pidValues.maxPWM;
+    data->pidData.kp = config.pidValues.kp * 100;
+    data->pidData.ki = config.pidValues.ki * 100;
+    data->pidData.kd = config.pidValues.kd * 100;
+    data->pidData.minMaxPidOutput = config.pidValues.maxPWM;
     
-    msg.size = sizeof(firmware::setPidData);
-    
-    sendCanMsg(msg, true);
+    sendPacket(msg, true);
 }
 
 
@@ -245,20 +186,17 @@ short unsigned int PosPIDController::getTargetValue(double value)
     return (value / M_PI) * (1<<16) - 1;
 }
 
-Controller* PosPIDController::getCopy() const
+PWMController::PWMController(HbridgeHandle* handle): Controller(handle, firmware::CONTROLLER_MODE_PWM)
 {
-    return new PosPIDController();
+
 }
+
 
 short unsigned int PWMController::getTargetValue(double value)
 {
     return value * 1800;
 }
 
-Controller* PWMController::getCopy() const
-{
-    return new PWMController;
-}
 
 
 }

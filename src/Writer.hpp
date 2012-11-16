@@ -9,20 +9,20 @@ namespace hbridge
 class Protocol;
 class Reader;
 class Controller;
+class HbridgeHandle;
 
 class Writer
 {
+    friend class HbridgeHandle;
 private:
-    int boardId;
     Controller *curController;
     
     friend class Protocol;
-    Writer(int id, Protocol *protocol, Reader *reader);
-    Protocol *protocol;
-    Reader *reader;
+    Writer(HbridgeHandle *handle);
+    HbridgeHandle *handle;
 
 public:
-    void setController(unsigned int controllerId);
+    void setActiveController(Controller *ctrl);
     void setTargetValue(double value);
 };
 

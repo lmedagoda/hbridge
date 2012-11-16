@@ -1,18 +1,19 @@
 #include "../src/Protocol.hpp"
 #include "../src/Controller.hpp"
 #include "../protocol.hpp"
+#include "../src/Reader.hpp"
+#include "../src/Writer.hpp"
 
 
 using namespace hbridge;
-#define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
 
 int boardId = 0;
 int error = 0;
 
-class CanbusDummy : public hbridge::CanbusInterface
+class CanbusDummy : public hbridge::BusInterface
 {
-    std::queue<canbus::Message> fakeMsgs;
-    virtual bool readCanPacket(canbus::Message& packet)
+    std::queue<Packet> fakeMsgs;
+    virtual bool readPacket(Packet& packet)
     {
 	if(!fakeMsgs.empty())
 	{
@@ -21,60 +22,54 @@ class CanbusDummy : public hbridge::CanbusInterface
 	    return true;
 	}
 	return false;
-    };
+    }
     
-    virtual bool sendCanPacket(const canbus::Message& packet)
+    virtual bool sendPacket(const hbridge::Packet& packet)
     {
-	std::cout << "Sending packet with id " << packet.can_id << std::endl;
+	std::cout << "Sending packet with id " << packet.packetId << std::endl;
 	
-	canbus::Message fakeAck;
+	Packet fakeAck;
 	
-	int canBoardId = HBRIDGE_BOARD_ID(boardId);
-
-	if(packet.can_id < canBoardId)
-	{
-	    switch(packet.can_id)
-	    {
-		case firmware::PACKET_ID_SET_MODE14:
-		case firmware::PACKET_ID_SET_MODE58:
-		case firmware::PACKET_ID_SET_VALUE14:
-		case firmware::PACKET_ID_SET_VALUE58:
-		    return true;
-		    break;
-		default:
-		    std::cout << "Got unexpected brodcast message with id " << packet.can_id << std::endl;
-		    error = 1;
-		    break;
-	    }
-	}
-	
-	fakeAck.can_id = firmware::PACKET_ID_ACK | canBoardId;
-	firmware::ackData *ackData =
-		reinterpret_cast<firmware::ackData *>(fakeAck.data);
-	fakeAck.size = sizeof(firmware::ackData);
-    
-		    
-	switch(packet.can_id - canBoardId)
-	{
-	    case firmware::PACKET_ID_SET_CONFIGURE:
-	    case firmware::PACKET_ID_SET_CONFIGURE2:
-	    case firmware::PACKET_ID_ENCODER_CONFIG_INTERN:
-	    case firmware::PACKET_ID_ENCODER_CONFIG_EXTERN:
-	    case firmware::PACKET_ID_SET_PID_SPEED:
-	    case firmware::PACKET_ID_SET_PID_POS:
-	    case firmware::PACKET_ID_POS_CONTROLLER_DATA:
-		//fake ack
-		ackData->packetId = packet.can_id;
-		fakeMsgs.push(fakeAck);
-		break;
-	    default:
-		std::cout << "Got unexpected message with id " << packet.can_id << std::endl;
-		error = 1;
-		break;
-	}
+// 	switch(packet.can_id)
+// 	{
+// 	    case firmware::PACKET_ID_SET_MODE:
+// 	    case firmware::PACKET_ID_SET_VALUE14:
+// 	    case firmware::PACKET_ID_SET_VALUE58:
+// 		return true;
+// 		break;
+// 	    default:
+// 		std::cout << "Got unexpected brodcast message with id " << packet.can_id << std::endl;
+// 		error = 1;
+// 		break;
+// 	}
+// 	
+// 	fakeAck.can_id = firmware::PACKET_ID_ACK | canBoardId;
+// 	firmware::ackData *ackData =
+// 		reinterpret_cast<firmware::ackData *>(fakeAck.data);
+// 	fakeAck.size = sizeof(firmware::ackData);
+//     
+// 		    
+// 	switch(packet.can_id - canBoardId)
+// 	{
+// 	    case firmware::PACKET_ID_SET_CONFIGURE:
+// 	    case firmware::PACKET_ID_SET_CONFIGURE2:
+// 	    case firmware::PACKET_ID_ENCODER_CONFIG_INTERN:
+// 	    case firmware::PACKET_ID_ENCODER_CONFIG_EXTERN:
+// 	    case firmware::PACKET_ID_SET_PID_SPEED:
+// 	    case firmware::PACKET_ID_SET_PID_POS:
+// 	    case firmware::PACKET_ID_POS_CONTROLLER_DATA:
+// 		//fake ack
+// 		ackData->packetId = packet.can_id;
+// 		fakeMsgs.push(fakeAck);
+// 		break;
+// 	    default:
+// 		std::cout << "Got unexpected message with id " << packet.can_id << std::endl;
+// 		error = 1;
+// 		break;
+// 	}
 	
 	return true;
-    };
+    }
 };
 
 
@@ -98,19 +93,14 @@ int main(int argc, char **argv)
     
     hbridge::Protocol *proto = hbridge::Protocol::getInstance();
 
-    proto->setCanbusInterface(new CanbusDummy());
+    proto->setBusInterface(new CanbusDummy());
 
-    hbridge::Protocol::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
+    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
     
-    PWMController pwmCtrl;
-    SpeedPIDController speedCtrl;
-    PosPIDController posCtrl;
+    PWMController pwmCtrl(handle);
+    SpeedPIDController speedCtrl(handle);
+    PosPIDController posCtrl(handle);
     
-    proto->registerController(firmware::CONTROLLER_MODE_PWM, pwmCtrl);
-    proto->registerController(firmware::CONTROLLER_MODE_SPEED, speedCtrl);
-    proto->registerController(firmware::CONTROLLER_MODE_POSITION, posCtrl);
-    
- 
     MotorConfiguration conf;
     
     Reader *reader = handle->getReader();
@@ -127,7 +117,7 @@ int main(int argc, char **argv)
 
 	if(reader->isWritable())
 	{
-	    writer->setController(firmware::CONTROLLER_MODE_SPEED);
+	    writer->setActiveController(&speedCtrl);
 	    writer->setTargetValue(10.0);
 	    std::cout << "SM" << std::endl;
 	}

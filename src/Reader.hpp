@@ -5,15 +5,18 @@
 #include <canmessage.hh>
 #include <boost/function.hpp>
 #include "Encoder.hpp"
+#include "Protocol.hpp"
 
 namespace hbridge {
 class Protocol;
 class Controller;
+class HbridgeHandle;
 
 class Reader
 {
 friend class Protocol;
 friend class Controller;
+friend class HbridgeHandle;
 public:
     class CallbackInterface
     {
@@ -46,40 +49,30 @@ public:
 
 
 private:
-    Reader(int id, Protocol *protocol);
+    Reader(HbridgeHandle *handle);
     virtual ~Reader() {};
     
-    Protocol *protocol;
+    HbridgeHandle *handle;
     CallbackInterface *callbacks;
-    std::vector<Controller *> canMsgHandlers;    
-    std::vector<Controller *> sendErrorHandlers;
-    int boardId;
+    std::vector<Controller *> packetHandlers;    
     bool configured;
     
     MotorConfiguration configuration;
     
     BoardState state;
-    hbridge::DRIVE_MODE current_mode;
     
     Encoder encoderIntern;
     Encoder encoderExtern;
     
     int getCurrentTickDivider() const;
     
-    void fillEncoderMessage(canbus::Message &msg, const EncoderConfiguration &cfg);
+    void sendConfigureMsg();
     
-    void sendEncConf1();
-    void sendEncConf2();
-    
-    void sendConf1Msg();
-    void sendConf2Msg();
-
-    void registerControllerForSendError(Controller *ctrl, int canId);
-    void registerControllerForCanMsg(Controller *ctrl, int canId);
+    void registerControllerForPacketId(Controller *ctrl, int packetId);
     void unregisterController(Controller *ctrl);
     
     void configureDone();
-    void configurationError(const canbus::Message &msg);
+    void configurationError(const Packet &msg);
     
     void gotError(const ErrorState &error);
 public:
@@ -94,7 +87,7 @@ public:
      * */
     bool isWritable();
     
-    void processMsg(const canbus::Message &msg);
+    void processMsg(const Packet &msg);
     
     /**
     * Sets the configuration for the hardware. 
