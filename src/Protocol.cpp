@@ -4,7 +4,81 @@
 #include "Reader.hpp"
 #include "Writer.hpp"
 
-#define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
+namespace firmware {
+const char *getPacketName(uint16_t packetId)
+{
+    switch(packetId)
+    {
+	case PACKET_ID_SET_OVERWRITE: 
+	    return "PACKET_ID_SET_OVERWRITE";
+	    break;
+	
+	case PACKET_ID_ERROR: 
+	    return "PACKET_ID_ERROR";
+	    break;
+	case PACKET_ID_STATUS: 
+	    return "PACKET_ID_STATUS";
+	    break;
+	case PACKET_ID_EXTENDED_STATUS: 
+	    return "PACKET_ID_EXTENDED_STATUS";
+	    break;
+	case PACKET_ID_ACK: 
+	    return "PACKET_ID_ACK";
+	    break;
+	
+	case PACKET_ID_SET_VALUE: 
+	    return "PACKET_ID_SET_VALUE";
+	    break;
+	case PACKET_ID_SET_VALUE14: 
+	    return "PACKET_ID_SET_VALUE14";
+	    break;
+	case PACKET_ID_SET_VALUE58: 
+	    return "PACKET_ID_SET_VALUE58";
+	    break;
+	
+	//case PACKET_LOW_PRIORITY_DATA: return "";break;
+	case PACKET_ID_LOWIDS_START: 
+	    return "PACKET_LOW_PRIORITY_DATA";
+	    break;
+    
+	case PACKET_ID_SET_BASE_CONFIG: 
+	    return "PACKET_ID_SET_BASE_CONFIG";
+	    break;
+	case PACKET_ID_SET_ACTIVE_CONTROLLER: 
+	    return "PACKET_ID_SET_ACTIVE_CONTROLLER";
+	    break;
+	
+	case PACKED_ID_REQUEST_VERSION: 
+	    return "PACKED_ID_REQUEST_VERSION";
+	    break;
+	case PACKED_ID_VERSION: 
+	    return "PACKED_ID_VERSION";
+	    break;
+
+	case PACKET_ID_SET_SPEED_CONTROLLER_DATA: 
+	    return "PACKET_ID_SET_SPEED_CONTROLLER_DATA";
+	    break;
+	case PACKET_ID_SPEED_CONTROLLER_DEBUG: 
+	    return "PACKET_ID_SPEED_CONTROLLER_DEBUG";
+	    break;
+
+	case PACKET_ID_POS_CONTROLLER_DEBUG: 
+	    return "PACKET_ID_POS_CONTROLLER_DEBUG";
+	    break;
+	case PACKET_ID_SET_POS_CONTROLLER_DATA: 
+	    return "PACKET_ID_SET_POS_CONTROLLER_DATA";
+	    break;
+	
+	case PACKET_ID_TOTAL_COUNT: 
+	    return "PACKET_ID_TOTAL_COUNT";
+	    break;
+    }
+    
+    return "";
+}
+}
+
+using namespace firmware;
 
 namespace hbridge {
 
@@ -13,20 +87,10 @@ HbridgeHandle::HbridgeHandle(int id, Protocol* protocol):boardId(id), protocol(p
     controllers.resize(firmware::NUM_CONTROLLERS, NULL);
     reader = new Reader(this);
     writer = new Writer(this);
+    lowPrioProtocol = new LowPriorityProtocol(protocol);
 }
 
-    
-Protocol *Protocol::instance;
-
-Protocol* Protocol::getInstance()
-{
-    if(!instance)
-	instance = new Protocol();
-    
-    return instance;
-}
-
-Protocol::Protocol()
+Protocol::Protocol(BusInterface *bus) : bus(bus)
 {
     handles.resize(BOARD_COUNT);
     
@@ -66,7 +130,7 @@ void HbridgeHandle::registerController(hbridge::Controller* ctrl)
 
 Packet& Protocol::getSharedMsg(unsigned int packetId)
 {
-    std::cout << "Shared id " << packetId << std::endl;
+    std::cout << "Protocol : Requested shared message of type " << getPacketName(packetId) << std::endl;
     if(sharedMessages.size() < packetId + 1)
     {
 	sharedMessages.resize(packetId + 1);
@@ -88,13 +152,6 @@ void Protocol::sendSharedMessages()
     markedForSending.clear();
 }
 
-int Protocol::getBoardIdFromMessage(const canbus::Message& msg) const
-{
-    int index = ((msg.can_id & 0xE0) >> 5) - 1;
-    return index;
-}
-
-
 bool Protocol::isInProtocol(const canbus::Message& msg) const
 {
     return true;
@@ -109,12 +166,19 @@ void Protocol::processIncommingPackages()
 // 	if(!isInProtocol(msg))
 // 	    continue;
 
+	std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId);
+
 	//check if message is a broadcast
 	if(msg.broadcastMsg) {
+	    std::cout << " BROADCAST " << std::endl;
 	    //broadcast, inform all readers
 	    for(std::vector<HbridgeHandle *>::iterator it = handles.begin(); it != handles.end(); it++)
-		(*it)->reader->processMsg(msg);
+	    {
+		if(*it)
+		    (*it)->reader->processMsg(msg);
+	    }
 	} else {
+	    std::cout << " for receiver " << msg.receiverId << std::endl;
 	    //automatic ack handling
 	    if(msg.packetId == firmware::PACKET_ID_ACK)
 	    {
@@ -125,7 +189,7 @@ void Protocol::processIncommingPackages()
 			
 		if(queues.queue.empty())
 		{
-		    std::cout << "Warning got orphaned ack for id " << adata->packetId << std::endl;
+		    std::cout << "Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << std::endl;
 		    continue;
 		}
 		
@@ -139,7 +203,7 @@ void Protocol::processIncommingPackages()
 		    queues.queue.pop();
 		} else
 		{
-		    std::cout << "Warning got orphaned ack for id " << adata->packetId << " exprected " << entry.msg.packetId << std::endl;		
+		    std::cout << "Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << " exprected " << firmware::getPacketName(entry.msg.packetId) << std::endl;
 		}
 		continue;
 	    }
@@ -174,7 +238,14 @@ void Protocol::processSendQueues()
 	SendQueue::Entry &curEntry((*it)->queue.queue.front());
 	if(curEntry.sendTime == base::Time())
 	{
-	    bus->sendPacket(curEntry.msg);
+	    if(curEntry.msg.packetId < firmware::PACKET_ID_LOWIDS_START)
+		bus->sendPacket(curEntry.msg);
+	    else
+	    {
+		std::cout << "Found low Prio message in send queue with id " << getPacketName(curEntry.msg.packetId) << std::endl;
+		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
+	    }
+	    
 	    curEntry.sendTime = curTime;
 	    continue;
 	}
@@ -196,6 +267,105 @@ void Protocol::processSendQueues()
     }
 }
 
+LowPriorityProtocol::LowPriorityProtocol(Protocol* proto) : maxPacketSize(proto->bus->getMaxPacketSize()), hasHeader(false), bus(proto->bus)
+{
+
+}
+
+
+const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
+{
+    assert(msg.packetId == firmware::PACKET_LOW_PRIORITY_DATA);
+    
+    const firmware::LowPrioPacket *lp = reinterpret_cast<const firmware::LowPrioPacket *>(msg.data.data());
+    
+//     std::cout << "Low Prio: Got packet with id " << getPacketName(msg.packetId)  << msg.packetId << " with type " << lp->type << std::endl;
+    
+    switch(lp->type)
+    {
+	case firmware::TYPE_HEADER:
+	{
+	    const firmware::LowPrioHeader *header = reinterpret_cast<const firmware::LowPrioHeader *>(msg.data.data() + sizeof(struct firmware::LowPrioPacket));
+	    if(hasHeader)
+	    {
+		std::cout << "Error, got Header and last package was not finished" << std::endl;
+	    }
+	    hasHeader = true;
+	    curMessage.packetId = header->id;
+	    curMessage.data.resize(header->size);
+	}   
+	    break;
+	case firmware::TYPE_DATA:
+	{
+	    uint16_t dataPos = lp->sequenceNumber * maxPacketSize;
+	    const size_t pkgSize = curMessage.data.size();
+	    if(dataPos > pkgSize)
+	    {
+		std::cout << "Error, sequence number points outside of packet" << std::endl;		
+	    }
+	    uint16_t toCopy = lp->sequenceNumber * (maxPacketSize + 1) > pkgSize ? pkgSize - dataPos : maxPacketSize;
+	    for(int i = 0; i < toCopy; i++)
+	    {
+		curMessage.data[dataPos + i] = msg.data[i + sizeof(struct firmware::LowPrioPacket)];
+	    }
+	    curSize += toCopy;
+	    
+	    if(curSize == pkgSize)
+	    {
+		hasHeader = false;
+		return &curMessage;
+	    }
+	    
+	    break;
+	}
+    }
+    return NULL;
+    
+}
+
+void LowPriorityProtocol::sendPackage(const Packet& msg)
+{
+    assert(msg.packetId > firmware::PACKET_ID_LOWIDS_START);
+    Packet headPkg;
+    headPkg.receiverId = msg.receiverId;
+    headPkg.senderId = msg.senderId;
+    headPkg.broadcastMsg = msg.broadcastMsg;
+    headPkg.packetId = firmware::PACKET_LOW_PRIORITY_DATA;
+    headPkg.data.resize(sizeof(firmware::LowPrioPacket) + sizeof(firmware::LowPrioHeader));
+    firmware::LowPrioPacket *lp = reinterpret_cast<firmware::LowPrioPacket *>(headPkg.data.data());
+    firmware::LowPrioHeader *head = reinterpret_cast<firmware::LowPrioHeader *>(headPkg.data.data() + sizeof(struct firmware::LowPrioPacket));
+    head->id = (firmware::LOW_PRIORITY_IDs)(msg.packetId);
+    head->size = msg.data.size();
+//     std::cout << "LowPrio: Sending Header" << std::endl;
+    bus->sendPacket(headPkg);
+    
+    //TODO call send
+    Packet dataPkg;
+    dataPkg.receiverId = msg.receiverId;
+    dataPkg.senderId = msg.senderId;
+    dataPkg.broadcastMsg = msg.broadcastMsg;
+    dataPkg.packetId = firmware::PACKET_LOW_PRIORITY_DATA;
+    
+    const uint16_t numPackets = msg.data.size() / (maxPacketSize - sizeof(firmware::LowPrioPacket));
+    uint16_t dataCnt = 0;
+    uint16_t dataPerPkg = maxPacketSize - sizeof(firmware::LowPrioPacket);
+    for(int i = 0; i < numPackets ; i++)
+    {
+	int toCopy = i < numPackets-1 ? maxPacketSize : msg.data.size() % dataPerPkg;
+	dataPkg.data.resize(toCopy + sizeof(firmware::LowPrioPacket));
+	lp = reinterpret_cast<firmware::LowPrioPacket *>(dataPkg.data.data());
+	lp->sequenceNumber = i;
+	lp->type = firmware::TYPE_DATA;
+// 	std::cout << "LowPrio: Sending Data " << i << std::endl;
+	for(int j = 0; j < dataPerPkg; j++)
+	{
+	    dataPkg.data[sizeof(firmware::LowPrioPacket) + j] = msg.data[dataCnt];	
+	    dataCnt++;
+	}
+	
+	bus->sendPacket(dataPkg);
+    }
+}
 
 
 }

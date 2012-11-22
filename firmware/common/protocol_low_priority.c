@@ -4,38 +4,7 @@
 
 #define MAX_PACKET_SIZE 30
 
-enum LOW_PRIO_TYPE
-{
-    ///Header, containing description of the upcomming data packets
-    TYPE_HEADER = 0,
-//     ///Everything is fine, message received
-//     TYPE_ACK,
-//     ///Message was broken, resend    
-//     TYPE_REQUEST_RESEND,
-//     ///Firmware does not know this message
-//     TYPE_NACK,
-    ///Data packet(s) followed by header
-    TYPE_DATA,
-};
 
-struct LowPrioHeader
-{
-    enum LOW_PRIORITY_IDs id:8;
-    ///Size in bytes of the data
-    ///Note the data may be distributed over multiple packets
-    uint8_t size;
-    ///checksum of the data
-    uint16_t crc;
-    ///Sender ID ?
-    ///DO ack ?
-};
-
-struct LowPrioPacket
-{
-    enum LOW_PRIO_TYPE type:2;
-    unsigned sequenceNumber:6;
-    uint8_t data[7];
-};
 
 uint8_t protocolBuffer[MAX_PACKET_SIZE];
 struct LowPrioHeader protocolHeaderBuffer;
@@ -52,7 +21,7 @@ uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
     struct LowPrioPacket packet;
     packet.type = TYPE_HEADER;
     
-    struct LowPrioHeader *header = (struct LowPrioHeader *) (packet.data);
+    struct LowPrioHeader *header = (struct LowPrioHeader *) (data + sizeof(struct LowPrioPacket));
     header->id = id;
     header->size = size;
     //TODO 
@@ -77,7 +46,7 @@ uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
 	int j;
 	for(j = 0;j < curPayloadSize; j++)
 	{
-	    packet.data[j] = data[sent + j];
+	    data[sizeof(struct LowPrioPacket) + j] = data[sent + j];
 	}
 	
 	ret |= protocol_sendData(PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, curPayloadSize + 1);
@@ -103,7 +72,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	    if(curHeader)
 		print("Warning, got new header while old packet was not complete\n");
 	    
-	    struct LowPrioHeader *h = (struct LowPrioHeader *) packet->data;
+	    struct LowPrioHeader *h = (struct LowPrioHeader *) (data + sizeof(struct LowPrioPacket));
 	    protocolHeaderBuffer = *h;
 	    
 	    curHeader = &protocolHeaderBuffer;
@@ -124,7 +93,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	    
 	    for(i = 0;i < toCopy;i++)
 	    {
-		protocolBuffer[i+ received] = packet->data[i];
+		protocolBuffer[i+ received] = data[sizeof(struct LowPrioPacket) + i];
 	    }
 	    
 	    received+=toCopy;

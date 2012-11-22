@@ -31,6 +31,7 @@ class BusInterface
 public:
     virtual bool sendPacket(const Packet &packet) = 0;
     virtual bool readPacket(Packet &packet) = 0;
+    virtual uint16_t getMaxPacketSize() = 0;
 };
 
 class SendQueue
@@ -59,6 +60,21 @@ public:
     virtual void processMsg(const Packet &msg) = 0;
 };
 
+class LowPriorityProtocol
+{
+private:
+    const uint16_t maxPacketSize;
+    bool hasHeader;
+    uint16_t curSize;
+    Packet curMessage;
+    BusInterface *bus;
+public:
+    LowPriorityProtocol(Protocol *proto);
+    const Packet *processPackage(const Packet &msg);
+    
+    void sendPackage(const Packet &msg);    
+};
+
 class HbridgeHandle
 {
     friend class Protocol;
@@ -72,6 +88,7 @@ private:
     Reader * reader;
     Writer * writer;
     Protocol *protocol;
+    LowPriorityProtocol *lowPrioProtocol;
     
     std::vector<PacketReveiver *> msgHandlers;    
     std::vector<Controller *> controllers;
@@ -89,6 +106,10 @@ private:
     void registerController(hbridge::Controller *ctrl);
 public:
 
+    LowPriorityProtocol *getLowPriorityProtocol()
+    {
+	return lowPrioProtocol;
+    };
 
     int getBoardId()
     {
@@ -117,9 +138,8 @@ class Protocol
     friend class Controller;
     friend class Reader;
     friend class Writer;
+    friend class LowPriorityProtocol;
 private:
-    static Protocol *instance;
-    Protocol();
     
     int retryCount;
     base::Time sendTimout;
@@ -137,6 +157,7 @@ private:
     void registerHbridge(int id);
         
 public:
+    Protocol(BusInterface *bus);
 
     /**
      * This interface needs to be implemented by any
@@ -152,11 +173,6 @@ public:
      * */
     HbridgeHandle *getHbridgeHandle(int id);
 
-    /**
-     * Return the Protocol singleton
-     * */
-    static Protocol *getInstance();
-    
     /**
      * Sends out the messages that are shared between multiple
      * hbridges. E.g. setMode and setTargetValue

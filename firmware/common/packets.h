@@ -23,7 +23,6 @@ enum HIGH_PRIORITY_IDs
     PACKET_ID_SET_VALUE14,
     PACKET_ID_SET_VALUE58,
     
-    PACKET_LOW_PRIORITY_ACK,
     PACKET_LOW_PRIORITY_DATA,
 };
 
@@ -59,7 +58,6 @@ enum LOW_PRIORITY_IDs
     PACKET_ID_TOTAL_COUNT,
 };
 
-
 enum encoderTypes {
     NO_ENCODER = 0,
     QUADRATURE,
@@ -86,7 +84,7 @@ enum controllerInputEncoder {
 struct ackData {
     unsigned short packetId;
     unsigned short crc;
-};
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct encoderConfiguration {
     enum encoderTypes encoderType:8;
@@ -198,6 +196,36 @@ struct setActiveControllerData {
   enum controllerModes controllerId:8;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
+enum LOW_PRIO_TYPE
+{
+    ///Header, containing description of the upcomming data packets
+    TYPE_HEADER = 0,
+//     ///Everything is fine, message received
+//     TYPE_ACK,
+//     ///Message was broken, resend    
+//     TYPE_REQUEST_RESEND,
+//     ///Firmware does not know this message
+//     TYPE_NACK,
+    ///Data packet(s) followed by header
+    TYPE_DATA,
+};
 
+struct LowPrioHeader
+{
+    enum LOW_PRIORITY_IDs id:8;
+    ///Size in bytes of the data
+    ///Note the data may be distributed over multiple packets
+    uint8_t size;
+    ///checksum of the data
+    uint16_t crc;
+    ///Sender ID ?
+    ///DO ack ?
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct LowPrioPacket
+{
+    enum LOW_PRIO_TYPE type:2;
+    unsigned sequenceNumber:6;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 #endif

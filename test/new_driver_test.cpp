@@ -12,7 +12,18 @@ int error = 0;
 
 class CanbusDummy : public hbridge::BusInterface
 {
+    LowPriorityProtocol *lowPrioProt;
     std::queue<Packet> fakeMsgs;
+public:
+    CanbusDummy(): lowPrioProt(new LowPriorityProtocol(new Protocol(this)))
+    {
+    }
+    
+    virtual uint16_t getMaxPacketSize()
+    {
+	return 8;
+    }
+    
     virtual bool readPacket(Packet& packet)
     {
 	if(!fakeMsgs.empty())
@@ -24,51 +35,85 @@ class CanbusDummy : public hbridge::BusInterface
 	return false;
     }
     
+    bool handleLowPrio(const hbridge::Packet& packet)
+    {
+	const Packet *pkg = lowPrioProt->processPackage(packet);	
+	if(!pkg)
+	{
+	   return false;
+	}
+	
+	Packet fakeAck;	
+
+	fakeAck.packetId = firmware::PACKET_ID_ACK;
+	fakeAck.receiverId = pkg->senderId;
+	assert(pkg->senderId == boardId);
+	fakeAck.data.resize(sizeof(firmware::ackData));
+	firmware::ackData *ackData =
+	    reinterpret_cast<firmware::ackData *>(fakeAck.data.data());
+    
+	switch(pkg->packetId)
+	{
+	    case firmware::PACKET_ID_SET_BASE_CONFIG:
+	    case firmware::PACKET_ID_SET_ACTIVE_CONTROLLER:
+	    case firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA:
+	    case firmware::PACKET_ID_SET_POS_CONTROLLER_DATA:
+		//fake ack
+		ackData->packetId = pkg->packetId;
+		fakeMsgs.push(fakeAck);
+		return true;
+		break;
+	    default:
+		std::cout << "CanbusDummy : Got unexpected message with id " << pkg->packetId << std::endl;
+		error = 1;
+		break;
+	}
+
+	return false;
+    }
+
     virtual bool sendPacket(const hbridge::Packet& packet)
     {
-	std::cout << "Sending packet with id " << packet.packetId << std::endl;
-	
-	Packet fakeAck;
-	
-// 	switch(packet.can_id)
-// 	{
-// 	    case firmware::PACKET_ID_SET_MODE:
-// 	    case firmware::PACKET_ID_SET_VALUE14:
-// 	    case firmware::PACKET_ID_SET_VALUE58:
-// 		return true;
-// 		break;
-// 	    default:
-// 		std::cout << "Got unexpected brodcast message with id " << packet.can_id << std::endl;
-// 		error = 1;
-// 		break;
-// 	}
-// 	
-// 	fakeAck.can_id = firmware::PACKET_ID_ACK | canBoardId;
-// 	firmware::ackData *ackData =
-// 		reinterpret_cast<firmware::ackData *>(fakeAck.data);
-// 	fakeAck.size = sizeof(firmware::ackData);
-//     
-// 		    
-// 	switch(packet.can_id - canBoardId)
-// 	{
-// 	    case firmware::PACKET_ID_SET_CONFIGURE:
-// 	    case firmware::PACKET_ID_SET_CONFIGURE2:
-// 	    case firmware::PACKET_ID_ENCODER_CONFIG_INTERN:
-// 	    case firmware::PACKET_ID_ENCODER_CONFIG_EXTERN:
-// 	    case firmware::PACKET_ID_SET_PID_SPEED:
-// 	    case firmware::PACKET_ID_SET_PID_POS:
-// 	    case firmware::PACKET_ID_POS_CONTROLLER_DATA:
-// 		//fake ack
-// 		ackData->packetId = packet.can_id;
-// 		fakeMsgs.push(fakeAck);
-// 		break;
-// 	    default:
-// 		std::cout << "Got unexpected message with id " << packet.can_id << std::endl;
-// 		error = 1;
-// 		break;
-// 	}
-	
-	return true;
+	switch(packet.packetId)
+	{
+	    case firmware::PACKET_ID_SET_VALUE14:
+	    case firmware::PACKET_ID_SET_VALUE58:
+// 		std::cout << "Sending packet with id " << packet.packetId << std::endl;
+		return true;
+		break;
+	    case firmware::PACKET_ID_SET_BASE_CONFIG:
+	    case firmware::PACKET_ID_SET_ACTIVE_CONTROLLER:
+	    case firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA:
+	    case firmware::PACKET_ID_SET_POS_CONTROLLER_DATA:
+	    {
+		Packet fakeAck;	
+
+		fakeAck.packetId = firmware::PACKET_ID_ACK;
+		fakeAck.receiverId = packet.senderId;
+		fakeAck.senderId = packet.receiverId;
+		fakeAck.broadcastMsg = false;
+		assert(pkg->senderId == boardId);
+		fakeAck.data.resize(sizeof(firmware::ackData));
+		firmware::ackData *ackData =
+		    reinterpret_cast<firmware::ackData *>(fakeAck.data.data());
+
+		//fake ack
+		ackData->packetId = packet.packetId;
+		fakeMsgs.push(fakeAck);
+		return true;
+	    }
+		break;
+
+	    case firmware::PACKET_LOW_PRIORITY_DATA:
+		return handleLowPrio(packet);
+		break;
+	    
+	    default:
+		std::cout << "CanbusDummy: Got unexpected brodcast message with id " << packet.packetId << std::endl;
+		error = 1;
+		break;
+	}
+	return false;
     }
 };
 
@@ -91,9 +136,7 @@ int main(int argc, char **argv)
 {
 
     
-    hbridge::Protocol *proto = hbridge::Protocol::getInstance();
-
-    proto->setBusInterface(new CanbusDummy());
+    hbridge::Protocol *proto = new Protocol(new CanbusDummy());
 
     hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
     
@@ -109,6 +152,8 @@ int main(int argc, char **argv)
     reader->setConfiguration(conf);
     reader->startConfigure();
     
+    int cnt = 0;
+    
     while(!error)
     {    
 	proto->processIncommingPackages();
@@ -119,8 +164,13 @@ int main(int argc, char **argv)
 	{
 	    writer->setActiveController(&speedCtrl);
 	    writer->setTargetValue(10.0);
-	    std::cout << "SM" << std::endl;
+// 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();
+	
+	cnt++;
+	
+	if(cnt > 15)
+	    break;
     }
 }
