@@ -1,6 +1,8 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+#include <stdint.h>
+
 enum STATES
 {
     STATE_UNCONFIGURED,
@@ -13,6 +15,7 @@ enum STATES
 
 enum HIGH_PRIORITY_IDs
 {
+    PACKET_ID_EMERGENCY_STOP,
     PACKET_ID_SET_OVERWRITE,
     PACKET_ID_ERROR,
     PACKET_ID_STATUS,

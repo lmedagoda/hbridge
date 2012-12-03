@@ -92,7 +92,7 @@ public:
 		fakeAck.receiverId = packet.senderId;
 		fakeAck.senderId = packet.receiverId;
 		fakeAck.broadcastMsg = false;
-		assert(pkg->senderId == boardId);
+		assert(packet.senderId == boardId);
 		fakeAck.data.resize(sizeof(firmware::ackData));
 		firmware::ackData *ackData =
 		    reinterpret_cast<firmware::ackData *>(fakeAck.data.data());

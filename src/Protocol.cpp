@@ -4,6 +4,8 @@
 #include "Reader.hpp"
 #include "Writer.hpp"
 
+canbus::Message msg;
+
 namespace firmware {
 const char *getPacketName(uint16_t packetId)
 {
