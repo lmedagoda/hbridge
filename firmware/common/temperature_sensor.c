@@ -13,7 +13,7 @@ void defaultTempInit()
 {
 }
 
-void temperatureSensorsInit()
+void temperatureSensors_init()
 {
     int i;
     for(i = 0; i < 2; i++)
@@ -24,12 +24,12 @@ void temperatureSensorsInit()
     }
 }
 
-void setTemperatureSensorImpl(enum TempSensorPositions pos, struct TemperatureInterface impl)
+void temperatureSensors_setImpl(enum TempSensorPositions pos, struct TemperatureInterface impl)
 {
     tempSensors[pos] = impl;
 }
 
-struct TemperatureInterface *getSensorHandle(enum TempSensorPositions pos)
+struct TemperatureInterface *temperatureSensors_getSensorHandle(enum TempSensorPositions pos)
 {
     return &(tempSensors[pos]);
 }

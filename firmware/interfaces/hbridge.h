@@ -6,7 +6,7 @@
 /**
  * Initializes the hardware and the internal data structures
  * */
-void hbridgeInit();
+void hbridge_init();
 
 /**
  * Applies the giben PWM (in the range from -1800 to 1800) to
@@ -17,6 +17,6 @@ void hbridgeInit();
  * the off phase of the PWM.
  *  
  * */
-void setNewPWM(const int16_t value2, uint8_t useOpenCircuit);
+void hbridge_setNewPWM(const int16_t value2, uint8_t useOpenCircuit);
 
 #endif

@@ -29,9 +29,9 @@ struct TemperatureInterface
  * Set ups the internal data structures 
  * to return the correct handles.
  */
-void temperatureSensorsInit();
+void temperatureSensors_init();
 
-void setTemperatureSensorImpl(enum TempSensorPositions pos, struct TemperatureInterface impl);
+void temperatureSensors_setImpl(enum TempSensorPositions pos, struct TemperatureInterface impl);
 
 /**
  * Returns a handle to the sensor for the given
@@ -40,6 +40,6 @@ void setTemperatureSensorImpl(enum TempSensorPositions pos, struct TemperatureIn
  * Through this handle the sensor can be polled for readings
  *
  **/
-struct TemperatureInterface *getSensorHandle(enum TempSensorPositions);
+struct TemperatureInterface *temperatureSensors_getSensorHandle(enum TempSensorPositions);
 
 #endif

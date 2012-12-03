@@ -23,7 +23,7 @@ void tempSensorInit()
     interface.sensorInit = stub_tempInit;
     interface.sensorDeInit = stub_tempInit;
     
-    setTemperatureSensorImpl(POSITION_MOTOR, interface);
-    setTemperatureSensorImpl(POSITION_PCB, interface);
+    temperatureSensors_setImpl(POSITION_MOTOR, interface);
+    temperatureSensors_setImpl(POSITION_PCB, interface);
 }
 

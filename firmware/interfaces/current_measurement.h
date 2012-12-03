@@ -6,12 +6,12 @@
 /**
  * Initializes the hardware and the internal data structures.
  * */
-void currentMeasurementInit();
+void currentMeasurement_init();
 
 /**
  * Returns the latest current measurement.
  * */
-uint32_t getCurrentMeasurement();
+uint32_t currentMeasurement_getValue();
 
 
 #endif

@@ -123,6 +123,8 @@ uint8_t protocol_sendData(int id, unsigned char* data, short unsigned int size)
 	}
 	return sendPacket(ownHostId, id, data, size);
     }
+    
+    return 0;
 }
 
 

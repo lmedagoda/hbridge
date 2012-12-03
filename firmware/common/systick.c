@@ -113,7 +113,7 @@ void baseInit()
     protocol_init();
     state_init();
     encoder_init();
-    temperatureSensorsInit();
+    temperatureSensors_init();
     controllers_init();
     
     //clear all errors, btw initialize error state struct
@@ -122,11 +122,11 @@ void baseInit()
 
 void platformInit()
 {
-    hbridgeInit();
-    currentMeasurementInit();
+    hbridge_init();
+    currentMeasurement_init();
 
-    pcbTempSensor = *getSensorHandle(POSITION_PCB);
-    motorTempSensor = *getSensorHandle(POSITION_MOTOR);
+    pcbTempSensor = *temperatureSensors_getSensorHandle(POSITION_PCB);
+    motorTempSensor = *temperatureSensors_getSensorHandle(POSITION_MOTOR);
     
     pcbTempSensor.sensorInit();
     motorTempSensor.sensorInit();
@@ -157,7 +157,7 @@ void run()
 void systick_unconfiguredState(uint32_t index)
 {
     //be shure motor is off
-    setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
+    hbridge_setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
     
     resetCounters();
 }
@@ -179,7 +179,7 @@ void systick_runningState(uint32_t index)
             break;
     }
 
-    uint32_t currentValue = getCurrentMeasurement();
+    uint32_t currentValue = currentMeasurement_getValue();
 
     //reset timeout, if "userspace" requested it
     if(activeCState->resetTimeoutCounter) {
@@ -224,7 +224,7 @@ void systick_runningState(uint32_t index)
     sendStatusMessage(currentPwmValue, currentValue, temperature, motorTemperature, index);
 	
     //set pwm
-    setNewPWM(currentPwmValue, activeCState->actuatorConfig.useOpenLoop);
+    hbridge_setNewPWM(currentPwmValue, activeCState->actuatorConfig.useOpenLoop);
 }
 
 void systick_errorState(uint32_t index)
@@ -233,7 +233,7 @@ void systick_errorState(uint32_t index)
 	sendErrorMessage(temperature, motorTemperature, index);
 
     //be shure motor is off
-    setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
+    hbridge_setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
 
     resetCounters();
 }

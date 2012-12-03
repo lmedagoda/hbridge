@@ -2,19 +2,11 @@ extern "C" {
 #include "current_measurement.h"
 }
 
-void currentMeasurementInit()
+void currentMeasurement_init()
 {
 }
 
-void requestNewCurrentMeasurement()
-{
-}
-
-void waitForNewCurrentMeasurement()
-{
-}
-
-uint32_t getCurrentMeasurement()
+uint32_t currentMeasurement_getValue()
 {
     return 0;
 }
