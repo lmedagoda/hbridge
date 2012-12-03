@@ -107,7 +107,7 @@ void hbridgeGPIOConfig() {
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
-void hbridgeInit() {
+void hbridge_init() {
     //init gpios
     hbridgeGPIOConfig();
     
@@ -115,10 +115,10 @@ void hbridgeInit() {
     initHbridgeTimers();
 
     //set pwm to zero
-    setNewPWM(0, 0);    
+    hbridge_setNewPWM(0, 0);    
 }
 
-void setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
+void hbridge_setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
     int16_t value = value2 / 2;
     uint16_t leftHighCC = 0;
     uint16_t rightHighCC = 0;

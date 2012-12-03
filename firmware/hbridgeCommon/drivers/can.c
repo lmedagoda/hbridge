@@ -155,10 +155,10 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
   if(boardNr == RECEIVER_ID_H_BRIDGE_1 || boardNr == RECEIVER_ID_H_BRIDGE_2 || boardNr == RECEIVER_ID_H_BRIDGE_3 || boardNr == RECEIVER_ID_H_BRIDGE_4) {
     CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE14<<5;
-    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE14<<5;
+    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_LOW_PRIORITY_DATA<<5;
   } else {
     CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE58<<5;
-    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_ID_SET_MODE58<<5;      
+    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=0;      
   }
   CAN_FilterInitStructure.CAN_FilterMaskIdLow=0;
   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;

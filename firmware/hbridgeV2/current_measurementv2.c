@@ -11,6 +11,7 @@
 
 #define ADC1_DR_Address    ((uint32_t)0x4001244C)
 #define AVERAGE_THRESHOLD 10
+#define USED_REGULAR_ADC_CHANNELS 12
 
 volatile uint16_t adc_values[USED_REGULAR_ADC_CHANNELS];
 
@@ -36,17 +37,14 @@ volatile uint8_t oldDirection;
 volatile uint32_t h1[USED_REGULAR_ADC_CHANNELS/2];
 volatile uint32_t h2[USED_REGULAR_ADC_CHANNELS/2];
 
-void requestNewADCValues() {
+uint32_t currentMeasurement_getValue() {
+    //switch inActiveAdcValues and activeAdcValues
     switchAdcValues = 1;
-};
-
-void waitForNewADCValues() {
+    
     while(switchAdcValues) {
 	;
     }
-};
-
-uint32_t calculateCurrent() {
+    
     /*
 	PWM period: 25000 ns
 	adc sample time:	1666.67 ns/sample
@@ -304,7 +302,7 @@ void adcInit()
 
 }
 
-void currentMeasurementInit()
+void currentMeasurement_init()
 {
     activeAdcValues = &avs1;
     inActiveAdcValues = &avs2;

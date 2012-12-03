@@ -10,5 +10,5 @@ enum ASSERT_UASRT {
 
 void Assert_Init(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, enum ASSERT_UASRT used_usart);
 
-
+void Assert_assert(int expr);
 #endif

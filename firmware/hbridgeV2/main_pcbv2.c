@@ -11,7 +11,10 @@
 #include "i2c.h"
 #include "lm73cimk.h"
 #include "encoder.h"
+#include "encoder_ichaus.h"
+#include "encoder_adc.h"
 #include "encoder_quadrature.h"
+#include "protocol_can.h"
 #include <stdlib.h>
 
 enum hostIDs getOwnHostId() {
@@ -58,7 +61,6 @@ enum hostIDs getOwnHostId() {
 
 void GPIO_Configuration(void);
 
-extern struct EncoderInterface encoders[NUM_ENCODERS];
 
 /*******************************************************************************
 * Function Name  : main
@@ -72,14 +74,11 @@ int main(void)
     //setup assert correctly
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
 
-    volatile uint32_t delay;
     //Enable peripheral clock for GPIO
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
 
     GPIO_Configuration();
-
-    baseNvicInit();
 
     USART3_Init(DISABLE);
 
@@ -112,71 +111,38 @@ int main(void)
     print("Peripheral configuration finished\n");
 
     CAN_Configuration(CAN_REMAP1);
-    CAN_ConfigureFilters(ownHostId);
-
-    //this is hacky, but the best way at,
-    encoders[QUADRATURE].encoderInit = encoderInitQuadratureV2;
-    encoders[QUADRATURE].getTicks = getTicksQuadratureV2;
-    encoders[QUADRATURE].setTicksPerTurn = setTicksPerTurnQuadratureV2;
-
-    encoders[QUADRATURE_WITH_ZERO].encoderInit = encoderInitQuadratureWithZeroV2;
-    encoders[QUADRATURE_WITH_ZERO].getTicks = getTicksQuadratureWithZeroV2;
-    encoders[QUADRATURE_WITH_ZERO].setTicksPerTurn = setTicksPerTurnQuadratureWithZeroV2;
-    //activate systick interrupt, at this point
-    //activeCState1 hast to be initalized completely sane !
-    SysTick_Configuration();
-
- 
-  /** DEBUG**/
-/*
-  uint16_t lastTime = 0;
-  uint16_t time;
-  uint16_t counter = 0;  
-*/
-
-  uint16_t cnt = 0;
+    CAN_ConfigureFilters(getOwnHostId());
     
-//   uint32_t temp = 0;
-//   uint32_t gotTmpCnt = 0;
-//   uint8_t lmk72addr = (0x4E<<1);
+    can_protocolInit();
 
-  /** END DEBUG **/
- 
-  while(1) {
+    struct EncoderInterface encoder;
+    encoder_defaultStructInit(&encoder);
 
-    /** START DEBUG **/
-    /*if(!getTemperature(lmk72addr, &temp)) {
-	gotTmpCnt++;
-	    //printf("got temp %lu\n", temp);
-    }
+    encoder.encoderInit = encoderInitQuadratureV2;
+    encoder.getTicks = getTicksQuadratureV2;
+    encoder.setTicksPerTurn = setTicksPerTurnQuadratureV2;
+    encoder_setImplementation(QUADRATURE, encoder);
 
-    printfI2CDbg();
-    if(counter > 10000) {
-      printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
-      gotTmpCnt = 0;
-      counter = 0;
-      print(".");
-      uint32_t eet = getTicksExtern();
-      uint32_t iet = getTicks();
-      printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);
-      //printf("Error is %h \n", error);
-      //print("ActiveCstate: ");
-      //printStateDebug(activeCState);
-      //print("LastActiveCstate: ");
-      //printStateDebug(lastActiveCState);
-    }
+    encoder.encoderInit = encoderInitQuadratureWithZeroV2;
+    encoder.getTicks = getTicksQuadratureWithZeroV2;
+    encoder.setTicksPerTurn = setTicksPerTurnQuadratureWithZeroV2;
+    encoder_setImplementation(QUADRATURE_WITH_ZERO, encoder);
 
-    time = TIM_GetCounter(TIM1);
-    if(lastTime > time) {
-      counter++;
-    }
-    lastTime = time;
-*/
+    encoder.encoderInit = encoderInitIcHaus;
+    encoder.getTicks = getTicksIcHaus;
+    encoder.setTicksPerTurn = setTicksPerTurnIcHaus;
+    encoder_setImplementation(IC_HOUSE_MH_Y, encoder);
+    
+    encoder.encoderInit = encoderInitADC;
+    encoder.encoderDeInit = encoderDeInitADC;
+    encoder.getTicks = getTicksADC;
+    encoder.setTicksPerTurn = setTicksPerTurnADC;
+    encoder_setImplementation(ANALOG_VOLTAGE, encoder);
 
-    /* END DEBUG */
-
-    pollCanMessages();
-  }
+    run();
+    
+    while(1)
+	;
 }
 
 

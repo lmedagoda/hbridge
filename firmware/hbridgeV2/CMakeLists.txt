@@ -39,52 +39,63 @@ add_definitions(
   -D STM32F10X_MD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
   )
 
+set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../hbridgeCommon) 
+set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../common) 
+
 include_directories(
-  ${STM32_SOURCE_DIR}/.
-  ${STM32_SOURCE_DIR}/drivers/
-  ${STM32_SOURCE_DIR}/lib/STM32F10x_StdPeriph_Driver/
-  ${STM32_SOURCE_DIR}/lib/STM32F10x_StdPeriph_Driver/inc
-  ${STM32_SOURCE_DIR}/lib/CMSIS/CM3/CoreSupport/
-  ${STM32_SOURCE_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x
+  ${STM32_COMMON_DIR}/.
+  ${STM32_COMMON_DIR}/../
+  ${STM32_COMMON_DIR}/../interfaces
+  ${MD_COMMON_DIR}
+  ${STM32_COMMON_DIR}/drivers/
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/inc
+  ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/
+  ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x
   )
 
 add_library(stm32fw 
-  lib/CMSIS/CM3/CoreSupport/core_cm3.c
-  lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
-  lib/STM32F10x_StdPeriph_Driver/src/misc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_iwdg.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_bkp.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_exti.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_flash.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_crc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_tim.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_gpio.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_usart.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c
-  lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c
+  ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
+  ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/misc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_iwdg.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_sdio.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_bkp.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_exti.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_spi.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_can.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_flash.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_crc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_fsmc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_pwr.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_tim.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dac.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_gpio.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rcc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_usart.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dbgmcu.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c
+  ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c
 )
 
 add_library(stm32drivers
-    drivers/assert.c
-    drivers/i2c.c           
-    drivers/printf.c  
-    drivers/usart.c
-    drivers/can.c
-    drivers/spi.c
-    drivers/lm73cimk.c
-    drivers/tmp100.c
-    drivers/pid.c
+    ${STM32_COMMON_DIR}/drivers/assert.c
+    ${STM32_COMMON_DIR}/drivers/i2c.c           
+    ${STM32_COMMON_DIR}/drivers/printf.c  
+    ${STM32_COMMON_DIR}/drivers/usart.c
+    ${STM32_COMMON_DIR}/drivers/can.c
+    ${STM32_COMMON_DIR}/drivers/spi.c
+    ${STM32_COMMON_DIR}/drivers/lm73cimk.c
+    ${STM32_COMMON_DIR}/drivers/tmp100.c
+    ${STM32_COMMON_DIR}/encoder_adc.c
+    ${STM32_COMMON_DIR}/encoder_quadrature.c    
+    ${STM32_COMMON_DIR}/encoder_ichaus.c    
+    ${STM32_COMMON_DIR}/thread.c
+    ${STM32_COMMON_DIR}/protocol_can.c
+    ${STM32_COMMON_DIR}/system_stm32f10x.c
 ) 
 
 target_link_libraries(stm32drivers stm32fw)
@@ -93,37 +104,29 @@ link_directories(
   ${STM32_BINARY_DIR}/fwlib
   )
 
-add_library(hbridge_common
-    position_controller.c
-    speed_controller.c
-    controllers.c
-    protocol.c
-    state.c
-    encoder.c
-    encoder_adc.c
-    encoder_quadrature.c    
-    encoder_ichaus.c    
-    systick.c
+add_library(motor_driver_common
+    ${MD_COMMON_DIR}/pid.c
+    ${MD_COMMON_DIR}/temperature_sensor.c
+    ${MD_COMMON_DIR}/position_controller.c
+    ${MD_COMMON_DIR}/speed_controller.c
+    ${MD_COMMON_DIR}/controllers.c
+    ${MD_COMMON_DIR}/protocol.c
+    ${MD_COMMON_DIR}/state.c
+    ${MD_COMMON_DIR}/encoder.c
+    ${MD_COMMON_DIR}/systick.c
 )
-target_link_libraries(hbridge_common stm32drivers stm32fw)
+target_link_libraries(motor_driver_common stm32drivers stm32fw)
 
 add_executable(main
-    main.c
-    current_measurement.c
-    hbridge.c
-)
-
-add_executable(pcbv2
     main_pcbv2.c
     hbridgev2.c
     current_measurementv2.c
+
 )
 
-target_link_libraries(main stm32fw hbridge_common stm32fw stm32drivers stm32fw)
+target_link_libraries(main stm32fw motor_driver_common stm32fw stm32drivers stm32fw)
 objcopy_file(main)
 
-target_link_libraries(pcbv2 stm32fw hbridge_common stm32fw stm32drivers stm32fw)
-objcopy_file(pcbv2)
 
 add_custom_target(flash openocd -f ${STM32_SOURCE_DIR}/openocd.cfg 
                   DEPENDS ${FO})

@@ -1,7 +1,8 @@
 #ifndef __CAN_H
 #define __CAN_H
 
-#include "protocol.h"
+#include "common/packets.h"
+#include "common/protocol.h"
 #include "inc/stm32f10x_can.h"
 
 #define CAN_SEND_RETRIES 5000

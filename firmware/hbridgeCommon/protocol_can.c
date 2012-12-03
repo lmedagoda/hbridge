@@ -1,26 +1,46 @@
+#include "drivers/can.h"
+#include "../common/protocol.h"
+#include "../interfaces/host_id.h"
+#include "lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h"
+#include "drivers/assert.h"
+#include "stm32f10x_conf.h"
 
-
-void protocol_receiveData()
+signed int can_recvPacket(uint16_t *senderId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
 {
-    CanRxMsg *msg;
+    CanRxMsg *msg = CAN_GetNextData();
     
-    while(msg = CAN_GetNextData())
+    if(!msg)
+	return 0;
+
+    assert_param(dataSize >= msg->DLC);
+    
+    int i;
+    for(i = 0; i < msg->DLC; i++)
     {
-	uint16_t packetId = msg->StdId & 0xF;
-	uint16_t senderId = 0;
-	uint16_t receiverId = 0;
-	protocol_processPackage(packetId, msg->Data, msg->DLC);
-	
-	CAN_MarkNextDataAsRead();
+	data[i] = msg->Data[i];
     }
+    
+    int ret = msg->DLC;
+
+    //dummy for now
+    *senderId = 0;
+    
+    *packetId = msg->StdId & ~0x1F;
+    
+    CAN_MarkNextDataAsRead();
+
+    
+    return ret;
 }
 
-void protocol_sendPacket(uint8_t senderId, uint8_t packetId, uint8_t *data, uint8_t size)
+signed int can_sendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size)
 {
-    CanTxMsg msg;
+    assert_param(signed <= sizeof(CanTxMsg.Data));
 
+    CanTxMsg msg;
+    
     //send status message over CAN
-    msg.StdId= packetId + ownHostId;
+    msg.StdId= packetId + protocol_getOwnHostId();
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
     msg.DLC=size;
@@ -33,4 +53,12 @@ void protocol_sendPacket(uint8_t senderId, uint8_t packetId, uint8_t *data, uint
     
     while(CAN_SendMessage(&msg))
 	;
+    
+    return size;
+}
+
+void can_protocolInit()
+{
+    protocol_setRecvFunc(can_recvPacket);
+    protocol_setSendFunc(can_sendPacket);
 }
