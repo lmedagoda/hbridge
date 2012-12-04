@@ -135,7 +135,7 @@ void Protocol::processIncommingPackages()
 		continue;
 	    }
 	    
-	    handles[msg.packetId]->reader->processMsg(msg);
+	    handles[msg.senderId]->reader->processMsg(msg);
 	}
     }
 }
