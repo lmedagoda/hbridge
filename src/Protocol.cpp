@@ -22,7 +22,7 @@ Protocol::Protocol(BusInterface *bus) : bus(bus)
     handles.resize(BOARD_COUNT);
     
     retryCount = 3;
-    sendTimout = base::Time::fromMicroseconds(30);
+    sendTimout = base::Time::fromMilliseconds(30);
 }
 
 void Protocol::setBusInterface(BusInterface* bus)
