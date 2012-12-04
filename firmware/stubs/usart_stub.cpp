@@ -144,6 +144,8 @@ void USART3_DeInit(void)
 
 signed int USART3_SendData(const unsigned char *data, const unsigned int size)
 {
+    for(int i = 0; i < size; i++)
+	std::cout << data[i] << std::endl;
     return size;
     unsigned int nrToSend = rand() % (size + 1);
     assert(nrToSend <= size);

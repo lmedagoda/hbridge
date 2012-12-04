@@ -1,5 +1,6 @@
 extern "C" {
-#include "drivers/can.h"
+#include "../hbridgeCommon/drivers/can.h"
+#include "../hbridgeCommon/protocol_can.h"
 }
 #include <boost/circular_buffer.hpp>
 #include <boost/thread.hpp>

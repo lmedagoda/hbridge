@@ -1,20 +1,12 @@
-// #include "../../src/Protocol.hpp"
-#include <boost/circular_buffer.hpp>
-#include <boost/thread.hpp>
-#include <iostream>
+#include "packet_stub.hpp"
+extern "C" {
+#include "../common/packets.h"
+}
 
-class Packet
-{
-public:
-    int senderId;
-    int receiverId;
-    int packetId;
-    bool broadcastMsg;
-    std::vector<uint8_t> data;
-};
+using namespace hbridge;
 
-boost::circular_buffer<Packet> driverToFirmware(200);
-boost::circular_buffer<Packet> firmwareToDriver(200);
+boost::circular_buffer<hbridge::Packet> driverToFirmware(200);
+boost::circular_buffer<hbridge::Packet> firmwareToDriver(200);
 boost::mutex comMutex;
 
 signed int firmwareSendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size)
@@ -46,6 +38,10 @@ signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *packetId, unsigne
     if(!driverToFirmware.empty())
     {
 	Packet &msg(driverToFirmware.front());
+// 	std::cout << "Got new Packet : "; 
+// 	std::cout << getPacketName(msg.packetId) << std::endl;
+// 	std::cout << "Message size " << msg.data.size() << std::endl;
+// 	std::cout << "Data size " << dataSize << std::endl;;
 	assert(dataSize >= msg.data.size());
 	*senderId = msg.senderId;
 	*packetId = msg.packetId;

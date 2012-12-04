@@ -1,55 +1,59 @@
 #include "../src/Protocol.hpp"
 #include "../src/Controller.hpp"
 #include "../protocol.hpp"
-#include "firmware-stubs/can_stub.hpp"
 #include "../src/Reader.hpp"
 #include "../src/Writer.hpp"
+#include "../firmware/stubs/packet_stub.hpp"
 
 
 using namespace hbridge;
-#define HBRIDGE_BOARD_ID(x) ((x + 1) << 5)
 
 int boardId = 0;
 int error = 0;
 
-class CanbusStub : public hbridge::BusInterface
+class PacketStub : public hbridge::BusInterface
 {
+    virtual uint16_t getMaxPacketSize()
+    {
+	return 8;
+    }
+    
     virtual bool readPacket(Packet& packet)
     {
-    }
-    virtual bool sendPacket(const hbridge::Packet& packet)
-    {
-    }
-    virtual bool readCanPacket(canbus::Message& packet)
-    {
 	bool ret = false;
-	canMutex.lock();
-	if(!canFromHB.empty())
+	comMutex.lock();
+	if(!firmwareToDriver.empty())
 	{
-	    packet = canFromHB.front();
-	    canFromHB.pop_front();
+	    packet = firmwareToDriver.front();
+	    firmwareToDriver.pop_front();
 	    ret = true;
 	}
-	canMutex.unlock();    
+	comMutex.unlock();    
 	return ret;
     };
     
-    virtual bool sendCanPacket(const canbus::Message& packet)
+    virtual bool sendPacket(const hbridge::Packet& packet)
     {
 	bool ret = false;
+	
+// 	std::cout << "Sending new Packet : "; 
+// 	std::cout << firmware::getPacketName(packet.packetId) << std::endl;
+// 	std::cout << "Message size " << packet.data.size() << std::endl;
+	
 // 	std::cout << "Sending packet with id " << packet.can_id << std::endl;
-	canMutex.lock();
-	if(!canToHB.full())
+	comMutex.lock();
+	if(!driverToFirmware.full())
 	{
-	    canToHB.push_back(packet);
+	    driverToFirmware.push_back(packet);
 	    ret = true;
 	}
-	canMutex.unlock();
+	comMutex.unlock();
 	
 	return ret;
     };
 };
 
+bool configured;
 
 class DummyCallback : public hbridge::Reader::CallbackInterface
 {
@@ -61,21 +65,18 @@ class DummyCallback : public hbridge::Reader::CallbackInterface
     
     virtual void configureDone()
     {
+	configured = true;
 	std::cout << "Configuration done " << std::endl;
     }
 };
 
-extern "C"
-{
 int fw_main(void);
-}
 
 int main(int argc, char **argv)
 {
+    PacketStub *busInterface = new PacketStub();
     boost::thread fwThread(fw_main);
-    hbridge::Protocol *proto = hbridge::Protocol::getInstance();
-
-    proto->setBusInterface(new CanbusStub());
+    hbridge::Protocol *proto = new hbridge::Protocol(busInterface);
 
     hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
     
@@ -85,12 +86,27 @@ int main(int argc, char **argv)
     
     MotorConfiguration conf;
     
+    configured = false;
+    
     Reader *reader = handle->getReader();
     Writer *writer = handle->getWriter();
     reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf);
     reader->startConfigure();
     
+    int cnt = 0;
+    while(!configured)
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	if(cnt == 500)
+	{
+	    std::cout << "Waiting for configuration to be done" << std::endl;
+	    cnt = 0;
+	}
+	cnt++;
+	usleep(1000);
+    }
     
     while(!error)
     {    
