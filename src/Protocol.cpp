@@ -33,7 +33,7 @@ void Protocol::setBusInterface(BusInterface* bus)
 HbridgeHandle* Protocol::getHbridgeHandle(int id)
 {
     if(id < 0 || id > BOARD_COUNT)
-	throw std::out_of_range("Error tried to get hbridge handle with invalid hbridge id");
+	throw std::out_of_range("Protocol: Error tried to get hbridge handle with invalid hbridge id");
 
     if(!handles[id])
 	handles[id] = new HbridgeHandle(id, this);
@@ -50,7 +50,7 @@ void HbridgeHandle::registerForMsg(PacketReveiver* reveiver, int packetId)
 void HbridgeHandle::registerController(hbridge::Controller* ctrl)
 {
     if(controllers[ctrl->getControllerId()])
-	throw std::out_of_range("Error: There is allready a controller with id X registered");
+	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id X registered");
     
     controllers[ctrl->getControllerId()] = ctrl;
 }
@@ -116,7 +116,7 @@ void Protocol::processIncommingPackages()
 			
 		if(queues.queue.empty())
 		{
-		    std::cout << "Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << std::endl;
+		    std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << std::endl;
 		    continue;
 		}
 		
@@ -130,7 +130,7 @@ void Protocol::processIncommingPackages()
 		    queues.queue.pop();
 		} else
 		{
-		    std::cout << "Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << " exprected " << firmware::getPacketName(entry.msg.packetId) << std::endl;
+		    std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << " exprected " << firmware::getPacketName(entry.msg.packetId) << std::endl;
 		}
 		continue;
 	    }
@@ -169,7 +169,6 @@ void Protocol::processSendQueues()
 		bus->sendPacket(curEntry.msg);
 	    else
 	    {
-		std::cout << "Found low Prio message in send queue with id " << getPacketName(curEntry.msg.packetId) << std::endl;
 		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
 	    }
 	    
@@ -188,11 +187,12 @@ void Protocol::processSendQueues()
 		continue;
 	    }
 	    curEntry.retryCnt--;
+	    std::cout << "Timeout, resending " << getPacketName(curEntry.msg.packetId) << " retry " << retryCount - curEntry.retryCnt << std::endl;
+
 	    if(curEntry.msg.packetId < firmware::PACKET_ID_LOWIDS_START)
 		bus->sendPacket(curEntry.msg);
 	    else
 	    {
-		std::cout << "Found low Prio message in send queue with id " << getPacketName(curEntry.msg.packetId) << std::endl;
 		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
 	    }
 	    curEntry.sendTime = curTime;	    
@@ -222,7 +222,7 @@ const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
 	    const firmware::LowPrioHeader *header = reinterpret_cast<const firmware::LowPrioHeader *>(msg.data.data() + sizeof(struct firmware::LowPrioPacket));
 	    if(hasHeader)
 	    {
-		std::cout << "Error, got Header and last package was not finished" << std::endl;
+		std::cout << "LowPriorityProtocol: Error, got Header and last package was not finished" << std::endl;
 	    }
 	    hasHeader = true;
 	    curMessage.packetId = header->id;
@@ -240,7 +240,7 @@ const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
 	    const size_t pkgSize = curMessage.data.size();
 	    if(dataPos > pkgSize)
 	    {
-		std::cout << "Error, sequence number points outside of packet" << std::endl;		
+		std::cout << "LowPriorityProtocol: Error, sequence number points outside of packet" << std::endl;		
 	    }
 	    uint16_t toCopy = lp->sequenceNumber < pkgSize / dataPerPkg ? dataPerPkg : pkgSize - dataPos;
 	    assert(toCopy == msg.data.size() - sizeof(struct firmware::LowPrioPacket));
