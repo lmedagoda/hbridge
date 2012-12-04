@@ -112,7 +112,7 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     aState->maxCurrentCount = aCfg->maxCurrentCount;
     aState->pwmStepPerMillisecond = aCfg->pwmStepPerMs;
 
-    protocol_ackPacket(1);   
+    protocol_ackPacket(id);   
     state_switchState(1);
 }
 
@@ -199,6 +199,9 @@ void state_init()
 {
     state_initStruct(&state1);
     state_initStruct(&state2);
+    
+    activeControllerTargetValueData = &controllerTargetValueData1;
+    inactiveControllerTargetValueData = &controllerTargetValueData2;
     
     protocol_registerHandler(PACKET_ID_SET_ACTIVE_CONTROLLER, state_setActiveControllerHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE, state_setTargetValueHandler);
