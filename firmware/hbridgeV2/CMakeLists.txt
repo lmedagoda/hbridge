@@ -111,9 +111,11 @@ add_library(motor_driver_common
     ${MD_COMMON_DIR}/speed_controller.c
     ${MD_COMMON_DIR}/controllers.c
     ${MD_COMMON_DIR}/protocol.c
+    ${MD_COMMON_DIR}/protocol_low_priority.c
     ${MD_COMMON_DIR}/state.c
     ${MD_COMMON_DIR}/encoder.c
     ${MD_COMMON_DIR}/systick.c
+    ${MD_COMMON_DIR}/packets.c
 )
 target_link_libraries(motor_driver_common stm32drivers stm32fw)
 

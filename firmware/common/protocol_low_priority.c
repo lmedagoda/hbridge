@@ -98,7 +98,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	    }
 	    
 	    received+=toCopy;
-	    printf("LOW PRIO received %i", received);
+	    printf("LOW PRIO received %i \n", received);
 	    if(received >= curHeader->size)
 	    {
 		printf("LOW PRIO GOT PACKET %i %i %i\n", curHeader->id, curHeader->size, received);
@@ -106,8 +106,6 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 		
 		//packet complete, call handler
 		protocolHandlers[curHeader->id](curHeader->id, protocolBuffer, curHeader->size);
-
-		protocol_ackPacket(curHeader->id);
 
 		curHeader = 0;
 		received = 0;

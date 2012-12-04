@@ -40,7 +40,8 @@ enum LOW_PRIORITY_IDs
     
 //     PACKET_ID_ENCODER_CONFIG_INTERN,
 //     PACKET_ID_ENCODER_CONFIG_EXTERN,
-    PACKET_ID_SET_BASE_CONFIG,
+    PACKET_ID_SET_SENSOR_CONFIG,
+    PACKET_ID_SET_ACTUATOR_CONFIG,
     PACKET_ID_SET_ACTIVE_CONTROLLER,
     
     PACKED_ID_REQUEST_VERSION,
@@ -232,4 +233,5 @@ struct LowPrioPacket
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 const char *getPacketName(uint16_t packetId);
+
 #endif

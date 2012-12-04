@@ -3,8 +3,9 @@
 
 namespace firmware
 {
-#define __NO_STM32
+    extern "C" {
 #include "firmware/common/packets.h"
+    }
 }
 
 #endif

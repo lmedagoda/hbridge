@@ -42,7 +42,8 @@ public:
 // 		std::cout << "Sending packet with id " << packet.packetId << std::endl;
 		return true;
 		break;
-	    case firmware::PACKET_ID_SET_BASE_CONFIG:
+	    case firmware::PACKET_ID_SET_SENSOR_CONFIG:
+	    case firmware::PACKET_ID_SET_ACTUATOR_CONFIG:
 	    case firmware::PACKET_ID_SET_ACTIVE_CONTROLLER:
 	    case firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA:
 	    case firmware::PACKET_ID_SET_POS_CONTROLLER_DATA:

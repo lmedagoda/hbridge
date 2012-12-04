@@ -56,7 +56,7 @@ void Reader::sendConfigureMsg()
 {
     Configuration &cfg(configuration.base_config);
     Packet msg;
-    msg.packetId = firmware::PACKET_ID_SET_BASE_CONFIG;
+    msg.packetId = firmware::PACKET_ID_SET_SENSOR_CONFIG;
     msg.data.resize(sizeof(firmware::sensorConfig));
     
     firmware::sensorConfig *cfg1 = reinterpret_cast<firmware::sensorConfig *>(msg.data.data());
@@ -238,8 +238,8 @@ void Reader::configurationError(const Packet &msg)
     std::cout << "Reason:" << std::endl;
     switch(msg.packetId)
     {
-	case firmware::PACKET_ID_SET_BASE_CONFIG:
-	    std::cout << "Configure message was not acked" << std::endl;
+	case firmware::PACKET_ID_SET_SENSOR_CONFIG:
+	    std::cout << "Sensor config message was not acked" << std::endl;
 	    break;
 	default:
 	    std::cout << "Driver error: This means there is a bug in the driver" << std::endl;

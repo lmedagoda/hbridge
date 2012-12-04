@@ -7,18 +7,36 @@
 
 volatile struct GlobalState state1;
 volatile struct GlobalState state2;
-
 volatile struct GlobalState *activeCState = &state1;
 volatile struct GlobalState *lastActiveCState = &state2;
 
 volatile struct ErrorState state_errorState;
 
-
-
 volatile struct ControllerTargetData controllerTargetValueData1;
 volatile struct ControllerTargetData controllerTargetValueData2;
 volatile struct ControllerTargetData *activeControllerTargetValueData;
 volatile struct ControllerTargetData *inactiveControllerTargetValueData;
+
+void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size);
+void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size);
+void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size);
+void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size);
+
+void state_init()
+{
+    state_initStruct(&state1);
+    state_initStruct(&state2);
+    
+    activeControllerTargetValueData = &controllerTargetValueData1;
+    inactiveControllerTargetValueData = &controllerTargetValueData2;
+
+    protocol_registerHandler(PACKET_ID_SET_SENSOR_CONFIG, state_sensorConfigHandler);
+    protocol_registerHandler(PACKET_ID_SET_ACTUATOR_CONFIG, state_setActuatorLimitHandler);
+    protocol_registerHandler(PACKET_ID_SET_ACTIVE_CONTROLLER, state_setActiveControllerHandler);
+    protocol_registerHandler(PACKET_ID_SET_VALUE, state_setTargetValueHandler);
+    protocol_registerHandler(PACKET_ID_SET_VALUE14, state_setTargetValueHandler);
+    protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
+}
 
 void state_switchState(uint8_t forceSynchronisation)
 {
@@ -70,6 +88,7 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     {
 	state_switchToErrorState();
 	protocol_ackPacket(id);
+	print("State: Error, got sensor config and state was not unconfigured \n");
 	return;
     }
     
@@ -87,6 +106,7 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     
     state_switchState(1);
     protocol_ackPacket(id);
+    print("State: Got sensor config switching state to configured \n");
 }
 
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size)
@@ -193,23 +213,6 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
     activeControllerTargetValueData = inactiveControllerTargetValueData;
     inactiveControllerTargetValueData = tmp;
 }
-
-
-void state_init()
-{
-    state_initStruct(&state1);
-    state_initStruct(&state2);
-    
-    activeControllerTargetValueData = &controllerTargetValueData1;
-    inactiveControllerTargetValueData = &controllerTargetValueData2;
-    
-    protocol_registerHandler(PACKET_ID_SET_ACTIVE_CONTROLLER, state_setActiveControllerHandler);
-    protocol_registerHandler(PACKET_ID_SET_VALUE, state_setTargetValueHandler);
-    protocol_registerHandler(PACKET_ID_SET_VALUE14, state_setTargetValueHandler);
-    protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
-}
-
-
 
 void state_initStruct(volatile struct GlobalState *cs)
 {

@@ -1,4 +1,4 @@
-ADD_LIBRARY(hbridge SHARED Protocol.cpp Controller.cpp Reader.cpp Writer.cpp Encoder.cpp)
+ADD_LIBRARY(hbridge SHARED Protocol.cpp Controller.cpp Reader.cpp Writer.cpp Encoder.cpp ../firmware/common/packets.c)
 TARGET_LINK_LIBRARIES(hbridge ${CANBUS_DRIVER_LIBRARIES} ${BASE_LIBRARIES})
 
 INSTALL(TARGETS hbridge

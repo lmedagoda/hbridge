@@ -36,8 +36,11 @@ const char *getPacketName(uint16_t packetId)
 	    return "PACKET_LOW_PRIORITY_DATA";
 	    break;
     
-	case PACKET_ID_SET_BASE_CONFIG: 
-	    return "PACKET_ID_SET_BASE_CONFIG";
+	case PACKET_ID_SET_SENSOR_CONFIG: 
+	    return "PACKET_ID_SET_SENSOR_CONFIG";
+	    break;
+	case PACKET_ID_SET_ACTUATOR_CONFIG: 
+	    return "PACKET_ID_SET_ACTUATOR_CONFIG";
 	    break;
 	case PACKET_ID_SET_ACTIVE_CONTROLLER: 
 	    return "PACKET_ID_SET_ACTIVE_CONTROLLER";

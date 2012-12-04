@@ -2,6 +2,7 @@
 #include "state.h"
 #include "encoder.h"
 #include "controllers.h"
+#include "packets.h"
 #include "printf.h"
 #include <stdio.h>
 
@@ -39,7 +40,7 @@ enum hostIDs protocol_getOwnHostId()
 void protocol_defaultHandler(int id, unsigned char *data, unsigned short size)
 {
     unsigned short idl = id;
-    printf("Warning, packet with id %hu was not handled \n", idl);
+    printf("Warning, packet with id %s was not handled \n", getPacketName(idl));
 }
 
 uint8_t protocol_getMaxPacketSize()
@@ -103,7 +104,7 @@ void protocol_processPackage(uint16_t id, uint8_t *data, uint8_t size)
 void protocol_ackPacket(int id)
 {
     struct ackData data;
-    data.packetId = id + ownHostId;
+    data.packetId = id;
 
     printf("acking %i id %i\n", id, id + ownHostId);
 
