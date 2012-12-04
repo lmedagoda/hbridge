@@ -1,13 +1,12 @@
 #ifndef PROTOCOLL_HPP
 #define PROTOCOLL_HPP
 
-#include <canmessage.hh>
-
 #include <vector>
 #include <queue>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <map>
+#include <base/time.h>
 
 namespace hbridge {
     
@@ -149,8 +148,7 @@ private:
     std::map<unsigned int, bool> markedForSending;
     BusInterface *bus;
     
-    int getBoardIdFromMessage(const canbus::Message& msg) const;
-    bool isInProtocol(const canbus::Message& msg) const;
+    bool isInProtocol(const Packet& msg) const;
 
     void sendPacket(int boardId, const Packet &msg, bool isAcked, boost::function<void (const Packet &msg)> errorCallback, boost::function<void (void)> ackedCallback = NULL);
     Packet &getSharedMsg(unsigned int packetId);

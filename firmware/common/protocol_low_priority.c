@@ -62,6 +62,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 {
     
     const uint8_t maxPacketSize = protocol_getMaxPacketSize();
+    const uint8_t maxDataSize = maxPacketSize - sizeof(struct LowPrioPacket);
     
     struct LowPrioPacket *packet = (struct LowPrioPacket *) data;
 
@@ -88,8 +89,8 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	    }
 	    
 	    int i;
-	    uint8_t bytesLeft = received - curHeader->size;
-	    uint8_t toCopy = bytesLeft > maxPacketSize ? maxPacketSize : bytesLeft;
+	    uint8_t bytesLeft = curHeader->size - received;
+	    uint8_t toCopy = bytesLeft > maxDataSize ? maxDataSize : bytesLeft;
 	    
 	    for(i = 0;i < toCopy;i++)
 	    {
@@ -97,17 +98,20 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	    }
 	    
 	    received+=toCopy;
+	    printf("LOW PRIO received %i", received);
 	    if(received >= curHeader->size)
 	    {
+		printf("LOW PRIO GOT PACKET %i %i %i\n", curHeader->id, curHeader->size, received);
 		//TODO calculate CRC
 		
 		//packet complete, call handler
 		protocolHandlers[curHeader->id](curHeader->id, protocolBuffer, curHeader->size);
-		
+
+		protocol_ackPacket(curHeader->id);
+
 		curHeader = 0;
 		received = 0;
 		
-		protocol_ackPacket(curHeader->id);
 	    }
 	
 	    break;

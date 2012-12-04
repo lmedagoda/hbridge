@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "protocol_low_priority.h"
 #include "state.h"
 #include "../interfaces/controllers.h"
 #include "../interfaces/hbridge.h"
@@ -111,6 +112,7 @@ void baseInit()
     overCurrentCounter = 0;
 
     protocol_init();
+    protocolLowPriority_init();
     state_init();
     encoder_init();
     temperatureSensors_init();

@@ -154,7 +154,7 @@ void Protocol::sendSharedMessages()
     markedForSending.clear();
 }
 
-bool Protocol::isInProtocol(const canbus::Message& msg) const
+bool Protocol::isInProtocol(const Packet& msg) const
 {
     return true;
 }
@@ -164,9 +164,9 @@ void Protocol::processIncommingPackages()
     Packet msg;
     while(bus->readPacket(msg))
     {
-// 	//ignore non prtocoll messages
-// 	if(!isInProtocol(msg))
-// 	    continue;
+	//ignore non prtocoll messages
+	if(!isInProtocol(msg))
+	    continue;
 
 	std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId);
 
@@ -263,7 +263,13 @@ void Protocol::processSendQueues()
 		continue;
 	    }
 	    curEntry.retryCnt--;
-	    bus->sendPacket(curEntry.msg);
+	    if(curEntry.msg.packetId < firmware::PACKET_ID_LOWIDS_START)
+		bus->sendPacket(curEntry.msg);
+	    else
+	    {
+		std::cout << "Found low Prio message in send queue with id " << getPacketName(curEntry.msg.packetId) << std::endl;
+		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
+	    }
 	    curEntry.sendTime = curTime;	    
 	}
     }
@@ -282,7 +288,8 @@ const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
     const firmware::LowPrioPacket *lp = reinterpret_cast<const firmware::LowPrioPacket *>(msg.data.data());
     
 //     std::cout << "Low Prio: Got packet with id " << getPacketName(msg.packetId)  << msg.packetId << " with type " << lp->type << std::endl;
-    
+    const uint16_t dataPerPkg = maxPacketSize - sizeof(firmware::LowPrioPacket);
+
     switch(lp->type)
     {
 	case firmware::TYPE_HEADER:
@@ -294,30 +301,36 @@ const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
 	    }
 	    hasHeader = true;
 	    curMessage.packetId = header->id;
+	    curMessage.senderId = msg.senderId;
+	    curMessage.receiverId = msg.receiverId;
+	    curMessage.broadcastMsg = msg.broadcastMsg;
 	    curMessage.data.resize(header->size);
+	    curSize = 0;
 	}   
 	    break;
 	case firmware::TYPE_DATA:
 	{
-	    uint16_t dataPos = lp->sequenceNumber * maxPacketSize;
+	    uint16_t dataPos = lp->sequenceNumber * dataPerPkg;
+	    assert(curSize == dataPos);
 	    const size_t pkgSize = curMessage.data.size();
 	    if(dataPos > pkgSize)
 	    {
 		std::cout << "Error, sequence number points outside of packet" << std::endl;		
 	    }
-	    uint16_t toCopy = lp->sequenceNumber * (maxPacketSize + 1) > pkgSize ? pkgSize - dataPos : maxPacketSize;
+	    uint16_t toCopy = lp->sequenceNumber < pkgSize / dataPerPkg ? dataPerPkg : pkgSize - dataPos;
+	    assert(toCopy == msg.data.size() - sizeof(struct firmware::LowPrioPacket));
 	    for(int i = 0; i < toCopy; i++)
 	    {
 		curMessage.data[dataPos + i] = msg.data[i + sizeof(struct firmware::LowPrioPacket)];
 	    }
 	    curSize += toCopy;
 	    
+// 	    std::cout << "Got Packet part " << firmware::getPacketName(curMessage.packetId) << " Seq num " << lp->sequenceNumber << " Size " << msg.data.size() << " cursize " << curSize << std::endl;
 	    if(curSize == pkgSize)
 	    {
 		hasHeader = false;
 		return &curMessage;
 	    }
-	    
 	    break;
 	}
     }
@@ -341,19 +354,27 @@ void LowPriorityProtocol::sendPackage(const Packet& msg)
 //     std::cout << "LowPrio: Sending Header" << std::endl;
     bus->sendPacket(headPkg);
     
-    //TODO call send
+//     std::cout << "Low Prio send, size " << msg.data.size() << std::endl;
+    
     Packet dataPkg;
     dataPkg.receiverId = msg.receiverId;
     dataPkg.senderId = msg.senderId;
     dataPkg.broadcastMsg = msg.broadcastMsg;
     dataPkg.packetId = firmware::PACKET_LOW_PRIORITY_DATA;
     
-    const uint16_t numPackets = msg.data.size() / (maxPacketSize - sizeof(firmware::LowPrioPacket));
+    const uint16_t dataPerPkg = maxPacketSize - sizeof(firmware::LowPrioPacket);
+    const uint16_t numPackets = msg.data.size() / dataPerPkg + 1;
+//     std::cout << "Data per packet " << dataPerPkg << " num packets " << numPackets << std::endl;
     uint16_t dataCnt = 0;
-    uint16_t dataPerPkg = maxPacketSize - sizeof(firmware::LowPrioPacket);
     for(int i = 0; i < numPackets ; i++)
     {
-	int toCopy = i < numPackets-1 ? maxPacketSize : msg.data.size() % dataPerPkg;
+	int toCopy = 0;
+	if(i < numPackets -1)
+	    toCopy = dataPerPkg;
+	else
+	    toCopy = msg.data.size() % dataPerPkg;
+
+// 	std::cout << "Packet " << i << " To copy : " << toCopy << std::endl;
 	dataPkg.data.resize(toCopy + sizeof(firmware::LowPrioPacket));
 	lp = reinterpret_cast<firmware::LowPrioPacket *>(dataPkg.data.data());
 	lp->sequenceNumber = i;
