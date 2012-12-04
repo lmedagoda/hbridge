@@ -231,4 +231,5 @@ struct LowPrioPacket
     unsigned sequenceNumber:6;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
+const char *getPacketName(uint16_t packetId);
 #endif
