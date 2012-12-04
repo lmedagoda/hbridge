@@ -251,6 +251,12 @@ void systick_step()
 	state_printDebug(activeCState);
     }
     
+    //reset timeout, if "userspace" requested it
+    if(activeCState->resetTimeoutCounter) {
+	activeCState->resetTimeoutCounter = 0;
+	timeoutCounter = 0;
+    }
+    
     // get temperature
     pcbTempSensor.getTemperature(&temperature);
 
