@@ -10,14 +10,11 @@ using namespace hbridge;
 int boardId = 0;
 int error = 0;
 
-class CanbusDummy : public hbridge::BusInterface
+class HighLevelDummy: public hbridge::BusInterface
 {
-    LowPriorityProtocol *lowPrioProt;
     std::queue<Packet> fakeMsgs;
+    
 public:
-    CanbusDummy(): lowPrioProt(new LowPriorityProtocol(new Protocol(this)))
-    {
-    }
     
     virtual uint16_t getMaxPacketSize()
     {
@@ -35,45 +32,9 @@ public:
 	return false;
     }
     
-    bool handleLowPrio(const hbridge::Packet& packet)
-    {
-	const Packet *pkg = lowPrioProt->processPackage(packet);	
-	if(!pkg)
-	{
-	   return false;
-	}
-	
-	Packet fakeAck;	
-
-	fakeAck.packetId = firmware::PACKET_ID_ACK;
-	fakeAck.receiverId = pkg->senderId;
-	assert(pkg->senderId == boardId);
-	fakeAck.data.resize(sizeof(firmware::ackData));
-	firmware::ackData *ackData =
-	    reinterpret_cast<firmware::ackData *>(fakeAck.data.data());
-    
-	switch(pkg->packetId)
-	{
-	    case firmware::PACKET_ID_SET_BASE_CONFIG:
-	    case firmware::PACKET_ID_SET_ACTIVE_CONTROLLER:
-	    case firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA:
-	    case firmware::PACKET_ID_SET_POS_CONTROLLER_DATA:
-		//fake ack
-		ackData->packetId = pkg->packetId;
-		fakeMsgs.push(fakeAck);
-		return true;
-		break;
-	    default:
-		std::cout << "CanbusDummy : Got unexpected message with id " << pkg->packetId << std::endl;
-		error = 1;
-		break;
-	}
-
-	return false;
-    }
-
     virtual bool sendPacket(const hbridge::Packet& packet)
     {
+	std::cout << "FakeFirmware received Packet " << firmware::getPacketName(packet.packetId) << std::endl;
 	switch(packet.packetId)
 	{
 	    case firmware::PACKET_ID_SET_VALUE14:
@@ -104,10 +65,6 @@ public:
 	    }
 		break;
 
-	    case firmware::PACKET_LOW_PRIORITY_DATA:
-		return handleLowPrio(packet);
-		break;
-	    
 	    default:
 		std::cout << "CanbusDummy: Got unexpected brodcast message with id " << packet.packetId << std::endl;
 		error = 1;
@@ -117,6 +74,55 @@ public:
     }
 };
 
+class CanbusDummy : public hbridge::BusInterface
+{
+    HighLevelDummy hlDummy;
+    LowPriorityProtocol *lowPrioProt;
+public:
+    CanbusDummy(): lowPrioProt(new LowPriorityProtocol(new Protocol(&hlDummy)))
+    {
+    }
+    
+    virtual uint16_t getMaxPacketSize()
+    {
+	return 8;
+    }
+    
+    virtual bool readPacket(Packet& packet)
+    {
+	return hlDummy.readPacket(packet);
+    }
+    
+    void handleLowPrio(const hbridge::Packet& packet)
+    {	
+	const Packet *pkg = lowPrioProt->processPackage(packet);	
+	if(pkg)
+	{
+	    hlDummy.sendPacket(*pkg);
+	}
+
+    }
+
+    virtual bool sendPacket(const hbridge::Packet& packet)
+    {
+	std::cout << "Sending new Packet : "; 
+	std::cout << firmware::getPacketName(packet.packetId) << std::endl;
+	std::cout << "Message size " << packet.data.size() << std::endl;
+	assert(packet.data.size() <= getMaxPacketSize());
+	
+	if(packet.packetId < firmware::PACKET_LOW_PRIORITY_DATA)
+	{
+	    hlDummy.sendPacket(packet);
+	    return true;
+	}
+	
+	handleLowPrio(packet);
+	
+	return true;
+    }
+};
+
+bool configured;
 
 class DummyCallback : public hbridge::Reader::CallbackInterface
 {
@@ -128,6 +134,7 @@ class DummyCallback : public hbridge::Reader::CallbackInterface
     
     virtual void configureDone()
     {
+	configured = true;
 	std::cout << "Configuration done " << std::endl;
     }
 };
@@ -148,11 +155,26 @@ int main(int argc, char **argv)
     
     Reader *reader = handle->getReader();
     Writer *writer = handle->getWriter();
+    
+    configured = false;
+    
     reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf);
     reader->startConfigure();
     
     int cnt = 0;
+    while(!configured)
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	if(cnt == 500)
+	{
+	    std::cout << "Waiting for configuration to be done" << std::endl;
+	    cnt = 0;
+	}
+	cnt++;
+	usleep(1000);
+    }
     
     while(!error)
     {    
