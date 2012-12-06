@@ -26,8 +26,11 @@ macro(OBJCOPY_FILE EXE_NAME)
  set_source_files_properties("${FO}" PROPERTIES GENERATED TRUE)
 endmacro(OBJCOPY_FILE)
 
+set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../hbridgeCommon) 
+set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../common) 
+
 #compile asm files with gcc
-set_source_files_properties(startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
+set_source_files_properties(${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
 set_source_files_properties(core_cm3.c PROPERTIES LANGUAGE C)
 
 set(CMAKE_EXE_LINKER_FLAGS "-T ${STM32_SOURCE_DIR}/stm_h103_rom.ld -nostartfiles")
@@ -39,8 +42,6 @@ add_definitions(
   -D STM32F10X_MD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
   )
 
-set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../hbridgeCommon) 
-set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../common) 
 
 include_directories(
   ${STM32_COMMON_DIR}/.
@@ -54,7 +55,13 @@ include_directories(
   ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x
   )
 
-add_library(stm32fw 
+
+
+add_executable(main
+    main_pcbv2.c
+    hbridgev2.c
+    current_measurementv2.c
+    ${STM32_COMMON_DIR}/system_clock.c
   ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
   ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/misc.c
@@ -79,9 +86,6 @@ add_library(stm32fw
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_i2c.c
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_rtc.c
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_wwdg.c
-)
-
-add_library(stm32drivers
     ${STM32_COMMON_DIR}/drivers/assert.c
     ${STM32_COMMON_DIR}/drivers/i2c.c           
     ${STM32_COMMON_DIR}/drivers/printf.c  
@@ -95,16 +99,6 @@ add_library(stm32drivers
     ${STM32_COMMON_DIR}/encoder_ichaus.c    
     ${STM32_COMMON_DIR}/thread.c
     ${STM32_COMMON_DIR}/protocol_can.c
-    ${STM32_COMMON_DIR}/system_stm32f10x.c
-) 
-
-target_link_libraries(stm32drivers stm32fw)
-
-link_directories(
-  ${STM32_BINARY_DIR}/fwlib
-  )
-
-add_library(motor_driver_common
     ${MD_COMMON_DIR}/pid.c
     ${MD_COMMON_DIR}/temperature_sensor.c
     ${MD_COMMON_DIR}/position_controller.c
@@ -117,16 +111,8 @@ add_library(motor_driver_common
     ${MD_COMMON_DIR}/systick.c
     ${MD_COMMON_DIR}/packets.c
 )
-target_link_libraries(motor_driver_common stm32drivers stm32fw)
 
-add_executable(main
-    main_pcbv2.c
-    hbridgev2.c
-    current_measurementv2.c
-
-)
-
-target_link_libraries(main stm32fw motor_driver_common stm32fw stm32drivers stm32fw)
+target_link_libraries(main)
 objcopy_file(main)
 
 
