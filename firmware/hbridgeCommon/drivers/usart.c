@@ -113,21 +113,23 @@ void USART1_DeInit(void )
 }
 
 signed int USART1_SendData(const unsigned char *data, const unsigned int size) {
-  return USARTx_SendData(USART1, &USART1_Data, data, size);
+    return USARTx_SendData(USART1, &USART1_Data, data, size);
 }
 
 signed int USART1_GetData (unsigned char *buffer, const unsigned int buffer_length) {
-  return USARTx_GetData(USART1, &USART1_Data, buffer, buffer_length);
+    return USARTx_GetData(USART1, &USART1_Data, buffer, buffer_length);
 }
 
 void USART1_IRQHandler(void)
 { 
-  USART_IRQHandler(USART1, &USART1_Data);
+    USART_IRQHandler(USART1, &USART1_Data);
 }
 
 void USART3_Init(enum USART_MODE mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
+
+    assert_param(mode == USART_USE_INTERRUPTS || mode == USART_POLL);
 
     //get default GPIO config
     GPIO_StructInit(&GPIO_InitStructure);
@@ -137,12 +139,12 @@ void USART3_Init(enum USART_MODE mode)
 
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    // Configure USART1 Tx (PA09) as alternate function push-pull
+    // Configure USART1 Tx (PB10) as alternate function push-pull
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    // Configure USART1 Rx (PA10) as input floating
+    // Configure USART1 Rx (PB11) as input floating
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOB, &GPIO_InitStructure); 
@@ -152,7 +154,7 @@ void USART3_Init(enum USART_MODE mode)
     
     USART3_Data.TxWritePointer = 0;
     USART3_Data.TxReadPointer = 0;
-    USART3_Data.usesInterrupts = USART_USE_INTERRUPTS;
+    USART3_Data.usesInterrupts = mode == USART_USE_INTERRUPTS;
 
     if(mode == USART_USE_INTERRUPTS)
     {
