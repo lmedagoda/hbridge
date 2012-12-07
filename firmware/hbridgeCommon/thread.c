@@ -3,7 +3,8 @@
 
 void (*thread_func)(void);
 
-void SysTickHandler(void) {
+void SysTick_Handler(void) 
+{    
     thread_func();
 }
 

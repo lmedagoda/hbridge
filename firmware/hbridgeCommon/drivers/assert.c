@@ -91,31 +91,31 @@ void assert_failed(uint8_t* file, uint32_t line)
     }\
     print(#debugString "\n");
 
-void NMIException(void)
+void NMI_Handler(void)
 {
     printDebug(NMIException)
     assert_failed((uint8_t *)__FILE__, __LINE__);
 }
 
-void HardFaultException(void)
+void HardFault_Handler(void)
 {
     printDebug(HardFaultException)
     assert_failed((uint8_t *)__FILE__, __LINE__);
 }
 
-void MemManageException(void)
+void MemManage_Handler(void)
 {
     printDebug(MemManageException)
     assert_failed((uint8_t *)__FILE__, __LINE__);
 }
 
-void BusFaultException(void)
+void BusFault_Handler(void)
 {
     printDebug(BusFaultException)
     assert_failed((uint8_t *)__FILE__, __LINE__);
 }
 
-void UsageFaultException(void)
+void UsageFault_Handler(void)
 {
     printDebug(UsageFaultException)
     assert_failed((uint8_t *)__FILE__, __LINE__);

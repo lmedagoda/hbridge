@@ -180,8 +180,7 @@ void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInit(&CAN_FilterInitStructure);
 }
 
-
-void USB_LP_CAN_RX0_IRQHandler(void)
+void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   int received = 0;
  
@@ -201,7 +200,7 @@ void USB_LP_CAN_RX0_IRQHandler(void)
   }
 }
 
-void CAN_RX1_IRQHandler(void)
+void CAN1_RX1_IRQHandler(void)
 {
   int received = 0;
   
