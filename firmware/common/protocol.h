@@ -4,14 +4,15 @@
 #include <stdint.h>
 
 enum hostIDs {
-  RECEIVER_ID_H_BRIDGE_1 = (1<<5),
-  RECEIVER_ID_H_BRIDGE_2 = (2<<5),
-  RECEIVER_ID_H_BRIDGE_3 = (3<<5),
-  RECEIVER_ID_H_BRIDGE_4 = (4<<5),
-  RECEIVER_ID_H_BRIDGE_5 = (5<<5),
-  RECEIVER_ID_H_BRIDGE_6 = (6<<5),
-  RECEIVER_ID_H_BRIDGE_7 = (7<<5),
-  RECEIVER_ID_H_BRIDGE_8 = (8<<5),
+    RECEIVER_ID_ALL = 0,
+    RECEIVER_ID_H_BRIDGE_1 = 1,
+    RECEIVER_ID_H_BRIDGE_2,
+    RECEIVER_ID_H_BRIDGE_3,
+    RECEIVER_ID_H_BRIDGE_4,
+    RECEIVER_ID_H_BRIDGE_5,
+    RECEIVER_ID_H_BRIDGE_6,
+    RECEIVER_ID_H_BRIDGE_7,
+    RECEIVER_ID_H_BRIDGE_8,
 };
 
 
@@ -49,7 +50,7 @@ uint8_t protocol_sendData(int id, unsigned char *data, unsigned short size);
 
 uint8_t protocol_getMaxPacketSize();
 
-typedef signed int (*send_func_t)(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size);
+typedef signed int (*send_func_t)(uint16_t receiverId, uint16_t packetId, const unsigned char *data, const unsigned int size);
 typedef signed int (*recv_func_t)(uint16_t *senderId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize);
 
 
