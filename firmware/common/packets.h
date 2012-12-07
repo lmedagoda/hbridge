@@ -10,7 +10,8 @@ enum STATES
     STATE_ACTUATOR_CONFIGURED,
     STATE_CONTROLLER_CONFIGURED,
     STATE_RUNNING,
-    STATE_ERROR,
+    STATE_ACTUATOR_ERROR,
+    STATE_SENSOR_ERROR,
 };
 
 enum HIGH_PRIORITY_IDs
@@ -18,6 +19,7 @@ enum HIGH_PRIORITY_IDs
     PACKET_ID_EMERGENCY_STOP,
     PACKET_ID_SET_OVERWRITE,
     PACKET_ID_ERROR,
+    PACKET_ID_ANNOUNCE_STATE,
     PACKET_ID_STATUS,
     PACKET_ID_EXTENDED_STATUS,
     PACKET_ID_ACK,
@@ -38,8 +40,6 @@ enum LOW_PRIORITY_IDs
      */
     PACKET_ID_LOWIDS_START = PACKET_LOW_PRIORITY_DATA,
     
-//     PACKET_ID_ENCODER_CONFIG_INTERN,
-//     PACKET_ID_ENCODER_CONFIG_EXTERN,
     PACKET_ID_SET_SENSOR_CONFIG,
     PACKET_ID_SET_ACTUATOR_CONFIG,
     PACKET_ID_SET_ACTIVE_CONTROLLER,
@@ -88,6 +88,10 @@ enum controllerInputEncoder {
 struct ackData {
     unsigned short packetId;
     unsigned short crc;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct announceStateData {
+    enum STATES curState:8;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct encoderConfiguration {

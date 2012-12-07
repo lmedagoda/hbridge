@@ -72,9 +72,69 @@ void state_setEncoder(volatile enum encoderTypes *curEncoder, const struct encod
     }
 }
 
+void state_switchToState(enum STATES nextState)
+{
+    enum STATES newState = STATE_SENSOR_ERROR;
+
+    switch(lastActiveCState->internalState)
+    {
+	case STATE_UNCONFIGURED:
+	    if(nextState == STATE_SENSORS_CONFIGURED || nextState == STATE_SENSOR_ERROR)
+		newState = nextState;
+	    break;
+	case STATE_SENSORS_CONFIGURED:
+	    if(nextState == STATE_UNCONFIGURED || 
+		nextState == STATE_SENSOR_ERROR)
+		newState = nextState;
+	    break;
+	case STATE_ACTUATOR_CONFIGURED:
+	    if(	newState == STATE_ACTUATOR_ERROR ||
+		nextState == STATE_UNCONFIGURED ||
+		newState == STATE_SENSOR_ERROR ||
+		newState == STATE_CONTROLLER_CONFIGURED)
+		newState = nextState;
+	    break;
+	case STATE_CONTROLLER_CONFIGURED:
+	    if(	newState == STATE_ACTUATOR_ERROR ||
+		nextState == STATE_UNCONFIGURED ||
+		newState == STATE_SENSOR_ERROR ||
+		newState == STATE_RUNNING)
+		newState = nextState;	    
+	    break;
+	case STATE_RUNNING:
+	    if(	newState == STATE_ACTUATOR_ERROR ||
+		nextState == STATE_UNCONFIGURED ||
+		newState == STATE_SENSOR_ERROR ||
+		newState == STATE_CONTROLLER_CONFIGURED)
+		newState = nextState;
+	    break;
+	case STATE_ACTUATOR_ERROR:
+	    if(	newState == STATE_ACTUATOR_CONFIGURED ||
+		nextState == STATE_UNCONFIGURED ||
+		newState == STATE_SENSOR_ERROR)
+		newState = nextState;
+	    break;
+	case STATE_SENSOR_ERROR:
+	    if(	nextState == STATE_UNCONFIGURED ||
+		newState == STATE_SENSORS_CONFIGURED)
+		newState = nextState;
+
+	    break;
+    }
+    
+    printf("Switching from state %s to state %s", state_getStateString(lastActiveCState->internalState), state_getStateString(newState));
+    lastActiveCState->internalState = newState;
+    
+    struct announceStateData data;
+    data.curState = nextState;
+    
+    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const char *)&data, sizeof(struct announceStateData));
+    
+}
+
 void state_switchToErrorState()
 {
-    lastActiveCState->internalState = STATE_ERROR;
+//     lastActiveCState->internalState = STATE_ERROR;
     
     //TODO Send error message
     
@@ -85,37 +145,39 @@ void state_switchToErrorState()
 
 void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
 {
+    protocol_ackPacket(id);
+    
     if(lastActiveCState->internalState != STATE_UNCONFIGURED)
     {
-	state_switchToErrorState();
-	protocol_ackPacket(id);
+	state_switchToState(STATE_SENSOR_ERROR);
 	print("State: Error, got sensor config and state was not unconfigured \n");
 	return;
     }
-    
+
     volatile struct SensorConfiguration *sState = &(lastActiveCState->sensorConfig);
     struct sensorConfig *sCfg = (struct sensorConfig *) data;
     
+    //TODO This may fail, add a way to inform driver
     state_setEncoder(&(sState->internalEncoder), &(sCfg->encoder1Config));
     state_setEncoder(&(sState->externalEncoder), &(sCfg->encoder2Config));
 
     sState->statusEveryMs = sCfg->statusEveryMs;
     sState->useExternalTempSensor = sCfg->externalTempSensor;
 
-    
-    lastActiveCState->internalState = STATE_SENSORS_CONFIGURED;
+    state_switchToState(STATE_SENSORS_CONFIGURED);
     
     state_switchState(1);
-    protocol_ackPacket(id);
     print("State: Got sensor config switching state to configured \n");
 }
 
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size)
 {    
+    protocol_ackPacket(id);
+    
     if(lastActiveCState->internalState != STATE_SENSORS_CONFIGURED)
     {
-	state_switchToErrorState();
-	protocol_ackPacket(id);
+	state_switchToState(STATE_ACTUATOR_ERROR);
+	print("State: Error, got actuator config and state was not 'sensors configured' \n");
 	return;
     }
     
@@ -133,34 +195,52 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     aState->maxCurrentCount = aCfg->maxCurrentCount;
     aState->pwmStepPerMillisecond = aCfg->pwmStepPerMs;
 
-    protocol_ackPacket(id);   
     state_switchState(1);
 }
 
 void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size)
 {
+    protocol_ackPacket(id);
+    
     struct setActiveControllerData *packet = (struct setActiveControllerData *) data;
     
     if(size != (sizeof(struct setActiveControllerData)))
     {
+	state_switchToState(STATE_ACTUATOR_ERROR);
 	print("Error, size of expected data structure does not match\n");
 	return;
     }
     
     if(activeCState->internalState == STATE_RUNNING)
     {
+	state_switchToState(STATE_ACTUATOR_ERROR);
 	print("Error, motor is active, switching of controller is forbidden\n");
 	return;	
     }
     
     lastActiveCState->controllMode = packet->controllerId;
+    
     state_switchState(0);
 }
 
 void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size)
 {
+    if(activeCState->internalState == STATE_SENSOR_ERROR || activeCState->internalState == STATE_ACTUATOR_ERROR)
+    {
+	print("Error, got target value while in error state\n");
+	return;
+    }
+    
+    if(activeCState->internalState != STATE_RUNNING || activeCState->internalState != STATE_CONTROLLER_CONFIGURED)
+    {
+	state_switchToState(STATE_ACTUATOR_ERROR);
+	print("Error, got target value and state is not running or controller configured\n");
+	return;		
+    }
+    
     if(size > MAX_CONTROLLER_DATA_SIZE)
     {
+	state_switchToState(STATE_ACTUATOR_ERROR);
 	print("Error, the give controller data is too big\n");
 	return;
     }
@@ -213,6 +293,8 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
     //atomar switch of data structure
     activeControllerTargetValueData = inactiveControllerTargetValueData;
     inactiveControllerTargetValueData = tmp;
+    //copy old values
+    *inactiveControllerTargetValueData = *activeControllerTargetValueData;
 }
 
 void state_initStruct(volatile struct GlobalState *cs)
