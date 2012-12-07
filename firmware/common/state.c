@@ -21,6 +21,7 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size);
 void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size);
 void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size);
+const char *state_getStateString(enum STATES state);
 
 void state_init()
 {
@@ -238,10 +239,39 @@ void state_initStruct(volatile struct GlobalState *cs)
     cs->resetTimeoutCounter = 0;
 };
 
-void state_printDebug(volatile struct GlobalState* cs)
+const char *state_getStateString(enum STATES state)
+{
+    const char *int_state_s = "";
+    switch(state) {
+	case STATE_UNCONFIGURED:
+	    int_state_s = "UNCONFIGURED";
+	    break;
+	case STATE_SENSORS_CONFIGURED:
+	    int_state_s = "SENSORS_CONFIGURED";
+	    break;
+	case STATE_ACTUATOR_CONFIGURED:
+	    int_state_s = "ACTUATOR_CONFIGURED";
+	    break;
+	case STATE_CONTROLLER_CONFIGURED:
+	    int_state_s = "CONTROLLER_CONFIGURED";
+	    break;
+	case STATE_RUNNING:
+	    int_state_s = "RUNNING";
+	    break;
+	case STATE_SENSOR_ERROR:
+	    int_state_s = "SENSOR_ERROR";
+	    break;
+	case STATE_ACTUATOR_ERROR:
+	    int_state_s = "ACTUATOR_ERROR";
+	    break;
+    }
+    return int_state_s;
+}
+
+void state_printDebug(const volatile struct GlobalState* cs)
 {
     char *ctrl_s = "";
-    char *int_state_s = "";
+    char *int_state_s = state_getStateString(cs->internalState);
     switch(cs->controllMode) {
 	case CONTROLLER_MODE_NONE:
 	    ctrl_s = "NONE";
@@ -259,24 +289,7 @@ void state_printDebug(volatile struct GlobalState* cs)
 	    ctrl_s = "ERROR INVALID";
 	    break;
     }
-    switch(cs->internalState) {
-	case STATE_UNCONFIGURED:
-	    int_state_s = "UNCONFIGURED";
-	    break;
-	case STATE_SENSORS_CONFIGURED:
-	    int_state_s = "SENSORS_CONFIGURED";
-	    break;
-	case STATE_ACTUATOR_CONFIGURED:
-	    int_state_s = "ACTUATOR_CONFIGURED";
-	    break;
-	case STATE_CONTROLLER_CONFIGURED:
-	    int_state_s = "CONTROLLER_CONFIGURED";
-	    break;
-	case STATE_ERROR:
-	    int_state_s = "ERROR";
-	    break;
-    }
-//     printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetValue, cs->useOpenLoop, cs->pwmStepPerMillisecond);    
+    printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetData, cs->actuatorConfig.useOpenLoop, cs->actuatorConfig.pwmStepPerMillisecond);    
 }
 
 uint8_t state_inErrorState() {
