@@ -1,4 +1,5 @@
 #include "stm32f10x.h"
+#include "stm32f10x_rcc.h"
 
 uint32_t SystemCoreClock;
 
@@ -12,61 +13,35 @@ void SetSysClock();
 
 void SystemInit (void)
 {
-  /* Reset the RCC clock configuration to the default reset state(for debug purpose) */
-  /* Set HSION bit */
-  RCC->CR |= (uint32_t)0x00000001;
+    //RCC system reset(for debug purpose)
+    RCC_DeInit();
 
-  /* Reset SW, HPRE, PPRE1, PPRE2, ADCPRE and MCO bits */
-#ifndef STM32F10X_CL
-  RCC->CFGR &= (uint32_t)0xF8FF0000;
-#else
-  RCC->CFGR &= (uint32_t)0xF0FF0000;
-#endif /* STM32F10X_CL */   
-  
-  /* Reset HSEON, CSSON and PLLON bits */
-  RCC->CR &= (uint32_t)0xFEF6FFFF;
 
-  /* Reset HSEBYP bit */
-  RCC->CR &= (uint32_t)0xFFFBFFFF;
+    //Turn on crystal oscillator
+    RCC_HSEConfig(RCC_HSE_ON);
+    while (RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET)
+	;
 
-  /* Reset PLLSRC, PLLXTPRE, PLLMUL and USBPRE/OTGFSPRE bits */
-  RCC->CFGR &= (uint32_t)0xFF80FFFF;
+    //Configure flash timing
+    FLASH_PrefetchBufferCmd(FLASH_PrefetchBuffer_Enable);
+    FLASH_SetLatency(FLASH_Latency_2);    // 2 wait states
 
-#ifdef STM32F10X_CL
-  /* Reset PLL2ON and PLL3ON bits */
-  RCC->CR &= (uint32_t)0xEBFFFFFF;
+    //Configure clocks
+    RCC_HCLKConfig(RCC_SYSCLK_Div1);      // HCLK = SYSCLK
+    RCC_PCLK1Config(RCC_HCLK_Div2);       // PCLK1 = HCLK/2
+    RCC_PCLK2Config(RCC_HCLK_Div1);       // PCLK2 = HCLK
+    RCC_ADCCLKConfig(RCC_PCLK2_Div6);     // ADCCLK = PCLK2/6 = 12Mhz
 
-  /* Disable all interrupts and clear pending bits  */
-  RCC->CIR = 0x00FF0000;
+    //Configure PLL for 72 MHz
+    RCC_PLLConfig(RCC_PLLSource_HSE_Div2, RCC_PLLMul_9); // 16 MHz / 2 * 9 = 72 MHz
+    RCC_PLLCmd(ENABLE);
+    while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY) == RESET)
+	;
 
-  /* Reset CFGR2 register */
-  RCC->CFGR2 = 0x00000000;
-#elif defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || (defined STM32F10X_HD_VL)
-  /* Disable all interrupts and clear pending bits  */
-  RCC->CIR = 0x009F0000;
-
-  /* Reset CFGR2 register */
-  RCC->CFGR2 = 0x00000000;      
-#else
-  /* Disable all interrupts and clear pending bits  */
-  RCC->CIR = 0x009F0000;
-#endif /* STM32F10X_CL */
-    
-#if defined (STM32F10X_HD) || (defined STM32F10X_XL) || (defined STM32F10X_HD_VL)
-  #ifdef DATA_IN_ExtSRAM
-    SystemInit_ExtMemCtl(); 
-  #endif /* DATA_IN_ExtSRAM */
-#endif 
-
-  /* Configure the System clock frequency, HCLK, PCLK2 and PCLK1 prescalers */
-  /* Configure the Flash Latency cycles and enable prefetch buffer */
-  SetSysClock();
-
-#ifdef VECT_TAB_SRAM
-  SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM. */
-#else
-  SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
-#endif 
+    //Select PLL for SYSCLK source
+    RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
+    while(RCC_GetSYSCLKSource() != 0x08)
+	;
 }
 
 
@@ -76,6 +51,7 @@ void SetSysClock()
     MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_HSI);
 
     /* Enable external crystal oscillator*/
+    CLEAR_BIT(RCC->CR, RCC_CR_HSEON);
     SET_BIT(RCC->CR, RCC_CR_HSEON);
     while(! (RCC->CR & RCC_CR_HSERDY));
 
@@ -92,6 +68,9 @@ void SetSysClock()
     MODIFY_REG(RCC->CFGR, RCC_CFGR_PPRE2, RCC_CFGR_PPRE2_DIV1);
     /* APB1 prescaler: PCLK1 may not exceed 36 MHz! */
     MODIFY_REG(RCC->CFGR, RCC_CFGR_PPRE1, RCC_CFGR_PPRE1_DIV2);
+    /* ADC prescaler: ADCCLK may not exceed 12 MHz! */
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_ADCPRE, RCC_CFGR_ADCPRE_DIV6);
+
 
     /* PLL disable before configuration */
     CLEAR_BIT(RCC->CR, RCC_CR_PLLON);
@@ -105,6 +84,8 @@ void SetSysClock()
     while(! (RCC->CR & RCC_CR_PLLRDY));
     /* select pll output as system clock source */
     MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
+
+    while((RCC->CFGR & 0x0000000C) != 0x08)
 
     /* store frequency of system clock in global variable */
     SystemCoreClock = (HSE_VALUE / 2) * 9;
