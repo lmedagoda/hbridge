@@ -33,12 +33,12 @@ void assert_failed(uint8_t* file, uint32_t line)
 	case USE_USART1:
 	    USART1_DeInit();
 	    //do not use interrupts in assert case
-	    USART1_Init(DISABLE);
+	    USART1_Init(USART_POLL);
 	    break;
 	case USE_USART3:
 	    USART3_DeInit();
 	    //do not use interrupts in assert case
-	    USART3_Init(DISABLE);
+	    USART3_Init(USART_POLL);
 	    break;
     }
     
