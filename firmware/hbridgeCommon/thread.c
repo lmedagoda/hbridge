@@ -10,6 +10,7 @@ void SysTick_Handler(void)
 
 void startHardPeriodicThread(int frequency, void (*func)(void))
 {
+    thread_func = func;
     if (SysTick_Config(SystemCoreClock / 1000))
     { 
 	assert_failed((uint8_t *)__FILE__, __LINE__);
