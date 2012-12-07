@@ -157,6 +157,11 @@ private:
 public:
     Protocol(BusInterface *bus);
 
+    void setSendTimeout(const base::Time &timeout)
+    {
+	sendTimout = timeout;
+    }
+    
     /**
      * This interface needs to be implemented by any
      * canbus driver which should be used with this 
