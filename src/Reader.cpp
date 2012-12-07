@@ -110,7 +110,7 @@ void Reader::sendConfigureMsg()
 //     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
 // 
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1), boost::bind(&Reader::configureDone, this));
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 int Reader::getCurrentTickDivider() const
@@ -212,9 +212,29 @@ void Reader::processMsg(const Packet &msg)
 		    callbacks->gotStatus(state);
 		break;
 	    }
+	    case firmware::PACKET_ID_ANNOUNCE_STATE:
+	    {
+		const firmware::announceStateData *stateData = 
+		    reinterpret_cast<const firmware::announceStateData *>(msg.data.data());
+		
+		    switch(stateData->curState)
+		    {
+			case firmware::STATE_UNCONFIGURED:
+			    break;
+			case firmware::STATE_SENSORS_CONFIGURED:
+			    callbacks->configureDone();
+			    break;    
+			case firmware::STATE_SENSOR_ERROR:
+			    callbacks->configurationError();
+			    break;    
+			default:
+			    break;
+		    }
+	    }
+		break;
 
 	    default:
-		std::cout << "Got unknow message with id " << msg.packetId << std::endl;
+		std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
 		break;
 	}
     }
