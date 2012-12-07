@@ -17,6 +17,7 @@ extern volatile enum hostIDs ownHostId;
 
 unsigned int statusMsgCounter;
 static int32_t currentPwmValue = 0;
+static uint32_t currentValue = 0;
 static uint16_t index = 0;
 static uint16_t overCurrentCounter = 0;
 static uint16_t timeoutCounter = 0;
@@ -38,7 +39,7 @@ void sendErrorMessage(int32_t temperature, int32_t motorTemperature, uint32_t in
 
 void systick_step();
 
-void resetCounters()
+void systick_resetCounters()
 {
     overCurrentCounter = 0;
     timeoutCounter = 0;
@@ -46,7 +47,7 @@ void resetCounters()
     overMotorTempCounter = 0;
 }
 
-void checkTimeout()
+void systick_checkTimeout()
 {	
     //check for timeout and go into error state
     if(activeCState->actuatorConfig.timeout && (timeoutCounter > activeCState->actuatorConfig.timeout)) {
@@ -54,7 +55,7 @@ void checkTimeout()
     }
 }
 
-void checkOverCurrent(uint32_t currentValue)
+void systick_checkOverCurrent(uint32_t currentValue)
 {
     //check for overcurrent
     if(currentValue > activeCState->actuatorConfig.maxCurrent) {
@@ -68,7 +69,7 @@ void checkOverCurrent(uint32_t currentValue)
     }
 }
 
-void checkMotorTemperature(uint32_t temperature)
+void systick_checkMotorTemperature(uint32_t temperature)
 {
     if(!activeCState->sensorConfig.useExternalTempSensor)
 	return;
@@ -85,7 +86,7 @@ void checkMotorTemperature(uint32_t temperature)
     }
 }
 
-void checkTemperature(uint32_t temperature)
+void systick_checkTemperature(uint32_t temperature)
 {
     //check for overcurrent
     if(temperature > activeCState->actuatorConfig.maxBoardTemp) {
@@ -156,12 +157,10 @@ void run()
     protocol_processPackages();
 }
 
-void systick_unconfiguredState(uint32_t index)
+void systick_deactivateActuator()
 {
     //be shure motor is off
     hbridge_setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
-    
-    resetCounters();
 }
 
 void systick_runningState(uint32_t index)
@@ -181,28 +180,21 @@ void systick_runningState(uint32_t index)
             break;
     }
 
-    uint32_t currentValue = currentMeasurement_getValue();
+    //increase timeout
+    timeoutCounter++;
 
-    //reset timeout, if "userspace" requested it
-    if(activeCState->resetTimeoutCounter) {
-	activeCState->resetTimeoutCounter = 0;
-	timeoutCounter = 0;
-    } else{
-	//increase timeout
-	timeoutCounter++;
-    }
+    systick_checkTimeout();
+    systick_checkTemperature(temperature);
+    systick_checkMotorTemperature(motorTemperature);
+    systick_checkOverCurrent(currentValue);
 
-    //change state to error if error is set
+    //if there is an error deactivate the actuator
+    //and return
     if(state_inErrorState()) {
-	activeCState->internalState = STATE_ERROR;
+	systick_deactivateActuator();
 	return;
     }
 
-    checkTimeout();
-    checkTemperature(temperature);
-    checkMotorTemperature(motorTemperature);
-    checkOverCurrent(currentValue);
-	
     //calculate pwm value
     const struct ControllerInterface *curCtrl = controllers_getController(activeCState->controllMode);
     pwmValue =  curCtrl->step((struct ControllerTargetData *) &(activeCState->targetData), wheelPos, ticksPerTurn);
@@ -213,6 +205,7 @@ void systick_runningState(uint32_t index)
     if(pwmValue < MIN_S16)
 	pwmValue = MIN_S16;
 
+    //do the ramping
     if(abs(currentPwmValue - pwmValue) < activeCState->actuatorConfig.pwmStepPerMillisecond) {
 	currentPwmValue = pwmValue;
     } else {
@@ -223,93 +216,11 @@ void systick_runningState(uint32_t index)
 	}
     }
 
-    sendStatusMessage(currentPwmValue, currentValue, temperature, motorTemperature, index);
-	
     //set pwm
     hbridge_setNewPWM(currentPwmValue, activeCState->actuatorConfig.useOpenLoop);
 }
 
-void systick_errorState(uint32_t index)
-{
-    if(index % activeCState->sensorConfig.statusEveryMs == 0)
-	sendErrorMessage(temperature, motorTemperature, index);
-
-    //be shure motor is off
-    hbridge_setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
-
-    resetCounters();
-}
-
-void systick_step()
-{
-    ++statusMsgCounter;
-    
-    index++;
-    if(index >= (1<<10))
-    {
-	index = 0;
-	state_printDebug(activeCState);
-    }
-    
-    //reset timeout, if "userspace" requested it
-    if(activeCState->resetTimeoutCounter) {
-	activeCState->resetTimeoutCounter = 0;
-	timeoutCounter = 0;
-    }
-    
-    // get temperature
-    pcbTempSensor.getTemperature(&temperature);
-
-    if(activeCState->sensorConfig.useExternalTempSensor)
-    {
-	motorTempSensor.getTemperature(&motorTemperature);
-    }
-    
-    switch(activeCState->internalState)
-    {
-	case STATE_UNCONFIGURED:
-	    systick_unconfiguredState(index);
-	    break;
-	case STATE_SENSORS_CONFIGURED:
-	    break;
-	case STATE_ACTUATOR_CONFIGURED:
-	    break;
-	case STATE_CONTROLLER_CONFIGURED:
-	    break;
-	case STATE_RUNNING:
-	    systick_runningState(index);
-	    break;
-	case STATE_ERROR:
-	    systick_errorState(index);
-	    break;
-    }
-
-}
-
-void sendErrorMessage(int32_t temperature, int32_t motorTemperature, uint32_t index)
-{
-    struct errorData edata;
-
-    volatile struct ErrorState *es = state_getErrorState();
-
-    if(temperature < 0)
-	temperature = 0;
-
-    edata.temperature = temperature;
-    edata.position = getDividedTicks(activeCState->sensorConfig.internalEncoder);
-    edata.index = index;
-    edata.externalPosition = getDividedTicks(activeCState->sensorConfig.externalEncoder);
-    edata.motorOverheated = es->motorOverheated;
-    edata.boardOverheated = es->boardOverheated;
-    edata.overCurrent = es->overCurrent;
-    edata.timeout = es->timeout;
-    edata.badConfig = es->badConfig;
-    edata.encodersNotInitalized = es->encodersNotInitalized;
-
-    protocol_sendData(PACKET_ID_ERROR, (unsigned char *) &edata, sizeof(struct errorData));
-}
-
-void sendStatusMessage(uint32_t pwmValue, uint32_t currentValue, int32_t temperature, int32_t motorTemperature, uint32_t index)
+void systick_sendSensorData(uint32_t index)
 {
     if(statusMsgCounter < activeCState->sensorConfig.statusEveryMs || !activeCState->sensorConfig.statusEveryMs)
 	return;
@@ -347,3 +258,100 @@ void sendStatusMessage(uint32_t pwmValue, uint32_t currentValue, int32_t tempera
 	protocol_sendData(PACKET_ID_EXTENDED_STATUS, (unsigned char *) &esdata, sizeof(struct extendedStatusData));
     }
 }
+
+void systick_readSensors()
+{
+    // get temperature
+    pcbTempSensor.getTemperature(&temperature);
+
+    if(activeCState->sensorConfig.useExternalTempSensor)
+    {
+	motorTempSensor.getTemperature(&motorTemperature);
+    }
+    
+    currentValue = currentMeasurement_getValue();
+}
+
+void systick_step()
+{
+    ++statusMsgCounter;
+    
+    index++;
+    if(index >= (1<<10))
+    {
+	index = 0;
+	state_printDebug(activeCState);
+    }
+    
+    //reset timeout, if "userspace" requested it
+    if(activeCState->resetTimeoutCounter) {
+	activeCState->resetTimeoutCounter = 0;
+	timeoutCounter = 0;
+    }
+
+    
+    switch(activeCState->internalState)
+    {
+	case STATE_UNCONFIGURED:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    break;
+	case STATE_SENSORS_CONFIGURED:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    systick_readSensors();
+	    systick_sendSensorData(index);
+	    break;
+	case STATE_ACTUATOR_CONFIGURED:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    systick_readSensors();
+	    systick_sendSensorData(index);
+	    break;
+	case STATE_CONTROLLER_CONFIGURED:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    systick_readSensors();
+	    systick_sendSensorData(index);
+	    break;
+	case STATE_RUNNING:
+	    systick_readSensors();
+	    systick_runningState(index);
+	    systick_sendSensorData(index);
+	    break;
+	case STATE_SENSOR_ERROR:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    break;
+	case STATE_ACTUATOR_ERROR:
+	    systick_deactivateActuator();
+	    systick_resetCounters();
+	    systick_readSensors();
+	    systick_sendSensorData(index);
+	    break;
+    }
+}
+
+void sendErrorMessage(int32_t temperature, int32_t motorTemperature, uint32_t index)
+{
+    struct errorData edata;
+
+    volatile struct ErrorState *es = state_getErrorState();
+
+    if(temperature < 0)
+	temperature = 0;
+
+    edata.temperature = temperature;
+    edata.position = getDividedTicks(activeCState->sensorConfig.internalEncoder);
+    edata.index = index;
+    edata.externalPosition = getDividedTicks(activeCState->sensorConfig.externalEncoder);
+    edata.motorOverheated = es->motorOverheated;
+    edata.boardOverheated = es->boardOverheated;
+    edata.overCurrent = es->overCurrent;
+    edata.timeout = es->timeout;
+    edata.badConfig = es->badConfig;
+    edata.encodersNotInitalized = es->encodersNotInitalized;
+
+    protocol_sendData(PACKET_ID_ERROR, (unsigned char *) &edata, sizeof(struct errorData));
+}
+

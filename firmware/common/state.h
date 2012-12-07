@@ -53,7 +53,7 @@ extern volatile struct GlobalState *activeCState;
 extern volatile struct GlobalState *lastActiveCState;
 
 void state_initStruct(volatile struct GlobalState *cs);
-void state_printDebug(volatile struct GlobalState *cs);
+void state_printDebug(const volatile struct GlobalState *cs);
 
 void state_switchToErrorState();
 
