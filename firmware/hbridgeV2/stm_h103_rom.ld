@@ -2,47 +2,61 @@
 
 MEMORY
 {
-  ram 	(rwx) : ORIGIN = 0x20000000, LENGTH = 20K
-  flash (rx)  : ORIGIN = 0x00000000, LENGTH = 128K
+  RAM 	(rwx) : ORIGIN = 0x20000000, LENGTH = 20K
+  FLASH (rx)  : ORIGIN = 0x00000000, LENGTH = 128K
 }
 
 /* inital stack pointer at end of memory */
 _estack =  0x20005000;
 SECTIONS
-/*  .isr_vector :
-  {
-    . = ALIGN(4);
-    _isr_vector_start = .;
-    KEEP(*(.isr_vector))
-    . = ALIGN(4);
-  } >FLASH*/
-
-  {
-	.  = 0x00000000;          /* From 0x00000000 */
+{
+    .  = 0x00000000;          /* From 0x00000000 */
+    .isr_vector :
+    {
+	. = ALIGN(4);
+        KEEP(*(.isr_vector))            /* Startup code */
+	. = ALIGN(4);
+    } >FLASH
+/*  */
   .text : {
-    *(.isr_vector)      /* Vector table */
-/* this is negated sum over all int32s in final .text and .data, without this
-   int32. the firmware just needs to check that the sum over all int32s is 0. */
-    *(.checksum)
-    *(.reset)        /* init code */
+    . = ALIGN(4);
     *(.text)        /* Program code */
+    *(.text.*)                   /* remaining code */
     *(.rodata)      /* Read only data */
     *(.rodata*)      /* Read only data */
-    _etext = .;
-    } >flash
-        .  = 0x20000000;   /* From 0x20000000 */
-  .data : {
-    _sidata = .;
-    _sdata = .;
-    *(.data)        /* Data memory */
-    _edata = .;
-    } >ram AT > flash
-  .bss : {
     . = ALIGN(4);
-    _sbss = .;
-    *(.bss)         /* Zero-filled run time allocate data memory */
-    _ebss = .;
-    } >ram AT > flash
+    _etext = .;
+    _sidata = _etext;
+    } > FLASH
+
+    .data  : AT ( _sidata )
+    {
+	. = ALIGN(4);
+        /* This is used by the startup in order to initialize the .data secion */
+        _sdata = . ;
+        
+        *(.data)
+        *(.data.*)
+
+	. = ALIGN(4);
+	/* This is used by the startup in order to initialize the .data secion */
+	_edata = . ;
+    } >RAM
+
+    /* This is the uninitialized data section */
+    .bss :
+    {
+	    . = ALIGN(4);
+        /* This is used by the startup in order to initialize the .bss secion */
+        _sbss = .;
+        
+        *(.bss)
+        *(COMMON)
+        
+	    . = ALIGN(4);
+	    /* This is used by the startup in order to initialize the .bss secion */
+   	 _ebss = . ;
+    } >RAM
  }  
 
 /*  Libraries to link against. */
