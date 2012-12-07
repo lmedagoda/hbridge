@@ -98,6 +98,7 @@ int _printf(send_func_t sf, const char *format, va_list* ap) {
     case 'l':               /* unsigned long int */
       fmt++;
     case 'd':              /* int */
+    case 'i':              /* int */
       if(*fmt == 'u') {
 	d = (unsigned long int) va_arg(*ap, long int);
       } else {
