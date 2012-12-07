@@ -11,6 +11,9 @@ const char *getPacketName(uint16_t packetId)
 	case PACKET_ID_ERROR: 
 	    return "PACKET_ID_ERROR";
 	    break;
+	case PACKET_ID_ANNOUNCE_STATE:
+	    return "PACKET_ID_ANNOUNCE_STATE";
+	    break;
 	case PACKET_ID_STATUS: 
 	    return "PACKET_ID_STATUS";
 	    break;
