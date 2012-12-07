@@ -5,7 +5,7 @@
 #include "drivers/assert.h"
 #include "stm32f10x_conf.h"
 
-signed int can_recvPacket(uint16_t *senderId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
+signed int can_recvPacket(uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
 {
     CanRxMsg *msg = CAN_GetNextData();
     
@@ -22,10 +22,9 @@ signed int can_recvPacket(uint16_t *senderId, uint16_t *packetId, unsigned char 
     
     int ret = msg->DLC;
 
-    //dummy for now
-    *senderId = 0;
+    *receiverId = msg->StdId & ~0x0F;
     
-    *packetId = msg->StdId & ~0x1F;
+    *packetId = msg->StdId & 0x0F;
     
     CAN_MarkNextDataAsRead();
 
@@ -35,12 +34,12 @@ signed int can_recvPacket(uint16_t *senderId, uint16_t *packetId, unsigned char 
 
 signed int can_sendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size)
 {
-    assert_param(signed <= sizeof(CanTxMsg.Data));
+    //   assert_param(size <= sizeof(struct CanTxMsg.Data));
 
     CanTxMsg msg;
     
     //send status message over CAN
-    msg.StdId= packetId + protocol_getOwnHostId();
+    msg.StdId= packetId + (senderId << 4);
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
     msg.DLC=size;
@@ -59,6 +58,7 @@ signed int can_sendPacket(uint16_t senderId, uint16_t packetId, const unsigned c
 
 void can_protocolInit()
 {
+    protocol_setMaxPacketSize(8);
     protocol_setRecvFunc(can_recvPacket);
     protocol_setSendFunc(can_sendPacket);
 }
