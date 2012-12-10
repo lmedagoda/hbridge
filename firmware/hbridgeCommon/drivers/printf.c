@@ -1,4 +1,3 @@
-#include "usart.h"
 #include <stdarg.h>
 #include <stdint.h>
 #include "printf.h"
@@ -155,7 +154,7 @@ int _printf(printf_send_func_t sf, const char *format, va_list* ap) {
 int printf(const char *format, ...) 
 {
     if(!printf_send_func)
-	return;
+	return 0;
     
     va_list ap;
     va_start(ap, format);
