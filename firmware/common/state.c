@@ -85,7 +85,8 @@ void state_switchToState(enum STATES nextState)
 	    break;
 	case STATE_SENSORS_CONFIGURED:
 	    if(nextState == STATE_UNCONFIGURED || 
-		nextState == STATE_SENSOR_ERROR)
+		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_ACTUATOR_CONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_ACTUATOR_CONFIGURED:
@@ -123,13 +124,13 @@ void state_switchToState(enum STATES nextState)
 	    break;
     }
     
-    printf("Switching from state %s to state %s", state_getStateString(lastActiveCState->internalState), state_getStateString(newState));
+    printf("Switching from state %s to state %s \n", state_getStateString(lastActiveCState->internalState), state_getStateString(newState));
     lastActiveCState->internalState = newState;
     
     struct announceStateData data;
     data.curState = nextState;
     
-    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const char *)&data, sizeof(struct announceStateData));
+    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));
     
 }
 
@@ -196,6 +197,7 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     aState->maxCurrentCount = aCfg->maxCurrentCount;
     aState->pwmStepPerMillisecond = aCfg->pwmStepPerMs;
 
+    state_switchToState(STATE_ACTUATOR_CONFIGURED);
     state_switchState(1);
 }
 
@@ -221,6 +223,7 @@ void state_setActiveControllerHandler(int id, unsigned char *data, unsigned shor
     
     lastActiveCState->controllMode = packet->controllerId;
     
+    state_switchToState(STATE_CONTROLLER_CONFIGURED);
     state_switchState(0);
 }
 
@@ -232,10 +235,10 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 	return;
     }
     
-    if(activeCState->internalState != STATE_RUNNING || activeCState->internalState != STATE_CONTROLLER_CONFIGURED)
+    if((activeCState->internalState != STATE_RUNNING) && (activeCState->internalState != STATE_CONTROLLER_CONFIGURED))
     {
 	state_switchToState(STATE_ACTUATOR_ERROR);
-	print("Error, got target value and state is not running or controller configured\n");
+	printf("Error, got target value and state is not running or controller configured\n");
 	return;		
     }
     
@@ -296,6 +299,10 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
     inactiveControllerTargetValueData = tmp;
     //copy old values
     *inactiveControllerTargetValueData = *activeControllerTargetValueData;
+    
+    if(activeCState->internalState == STATE_CONTROLLER_CONFIGURED)
+	state_switchToState(STATE_RUNNING);
+    state_switchState(0);
 }
 
 void state_initStruct(volatile struct GlobalState *cs)
@@ -354,7 +361,7 @@ const char *state_getStateString(enum STATES state)
 void state_printDebug(const volatile struct GlobalState* cs)
 {
     char *ctrl_s = "";
-    char *int_state_s = state_getStateString(cs->internalState);
+    const char *int_state_s = state_getStateString(cs->internalState);
     switch(cs->controllMode) {
 	case CONTROLLER_MODE_NONE:
 	    ctrl_s = "NONE";
@@ -372,7 +379,7 @@ void state_printDebug(const volatile struct GlobalState* cs)
 	    ctrl_s = "ERROR INVALID";
 	    break;
     }
-    printf("ControllMode: %s ,internal State: %s ,targetVal : %li ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->targetData, cs->actuatorConfig.useOpenLoop, cs->actuatorConfig.pwmStepPerMillisecond);    
+    printf("ControllMode: %s ,internal State: %s ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->actuatorConfig.useOpenLoop, cs->actuatorConfig.pwmStepPerMillisecond);    
 }
 
 uint8_t state_inErrorState() {
