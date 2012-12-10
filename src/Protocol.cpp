@@ -63,11 +63,14 @@ Packet& Protocol::getSharedMsg(unsigned int packetId)
 	sharedMessages.resize(packetId + 1);
     }
 
-    sharedMessages[packetId].packetId = packetId;
+    Packet &pkg(sharedMessages[packetId]);
+    pkg.packetId = packetId;
+    //shared message is allways a broadcast message
+    pkg.broadcastMsg = true;
     
     markedForSending[packetId] = true;
     
-    return sharedMessages[packetId];
+    return pkg;
 }
 
 void Protocol::sendSharedMessages()
@@ -114,6 +117,9 @@ void Protocol::processIncommingPackages()
 		const firmware::ackData *adata =
 			reinterpret_cast<const firmware::ackData *>(msg.data.data());
 
+		if(handles.size() < msg.senderId)
+		    throw std::runtime_error("Error got message for hbridge with no handle");
+			
 		SendQueue &queues(handles[msg.senderId]->queue);
 			
 		if(queues.queue.empty())
