@@ -79,13 +79,16 @@ void protocol_processPackages()
 {
     const uint8_t bufferSize = maxPacketSize;
     uint8_t buffer[bufferSize];
-    uint16_t senderId;
+    uint16_t receiverId;
     uint16_t packetId;
     while(1)
     {
-	int bytes = readPacket(&senderId, &packetId, buffer, bufferSize);
+	int bytes = readPacket(&receiverId, &packetId, buffer, bufferSize);
 	if(bytes)
-	    protocol_processPackage(packetId, buffer, bytes);
+	{
+	    if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
+		protocol_processPackage(packetId, buffer, bytes);
+	}
     }
 }
 
