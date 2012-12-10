@@ -9,10 +9,6 @@ if (Boost_FOUND)
 #     include_directories(${Boost_INCLUDE_DIRS})
 #     TARGET_LINK_LIBRARIES(hbridge-test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
-    ADD_EXECUTABLE(pwm_test pwm_test.cpp)
-    include_directories(${Boost_INCLUDE_DIRS})
-    TARGET_LINK_LIBRARIES(pwm_test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
-
 else(Boost_FOUND)
     message(STATUS "boost/unit not found, disabled unit test")
 endif (Boost_FOUND)
@@ -25,4 +21,14 @@ ADD_EXECUTABLE(sandbox_test sandbox_test.cpp)
 include_directories(${Boost_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(sandbox_test sandbox_lib hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
+ADD_EXECUTABLE(pwm_test pwm_test.cpp)
+include_directories(${Boost_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(pwm_test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
 
+ADD_EXECUTABLE(sensor_test sensor_test.cpp)
+include_directories(${Boost_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(sensor_test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
+
+ADD_EXECUTABLE(actuator_test actuator_test.cpp)
+include_directories(${Boost_INCLUDE_DIRS})
+TARGET_LINK_LIBRARIES(actuator_test hbridge ${Boost_LIBRARIES} ${CANBUS_LIBRARIES})
