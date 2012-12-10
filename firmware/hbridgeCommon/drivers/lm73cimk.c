@@ -65,7 +65,7 @@ void lm73cimk_setup_sensor(enum LM73_SENSORS sensor, uint8_t i2c_addr)
 void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor) 
 {
     if(statistic1 > 10000) {
-	print("Did 10000 i2c operations \n");
+	printf("Did 10000 i2c operations \n");
 	printf("Errors: %lu \n", statistic2);
 	printf("Triggered: %lu \n", statistic_tr);
 	printf("Not Ready: %lu \n", statistic_nr);
@@ -78,7 +78,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	statistic_nr = 0;
 	statistic_gt = 0;
 	statistic_r = 0;
-	print("move state machine\n");
+	printf("move state machine\n");
     }
 
     switch(lm73Data[sensor].state) {
@@ -88,7 +88,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	    statistic1++;
 	    statistic_tr++;
 	    lm73Data[sensor].state = LM73_TRIGGERED;
-	    //print("Triggered\n");
+	    //printf("Triggered\n");
 	}    
 	else
 	{
@@ -106,7 +106,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 		lm73Data[sensor].state = LM73_IDLE;
 		if(++(lm73Data[sensor].errorCounter) > 2000)
 		{
-		    print("bus reset\n");
+		    printf("bus reset\n");
 		    //reset bus and start over
 		    resetI2C(lm73Data[sensor].i2cHandle);
 		    lm73Data[sensor].errorCounter = 0;
@@ -126,7 +126,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 	if(!lm73cimk_requestTemperature(sensor)) {
 	    statistic1++;
 	    statistic_r++;
-	    //print("Requested\n");
+	    //printf("Requested\n");
 	    lm73Data[sensor].state = LM73_TEMP_REQUESTED;
 	} 
 	else
@@ -150,7 +150,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
 		// value is -32768 when sensor is still working on temperature conversion
 		if (value == -32768)
 		{
-		    //print("Temp Conversation not finished\n");
+		    //printf("Temp Conversation not finished\n");
 		    ++statistic_nr;
 		    lm73Data[sensor].state = LM73_TRIGGER_FINISHED;
 		}
@@ -170,7 +170,7 @@ void moveLM73CIMKStateMachine(enum LM73_SENSORS sensor)
     }
 	break;
     default:
-	print("Error, lm73 polling statemachine in unknown state\n");
+	printf("Error, lm73 polling statemachine in unknown state\n");
 	break;
     }
 }

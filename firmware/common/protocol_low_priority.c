@@ -71,7 +71,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	case TYPE_HEADER:
 	{
 	    if(curHeader)
-		print("Warning, got new header while old packet was not complete\n");
+		printf("Warning, got new header while old packet was not complete\n");
 	    
 	    struct LowPrioHeader *h = (struct LowPrioHeader *) (data + sizeof(struct LowPrioPacket));
 	    protocolHeaderBuffer = *h;
@@ -84,7 +84,7 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 	{
 	    if(!curHeader)
 	    {
-		print("Warning got header without an active packet\n");
+		printf("Warning got header without an active packet\n");
 		return;
 	    }
 	    

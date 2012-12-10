@@ -89,7 +89,7 @@ void assert_failed(uint8_t* file, uint32_t line)
 	    USART3_Init(DISABLE);\
 	    break;\
     }\
-    print(#debugString "\n");
+    printf(#debugString "\n");
 
 void NMI_Handler(void)
 {

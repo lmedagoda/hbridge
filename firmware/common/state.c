@@ -4,6 +4,7 @@
 #include "packets.h"
 #include "controllers.h"
 #include "encoder.h"
+#include "printf.h"
 
 volatile struct GlobalState state1;
 volatile struct GlobalState state2;
@@ -150,7 +151,7 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     if(lastActiveCState->internalState != STATE_UNCONFIGURED)
     {
 	state_switchToState(STATE_SENSOR_ERROR);
-	print("State: Error, got sensor config and state was not unconfigured \n");
+	printf("State: Error, got sensor config and state was not unconfigured \n");
 	return;
     }
 
@@ -167,7 +168,7 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     state_switchToState(STATE_SENSORS_CONFIGURED);
     
     state_switchState(1);
-    print("State: Got sensor config switching state to configured \n");
+    printf("State: Got sensor config switching state to configured \n");
 }
 
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size)
@@ -177,7 +178,7 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     if(lastActiveCState->internalState != STATE_SENSORS_CONFIGURED)
     {
 	state_switchToState(STATE_ACTUATOR_ERROR);
-	print("State: Error, got actuator config and state was not 'sensors configured' \n");
+	printf("State: Error, got actuator config and state was not 'sensors configured' \n");
 	return;
     }
     
@@ -207,14 +208,14 @@ void state_setActiveControllerHandler(int id, unsigned char *data, unsigned shor
     if(size != (sizeof(struct setActiveControllerData)))
     {
 	state_switchToState(STATE_ACTUATOR_ERROR);
-	print("Error, size of expected data structure does not match\n");
+	printf("Error, size of expected data structure does not match\n");
 	return;
     }
     
     if(activeCState->internalState == STATE_RUNNING)
     {
 	state_switchToState(STATE_ACTUATOR_ERROR);
-	print("Error, motor is active, switching of controller is forbidden\n");
+	printf("Error, motor is active, switching of controller is forbidden\n");
 	return;	
     }
     
@@ -227,7 +228,7 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 {
     if(activeCState->internalState == STATE_SENSOR_ERROR || activeCState->internalState == STATE_ACTUATOR_ERROR)
     {
-	print("Error, got target value while in error state\n");
+	printf("Error, got target value while in error state\n");
 	return;
     }
     
@@ -241,7 +242,7 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
     if(size > MAX_CONTROLLER_DATA_SIZE)
     {
 	state_switchToState(STATE_ACTUATOR_ERROR);
-	print("Error, the give controller data is too big\n");
+	printf("Error, the give controller data is too big\n");
 	return;
     }
     
@@ -388,19 +389,19 @@ uint8_t state_inErrorState() {
 void state_printErrorState()
 {
     if(state_errorState.motorOverheated)
-	print("Error: Motor overheated\n");
+	printf("Error: Motor overheated\n");
     if(state_errorState.boardOverheated)
-	print("Error: Board overheated\n");
+	printf("Error: Board overheated\n");
     if(state_errorState.overCurrent)
-	print("Error: Overcurrent\n");
+	printf("Error: Overcurrent\n");
     if(state_errorState.timeout)
-	print("Error: Timeout\n");
+	printf("Error: Timeout\n");
     if(state_errorState.badConfig)
-	print("Error: Bad Config\n");
+	printf("Error: Bad Config\n");
     if(state_errorState.encodersNotInitalized)
-	print("Error: Encoders not initialized\n");
+	printf("Error: Encoders not initialized\n");
     if(state_errorState.hardwareShutdown)
-	print("Error: Hardware shutdown\n");
+	printf("Error: Hardware shutdown\n");
 }
 
 volatile struct ErrorState *state_getErrorState() {

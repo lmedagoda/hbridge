@@ -95,7 +95,7 @@ void CAN_Configuration(enum CAN_REMAP remap)
     CAN_InitStructure.CAN_BS2=CAN_BS2_3tq;
     CAN_InitStructure.CAN_Prescaler=4;
     if(CAN_Init(CAN1, &CAN_InitStructure) == CANINITFAILED) {
-	print("Can init failed \n");
+	printf("Can init failed \n");
         assert_param(0);
     }
 
@@ -264,7 +264,7 @@ int can_send_message_hard(CanTxMsg * message) {
       while(!(CAN1->TSR & (CAN_TSR_ALST << (8*mb))) && !(CAN1->TSR & (CAN_TSR_TERR << (8*mb)))) {
 	counter++;
 	if (counter > CAN_SEND_RETRIES) {
-	  print("Timeout sending can message");
+	  printf("Timeout sending can message");
 	  break;
 	}
 	
@@ -275,15 +275,15 @@ int can_send_message_hard(CanTxMsg * message) {
       }
       
       if(CAN1->TSR & (CAN_TSR_ALST << (8*mb))) {
-	print("Error ARLO mb is \n");
+	printf("Error ARLO mb is \n");
       }
       
       if(CAN1->TSR & (CAN_TSR_TERR << (8*mb))) {
-	print("Error TERR mb is \n");
+	printf("Error TERR mb is \n");
       }
     }
 
-    print("Error sending can message\n");
+    printf("Error sending can message\n");
     return CANTXFAILE;
 }
 

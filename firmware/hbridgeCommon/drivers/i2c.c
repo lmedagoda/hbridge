@@ -113,7 +113,7 @@ struct I2C_Handle *I2C_getHandle(I2C_TypeDef* I2Cx)
 {
     if(handleCnt >= MAX_I2C_HANDLES)
     {
-	print("Error no free I2C handles any more\n");
+	printf("Error no free I2C handles any more\n");
 	assert_failed((uint8_t *)__FILE__, __LINE__);
     }
     
@@ -144,7 +144,7 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 	    cmdQueue->curCommand->handle->hadError = 1;
 	} else
 	{
-	    print("Error, got error while no i2c command was issued\n");
+	    printf("Error, got error while no i2c command was issued\n");
 	}
     }
     
@@ -176,7 +176,7 @@ void I2C_triggerCommandQueue(struct I2C_CommandQueue *cmdQueue)
 	return;
 
     if(I2C_GetFlagStatus(cmdQueue->I2Cx, I2C_FLAG_MSL)) {
-	print("BAD, I am still a master \n");
+	printf("BAD, I am still a master \n");
 	return;
     }
 
@@ -303,7 +303,7 @@ void I2C_writeBytesBlocking(struct I2C_Handle *handle, uint8_t *data, uint8_t si
 	    if(!res->I2CError)
 		break;
 	    else 
-		print("e");
+		printf("e");
 	}
     }
 }
@@ -491,21 +491,21 @@ uint8_t handleI2CxErrors(I2C_TypeDef* I2Cx, volatile struct I2C_Data* I2Cx_Data)
     uint8_t hasError = 0;
 
     if(I2Cx_Data->I2CError == 2) {
-	print("Bus Amok\n");
+	printf("Bus Amok\n");
     }
     //handle I2C errors
     if(I2Cx_Data->I2CError) {
 	switch(I2Cx_Data->I2CErrorReason) {
 	case I2C_FLAG_ARLO:
-	    print("ARLO");
+	    printf("ARLO");
 	    break;
 	case I2C_FLAG_BERR:
-	    print("BERR");
+	    printf("BERR");
 	    I2C_SoftwareResetCmd(I2Cx, DISABLE);
 	    setupI2CxIntern(I2Cx_Data->curI2CAddr, I2Cx_Data->curI2CSpeed, I2Cx, I2Cx_Data->curI2CIsRemapped, 1);
 	    break;
 	case I2C_FLAG_OVR:
-	    print("OVR");
+	    printf("OVR");
 	    break;
 	case I2C_FLAG_AF:
 	    if((I2C_GetFlagStatus(I2Cx, I2C_FLAG_MSL) == SET))

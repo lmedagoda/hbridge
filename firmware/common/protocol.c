@@ -93,7 +93,7 @@ void protocol_processPackage(uint16_t id, uint8_t *data, uint8_t size)
 {
     if(id > PACKET_ID_TOTAL_COUNT)
     {
-	print("Error, got packet with to big packet id\n");
+	printf("Error, got packet with to big packet id\n");
 	return;
     }
 
@@ -120,7 +120,7 @@ uint8_t protocol_sendData(int id, unsigned char* data, short unsigned int size)
     {
 	if(size > maxPacketSize)
 	{
-	    print("Error, packet to big for high priority transmission");
+	    printf("Error, packet to big for high priority transmission");
 	}
 	return sendPacket(ownHostId, id, data, size);
     }

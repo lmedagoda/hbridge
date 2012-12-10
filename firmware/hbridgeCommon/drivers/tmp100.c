@@ -49,7 +49,7 @@ void moveTMP100CIMKStateMachine(uint8_t sensor)
 	//trigger new conversion
 	if(!tmp100_triggerTemeratureConversion(sensor)) {
 	    tmp100Data[sensor].state = TMP100_TRIGGERED;
-	    //print("Triggered\n");
+	    //printf("Triggered\n");
 	}    
 	break;
 	
@@ -63,7 +63,7 @@ void moveTMP100CIMKStateMachine(uint8_t sensor)
 		tmp100Data[sensor].state = TMP100_IDLE;
 		if(++(tmp100Data[sensor].errorCounter) > 2000)
 		{
-		    print("bus reset\n");
+		    printf("bus reset\n");
 		    //reset bus and start over
 		    resetI2C(tmp100Data[sensor].i2cHandle);
 		    tmp100Data[sensor].errorCounter = 0;
@@ -104,7 +104,7 @@ void moveTMP100CIMKStateMachine(uint8_t sensor)
     }
 	break;
     default:
-	print("Error, tmp100 polling statemachine in unknown state\n");
+	printf("Error, tmp100 polling statemachine in unknown state\n");
 	break;
     }
 }

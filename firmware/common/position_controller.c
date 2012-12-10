@@ -45,7 +45,7 @@ void positionControllerProtocolHandler(int id, unsigned char *idata, unsigned sh
 	{
 	    if(size != sizeof(struct posControllerData))
 	    {
-		print("Error PosCtrlData has wrong size");
+		printf("Error PosCtrlData has wrong size");
 	    }
 	    struct posControllerData* data = (struct posControllerData* )(idata);
 	    posContData.hysteresisActive = data->hysteresisActive;

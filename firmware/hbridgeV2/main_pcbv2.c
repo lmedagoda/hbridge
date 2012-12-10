@@ -83,7 +83,7 @@ int main(void)
     USART3_Init(DISABLE);
 
     //note, this mesage can only be send AFTER usart configuration
-    print("Entered main loop\n");
+    printf("Entered main loop\n");
 
     //turn of red led
     GPIO_SetBits(GPIOA, GPIO_Pin_12);
@@ -92,23 +92,23 @@ int main(void)
     //read address, turn on peripherals etc.
     baseInit();
 
-    print("Setting up I2C\n");
+    printf("Setting up I2C\n");
     //setup I2C bus for lm73cimk
     setupI2Cx(0xA0, 100000, I2C1, DISABLE);
     
 
-    print("LM73 init\n");
+    printf("LM73 init\n");
     //init temperature sensor
     lm73cimk_init(I2C1);
     
     //address of sensor one 148 // 1001110 + r/w bit
-    print("LM73 Sensor1 setup\n");
+    printf("LM73 Sensor1 setup\n");
     lm73cimk_setup_sensor(LM73_SENSOR1, 148);
-    print("LM73 Sensor2 setup\n");
+    printf("LM73 Sensor2 setup\n");
     lm73cimk_setup_sensor(LM73_SENSOR2, 144);
 
     
-    print("Peripheral configuration finished\n");
+    printf("Peripheral configuration finished\n");
 
     CAN_Configuration(CAN_REMAP1);
     CAN_ConfigureFilters(getOwnHostId());

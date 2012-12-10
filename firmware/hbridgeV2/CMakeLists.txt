@@ -37,7 +37,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-T ${STM32_SOURCE_DIR}/stm_h103_rom.ld -nostartfiles
 
 add_definitions(
   -Wall
-  -mcpu=cortex-m3 -mthumb -Wall -fno-unwind-tables -fno-common
+  -mcpu=cortex-m3 -mthumb -Wall -fno-unwind-tables -fno-common -fno-builtin-printf
   -O3 -ggdb
   -D STM32F10X_MD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
   )

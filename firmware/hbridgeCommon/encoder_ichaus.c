@@ -8,18 +8,16 @@
 
 #define ERROR_REPETITIONS 3
 
-extern unsigned int systemTick;
-
 int icHausOffset;
 
 void encoderInitIcHaus()
 {
-    print("encoderInitIcHaus\n");
+    printf("encoderInitIcHaus\n");
     
     icHausOffset = 0;
     if(icHausOffset > 4095)
     {
-        print("icHausOffset > 4095 - ignoring!\n");
+        printf("icHausOffset > 4095 - ignoring!\n");
         icHausOffset = 0;
     }
     
@@ -103,7 +101,7 @@ int isInvalidData_IcHaus(uint32_t data)
     {
         if (error_counter < ERROR_REPETITIONS)
         {
-            print("IcHaus: Data does not start with 11010\n");
+            printf("IcHaus: Data does not start with 11010\n");
         }
         ++error_counter;
         ret = 1;
@@ -114,7 +112,7 @@ int isInvalidData_IcHaus(uint32_t data)
         {
             if (error_counter < ERROR_REPETITIONS)
             {
-                print("IcHaus: nW-bit not found\n");
+                printf("IcHaus: nW-bit not found\n");
             }
             ++error_counter;
             ret = 2;
@@ -125,7 +123,7 @@ int isInvalidData_IcHaus(uint32_t data)
             {
                 if (error_counter < ERROR_REPETITIONS)
                 {
-                    print("IcHaus: Data too long");
+                    printf("IcHaus: Data too long");
                 }
                 ++error_counter;
                 ret = 3;
@@ -138,7 +136,7 @@ int isInvalidData_IcHaus(uint32_t data)
                 {
                     if (error_counter < ERROR_REPETITIONS)
                     {
-                        print("IcHaus: CRC failed ");
+                        printf("IcHaus: CRC failed ");
                         printf("was: %du expected: %du  result: %du\n", crc6, crc6sensor, result);
                     }
                     ++error_counter;
@@ -164,8 +162,7 @@ int isInvalidData_IcHaus(uint32_t data)
 
 uint32_t getTicksIcHaus(void)
 {
-       print("#");
-    static unsigned int lastTick = 0;
+       printf("#");
     static uint32_t lastValue = 0;
 
 //     if (lastTick == systemTick) // if sensor was already polled in this system tick
@@ -175,7 +172,7 @@ uint32_t getTicksIcHaus(void)
     /* Wait for SPI1 Tx buffer empty */
     while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE) == RESET)
     {
-//        print("*");
+//        printf("*");
     }
     GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 
@@ -185,7 +182,7 @@ uint32_t getTicksIcHaus(void)
     /* Wait for SPI2 data reception */
     while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET)
     {
-//              print(".");
+//              printf(".");
     }
 
     //read current data from data register
@@ -195,7 +192,7 @@ uint32_t getTicksIcHaus(void)
     /* Wait for SPI2 data reception */
     while (SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE) == RESET)
     {
-//               print("_");
+//               printf("_");
     }
 
     //read current data from data register
@@ -203,15 +200,13 @@ uint32_t getTicksIcHaus(void)
     uint32_t value = (dataArray[1] << 16) | dataArray[0];
     unsigned int result = (value >> 15) & 4095;
 
-    lastTick = systemTick;
-
     static int errorCounter = 0;
     if (isInvalidData_IcHaus(value) != 0)
     {
-        print(":-( ");
+        printf(":-( ");
         if (errorCounter > 50)
         {
-	    print("ICHouse is dead\n");
+	    printf("ICHouse is dead\n");
             // some error handling
 //             getErrorState()->sensorFailure = 1;
         }
