@@ -59,13 +59,32 @@ private:
     void configurationError(const Packet &msg);
 public:
     void startConfigure();
+    
+    ActuatorConfiguration &getActuatorConfig()
+    {
+	return actuatorConfig;
+    }
+    
+    /**
+     * Returns weather the device is in a state where
+     * target values might be written to the controllers.
+     * */
     bool isActuatorConfigured();
     
     bool hasError();
     
     virtual void processMsg(const Packet& msg);
     
+    /**
+     * Set the active controller inside the firmware.
+     * Note this function MUST be called prior to 
+     * startConfigure
+     * */
     void setActiveController(Controller *ctrl);
+    
+    /**
+     * Deprecated
+     * */
     void setTargetValue(double value);
 };
 

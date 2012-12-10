@@ -59,9 +59,9 @@ void Writer::sendController()
     
     setActiveControllerData *cfg = reinterpret_cast<setActiveControllerData *>(msg.data.data());
 
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
-
     cfg->controllerId = curController->getControllerId();
+
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
 }
 
 void Writer::startConfigure()
@@ -134,7 +134,7 @@ void Writer::setActiveController(Controller* ctrl)
     if(handle->getControllers()[ctrl->getControllerId()] != ctrl)
 	throw std::runtime_error("Error: given controller is not registered at handle");
     
-    curController = ctrl;    
+    curController = ctrl;
 }
 
 void Writer::setTargetValue(double value)
