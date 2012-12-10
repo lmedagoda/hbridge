@@ -3,6 +3,7 @@
 #include "state.h"
 #include "position_controller.h"
 #include "speed_controller.h"
+#include "pwm_controller.h"
 #include "../interfaces/controllers.h"
 
 struct ControllerInterface controllers[NUM_CONTROLLERS];
@@ -45,6 +46,12 @@ void controllers_init()
     {
 	defaultInit(controllers + i);
     }
+    
+    controllers[CONTROLLER_MODE_PWM].init = pwmControllerInit;
+    controllers[CONTROLLER_MODE_PWM].reset = pwmControllerReset;
+    controllers[CONTROLLER_MODE_PWM].isConfigured = pwmControllerIsConfigured;
+    controllers[CONTROLLER_MODE_PWM].step = pwmControllerStep;
+    controllers[CONTROLLER_MODE_PWM].deInit = pwmControllerDeInit;
     
     controllers[CONTROLLER_MODE_POSITION].init = positionControllerInit;
     controllers[CONTROLLER_MODE_POSITION].reset = positionControllerReset;

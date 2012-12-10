@@ -103,6 +103,7 @@ add_executable(main
     ${MD_COMMON_DIR}/temperature_sensor.c
     ${MD_COMMON_DIR}/position_controller.c
     ${MD_COMMON_DIR}/speed_controller.c
+    ${MD_COMMON_DIR}/pwm_controller.c
     ${MD_COMMON_DIR}/controllers.c
     ${MD_COMMON_DIR}/protocol.c
     ${MD_COMMON_DIR}/protocol_low_priority.c

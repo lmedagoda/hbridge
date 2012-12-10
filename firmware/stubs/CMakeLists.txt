@@ -23,6 +23,7 @@ add_library(sandbox_lib
     ../common/protocol_low_priority.c
     ../common/position_controller.c
     ../common/speed_controller.c
+    ../common/pwm_controller.c
     ../common/controllers.c
     ../common/protocol.c
     ../common/state.c
