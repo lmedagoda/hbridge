@@ -18,6 +18,9 @@ class Writer;
 class Packet
 {
 public:
+    Packet(): senderId(-1), receiverId(-1), packetId(-1), broadcastMsg(false) 
+    {
+    };
     int senderId;
     int receiverId;
     int packetId;
