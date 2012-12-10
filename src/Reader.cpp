@@ -3,6 +3,8 @@
 #include "../protocol.hpp"
 #include "Protocol.hpp"
 
+using namespace firmware;
+
 namespace hbridge {
 
 Reader::Reader(HbridgeHandle *handle): handle(handle), callbacks(NULL), configured(false)
@@ -27,6 +29,23 @@ void Reader::startConfigure()
     
     sendConfigureMsg();
 }
+
+void Reader::resetDevice()
+{
+    Packet msg;
+    msg.packetId = PACKET_ID_CLEAR_SENSOR_ERROR;
+    
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
+}
+
+void Reader::requestDeviceState()
+{
+    Packet msg;
+    msg.packetId = PACKET_ID_REQUEST_STATE;
+    
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
+}
+
 
 void Reader::setConfiguration(const hbridge::MotorConfiguration& config)
 {
@@ -175,12 +194,16 @@ void Reader::processMsg(const Packet &msg)
 		    switch(stateData->curState)
 		    {
 			case firmware::STATE_UNCONFIGURED:
+			    if(callbacks)
+				callbacks->deviceReseted();
 			    break;
 			case firmware::STATE_SENSORS_CONFIGURED:
-			    callbacks->configureDone();
+			    if(callbacks)
+				callbacks->configureDone();
 			    break;    
 			case firmware::STATE_SENSOR_ERROR:
-			    callbacks->configurationError();
+			    if(callbacks)
+				callbacks->configurationError();
 			    break;    
 			default:
 			    break;
@@ -213,6 +236,9 @@ void Reader::configurationError(const Packet &msg)
     std::cout << "Reason:" << std::endl;
     switch(msg.packetId)
     {
+	case PACKET_ID_CLEAR_SENSOR_ERROR:
+	    std::cout << "Clear sensor config message was not acked" << std::endl;
+	    break;	    
 	case firmware::PACKET_ID_SET_SENSOR_CONFIG:
 	    std::cout << "Sensor config message was not acked" << std::endl;
 	    break;

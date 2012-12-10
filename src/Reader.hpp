@@ -35,6 +35,12 @@ public:
 	virtual void configurationError() {};
 
 	/**
+	 * This callback will be called after the device
+	 * entered the state unconfigured.
+	 * */
+	virtual void deviceReseted() {};	
+	
+	/**
 	* This callback will be called whenever the hardware
 	* sends out a new status package.
 	* */
@@ -44,6 +50,12 @@ public:
 	* This callback will be called if the hardware enters an error state.
 	* */
 	virtual void gotErrorStatus(const ErrorState &error) {};
+	
+	/**
+	 * This function will be called every time when the
+	 * device announces its internal state on the bus.
+	 * */
+	virtual void gotInternalState() {};
     };
 
 
@@ -81,6 +93,21 @@ public:
     void setCallbacks(CallbackInterface *cbs);
 
     void processMsg(const Packet &msg);
+    
+    /**
+     * Sends a package that triggers an
+     * announcement of the internal state
+     * of the device.
+     * */
+    void requestDeviceState();
+    
+    /**
+     * Resets the motor driver into the
+     * unconfigured state.This function
+     * must be called to reover the 
+     * motor driver form an sensor error.
+     * */
+    void resetDevice();
     
     /**
     * Sets the configuration for the hardware. 

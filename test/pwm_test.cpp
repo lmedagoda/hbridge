@@ -41,6 +41,7 @@ public:
 int hbridge_id;
 int error;
 bool configured;
+bool reset;
 
 class DummyCallback : public Reader::CallbackInterface
 {
@@ -55,6 +56,11 @@ class DummyCallback : public Reader::CallbackInterface
     {
 	configured = true;
 	std::cout << "Configuration done " << std::endl;
+    }
+    
+    virtual void deviceReseted()
+    {
+	reset = true;
     }
 };
 
@@ -109,13 +115,22 @@ int main(int argc, char *argv[]) {
     accConf.maxMotorTemp = 60;
     accConf.maxMotorTempCount = 200;
     accConf.controllerInputEncoder = INTERNAL;
-    accConf.timeout = 0;
+    accConf.timeout = 200;
     
     configured = false;
     error = 0;
     
     reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf);
+    
+    reset = false;
+    reader->resetDevice();
+    while(!reset)
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();	
+    }
+    
     reader->startConfigure();
     
     int cnt = 0;

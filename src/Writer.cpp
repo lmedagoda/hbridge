@@ -12,12 +12,30 @@ namespace hbridge
 class WriterState 
 {
 public:
+    WriterState() : firmwareState(STATE_UNCONFIGURED) 
+    {}
     enum STATES firmwareState;
 };
     
-Writer::Writer(hbridge::HbridgeHandle* handle): state(new WriterState), curController(0), handle(handle), callbacks(0)
+Writer::Writer(hbridge::HbridgeHandle* handle): state(new WriterState), curController(0), configuring(false), driverError(false), handle(handle), callbacks(0)
 {
 
+}
+
+void Writer::requestDeviceState()
+{
+    Packet msg;
+    msg.packetId = PACKET_ID_REQUEST_STATE;
+    
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
+}
+
+void Writer::resetActuator()
+{
+    Packet msg;
+    msg.packetId = PACKET_ID_CLEAR_ACTUATOR_ERROR;
+    
+    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
 }
 
 void Writer::sendActuatorConfig()
@@ -66,10 +84,10 @@ void Writer::sendController()
 
 void Writer::startConfigure()
 {
-    sendActuatorConfig();
+    driverError = false;
+    configuring = true;
+    requestDeviceState();    
 }
-
-
 
 bool Writer::isActuatorConfigured()
 {
@@ -78,7 +96,7 @@ bool Writer::isActuatorConfigured()
 
 bool Writer::hasError()
 {
-    return state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR;
+    return driverError || state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR;
 }
 
 void Writer::configurationError(const hbridge::Packet& msg)
@@ -98,27 +116,63 @@ void Writer::processMsg(const Packet& msg)
 		reinterpret_cast<const announceStateData *>(msg.data.data());
 	    
 	    state->firmwareState = stateData->curState;
-		
-	    switch(stateData->curState)
+
+	    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState << " " <<  configuring << std::endl;
+	    
+	    if(configuring)
 	    {
-		case STATE_UNCONFIGURED:
-		    break;
-		case STATE_SENSORS_CONFIGURED:
-		    break;    
-		case STATE_SENSOR_ERROR:
-		    break;    
-		case STATE_ACTUATOR_CONFIGURED:
-		    break;
-		case STATE_CONTROLLER_CONFIGURED:
-		    if(callbacks)
-			callbacks->configureDone();
-		    break;
-		case STATE_ACTUATOR_ERROR:
-		    if(callbacks)
-			callbacks->actuatorError();
-		    break;
-		default:
-		    break;
+		switch(stateData->curState)
+		{
+		    case STATE_UNCONFIGURED:
+		    case STATE_SENSOR_ERROR:
+			{
+			    std::cout << "Error, Sensors not configured " << std::endl;
+			    configuring = false;
+			    driverError = true;
+			    if(callbacks)
+				callbacks->configurationError();
+			}
+			break;    
+		    case STATE_SENSORS_CONFIGURED:
+			sendActuatorConfig();
+			configuring = false;
+			break;
+		    case STATE_ACTUATOR_CONFIGURED:
+			resetActuator();
+			break;
+		    case STATE_CONTROLLER_CONFIGURED:
+			resetActuator();
+			break;
+		    case STATE_ACTUATOR_ERROR:
+			resetActuator();
+			break;
+		    default:
+			break;
+		}
+
+	    }
+	    else
+	    {
+		switch(stateData->curState)
+		{
+		    case STATE_UNCONFIGURED:
+		    case STATE_SENSORS_CONFIGURED:
+		    case STATE_SENSOR_ERROR:
+			break;    
+		    case STATE_ACTUATOR_CONFIGURED:
+			break;
+		    case STATE_CONTROLLER_CONFIGURED:
+			if(callbacks)
+			    callbacks->configureDone();
+			break;
+		    case STATE_ACTUATOR_ERROR:
+			driverError = true;
+			if(callbacks)
+			    callbacks->actuatorError();
+			break;
+		    default:
+			break;
+		}
 	    }
 	    break;
 	}

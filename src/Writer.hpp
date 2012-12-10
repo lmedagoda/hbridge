@@ -45,6 +45,8 @@ private:
     WriterState *state;
     friend class HbridgeHandle;
     Controller *curController;
+    bool configuring;
+    bool driverError;
     
     friend class Protocol;
     Writer(HbridgeHandle *handle);
@@ -71,7 +73,17 @@ public:
      * */
     bool isActuatorConfigured();
     
+    void requestDeviceState();
+
     bool hasError();
+    
+    /**
+     * Reset the actiuator config of the motor driver.
+     * This clears any error that are actuator specific.
+     * */
+    void resetActuator();
+    
+    
     
     virtual void processMsg(const Packet& msg);
     
