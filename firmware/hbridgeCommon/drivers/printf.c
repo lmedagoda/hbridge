@@ -1,38 +1,18 @@
 #include "usart.h"
 #include <stdarg.h>
-#include "stm32f10x_conf.h"
+#include <stdint.h>
+#include "printf.h"
+#include "../stm32f10x_conf.h"
 
 #undef printf
 
-typedef signed int (*send_func_t)(const unsigned char *, const unsigned int);
+static printf_send_func_t printf_send_func;
 
-int _print(send_func_t sf, const unsigned char *format) {
-  const unsigned char *fmt = format;
-  unsigned int len = 0;
-  
-  while(*fmt) {
-    fmt++;
-    len++;
-  }
 
-  int sent = 0;
-  int ret = 0;
-  
-  while(sent < len)
-  {
-    ret = sf(format + sent, len - sent);
-    if(ret < 0)
-	return -1;
-    sent += ret;
-  }
-  return len;
-}
-
-int print(const unsigned char *format) 
+void printf_setSendFunction(printf_send_func_t function)
 {
-    return _print(USART3_SendData, format);    
+    printf_send_func = function;
 }
-
 
 
 void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
@@ -61,7 +41,7 @@ void fillInUnsignedLongInt(unsigned long int d, unsigned char *msg, int *pos) {
 }
 
 
-int _printf(send_func_t sf, const char *format, va_list* ap) {
+int _printf(printf_send_func_t sf, const char *format, va_list* ap) {
   unsigned char msg[128];
   const char *fmt = format;
   int pos = 0;
@@ -172,12 +152,14 @@ int _printf(send_func_t sf, const char *format, va_list* ap) {
   return pos;
 }
 
-
 int printf(const char *format, ...) 
 {
+    if(!printf_send_func)
+	return;
+    
     va_list ap;
     va_start(ap, format);
-    return  _printf(USART3_SendData, format, &ap);
+    return  _printf(printf_send_func, format, &ap);
     va_end(ap);
 }
 

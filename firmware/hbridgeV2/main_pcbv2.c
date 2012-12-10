@@ -82,6 +82,8 @@ int main(void)
 
     USART3_Init(DISABLE);
 
+    printf_setSendFunction(USART1_SendData);
+    
     //note, this mesage can only be send AFTER usart configuration
     printf("Entered main loop\n");
 
