@@ -69,7 +69,7 @@ void protocol_setOwnHostId(enum hostIDs id);
 
 void protocol_ackPacket(int id);
 
-void protocol_processPackages();
+void protocol_processPackage();
 
 
 

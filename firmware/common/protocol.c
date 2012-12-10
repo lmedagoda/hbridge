@@ -14,7 +14,7 @@ send_func_t sendPacket;
 recv_func_t readPacket;
 
 void protocol_ackPacket(int id);
-void protocol_processPackage(uint16_t id, uint8_t *data, uint8_t size);
+// void protocol_processPackage(uint16_t id, uint8_t *data, uint8_t size);
 
 void protocol_setSendFunc(send_func_t func)
 {
@@ -39,8 +39,7 @@ enum hostIDs protocol_getOwnHostId()
 
 void protocol_defaultHandler(int id, unsigned char *data, unsigned short size)
 {
-    unsigned short idl = id;
-    printf("Warning, packet with id %s was not handled \n", getPacketName(idl));
+    printf("Warning, packet with id %i %s was not handled \n", id, getPacketName(id));
 }
 
 uint8_t protocol_getMaxPacketSize()
@@ -75,34 +74,27 @@ void protocol_registerHandler(int id, void (*handler)(int id, unsigned char *dat
     protocolHandlers[id] = handler;
 }
 
-void protocol_processPackages()
+void protocol_processPackage()
 {
     const uint8_t bufferSize = maxPacketSize;
     uint8_t buffer[bufferSize];
     uint16_t receiverId;
     uint16_t packetId;
-    while(1)
+    int bytes = readPacket(&receiverId, &packetId, buffer, bufferSize);
+    if(bytes)
     {
-	int bytes = readPacket(&receiverId, &packetId, buffer, bufferSize);
-	if(bytes)
+	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
 	{
-	    if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
-		protocol_processPackage(packetId, buffer, bytes);
+	    if(packetId > PACKET_ID_TOTAL_COUNT)
+	    {
+		printf("Error, got packet with to big packet id\n");
+		return;
+	    }
+
+	    protocolHandlers[packetId](packetId, buffer, bytes);
 	}
     }
 }
-
-void protocol_processPackage(uint16_t id, uint8_t *data, uint8_t size)
-{
-    if(id > PACKET_ID_TOTAL_COUNT)
-    {
-	printf("Error, got packet with to big packet id\n");
-	return;
-    }
-
-    protocolHandlers[id](id, data, size);
-}
-
 
 void protocol_ackPacket(int id)
 {

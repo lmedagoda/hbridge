@@ -140,6 +140,8 @@ void platformInit()
 
 void run()
 {
+    while(1)
+    {
     // 	uint16_t errorDbg = inErrorState();
 // 	if((curMsg->StdId != PACKET_ID_SET_VALUE14 && curMsg->StdId != PACKET_ID_SET_VALUE58)  || cnt == 50) {
 // 	    cnt = 0;  
@@ -153,8 +155,9 @@ void run()
 // 	    cnt++;
 // 	}
 //     }
-
-    protocol_processPackages();
+	state_checkErrors();
+	protocol_processPackage();
+    }
 }
 
 void systick_deactivateActuator()
@@ -281,6 +284,7 @@ void systick_step()
     {
 	index = 0;
 	state_printDebug(activeCState);
+	state_printErrorState();
     }
     
     //reset timeout, if "userspace" requested it
