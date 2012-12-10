@@ -81,7 +81,9 @@ void state_switchToState(enum STATES nextState)
     switch(lastActiveCState->internalState)
     {
 	case STATE_UNCONFIGURED:
-	    if(nextState == STATE_SENSORS_CONFIGURED || nextState == STATE_SENSOR_ERROR)
+	    if(nextState == STATE_SENSORS_CONFIGURED 
+		|| nextState == STATE_SENSOR_ERROR
+		|| nextState == STATE_UNCONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_SENSORS_CONFIGURED:
@@ -91,31 +93,41 @@ void state_switchToState(enum STATES nextState)
 		newState = nextState;
 	    break;
 	case STATE_ACTUATOR_CONFIGURED:
-	    if(	newState == STATE_ACTUATOR_ERROR ||
+	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
 		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_CONTROLLER_CONFIGURED:
-	    if(	newState == STATE_ACTUATOR_ERROR ||
+	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
 		nextState == STATE_RUNNING)
 		newState = nextState;	    
 	    break;
 	case STATE_RUNNING:
-	    if(	newState == STATE_ACTUATOR_ERROR ||
+	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
 		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
+	    
+	    if(state_inErrorState())
+	    {
+		newState = STATE_ACTUATOR_ERROR;
+	    }
+	    
 	    break;
 	case STATE_ACTUATOR_ERROR:
-	    if(	newState == STATE_ACTUATOR_CONFIGURED ||
+	    if(	nextState == STATE_ACTUATOR_CONFIGURED ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
-        nextState == STATE_SENSORS_CONFIGURED)
+		nextState == STATE_ACTUATOR_ERROR ||
+		nextState == STATE_SENSORS_CONFIGURED)
+		
+		state_clearErrors();
+		
 		newState = nextState;
 	    break;
 	case STATE_SENSOR_ERROR:
@@ -125,7 +137,7 @@ void state_switchToState(enum STATES nextState)
 
 	    break;
     }
-    
+
     printf("Switching from state %s to state %s \n", state_getStateString(lastActiveCState->internalState), state_getStateString(newState));
     lastActiveCState->internalState = newState;
     
@@ -134,16 +146,19 @@ void state_switchToState(enum STATES nextState)
     
     protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));
     
-}
-
-void state_switchToErrorState()
-{
-//     lastActiveCState->internalState = STATE_ERROR;
-    
-    //TODO Send error message
-    
     state_switchState(1);
     
+}
+
+void state_checkErrors()
+{
+    if(activeCState->internalState == STATE_RUNNING)
+    {
+	if(state_inErrorState())
+	{
+	    state_switchToState(STATE_ACTUATOR_ERROR);
+	}
+    }
 }
 
 void state_sendStateHandler(int id, unsigned char *idata, unsigned short size)
@@ -178,11 +193,11 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
 
     state_switchToState(STATE_SENSORS_CONFIGURED);
     
-    state_switchState(1);
     printf("State: Got sensor config switching state to configured \n");
 }
 
 void state_sensorClearError(int id, unsigned char *data, unsigned short size){
+    printf("Got clear Sensor Error \n");
     protocol_ackPacket(id);
     
     encoder_deinitEncoder(lastActiveCState->sensorConfig.internalEncoder);
@@ -198,8 +213,7 @@ void state_sensorClearError(int id, unsigned char *data, unsigned short size){
     
     state_switchToState(STATE_UNCONFIGURED);
     
-    state_switchState(1);
-    printf("Cleared sensor-config and switching state to unconfigured");
+    printf("Cleared sensor-config and switching state to unconfigured \n");
 }
 
 void state_actuatorClearError(int id, unsigned char *data, unsigned short size){
@@ -210,7 +224,6 @@ void state_actuatorClearError(int id, unsigned char *data, unsigned short size){
     
     state_switchToState(STATE_SENSORS_CONFIGURED);
     
-    state_switchState(1);
     printf("Cleared actuator-config and switsching state to unconfigured");
 }
 
@@ -240,7 +253,6 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     aState->pwmStepPerMillisecond = aCfg->pwmStepPerMs;
 
     state_switchToState(STATE_ACTUATOR_CONFIGURED);
-    state_switchState(1);
 }
 
 void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size)
@@ -266,7 +278,6 @@ void state_setActiveControllerHandler(int id, unsigned char *data, unsigned shor
     lastActiveCState->controllMode = packet->controllerId;
     
     state_switchToState(STATE_CONTROLLER_CONFIGURED);
-    state_switchState(0);
 }
 
 void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size)
@@ -314,7 +325,6 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 		    case RECEIVER_ID_H_BRIDGE_1:
 		    case RECEIVER_ID_H_BRIDGE_5:
 			value = tdata->board1Value;
-			printf("Got tv %hi\n", value);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
 		    case RECEIVER_ID_H_BRIDGE_6:
@@ -340,6 +350,8 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 	state_switchToState(STATE_RUNNING);
     
     state_switchState(0);
+    
+    
 }
 
 void state_initStruct(volatile struct GlobalState *cs)

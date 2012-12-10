@@ -55,7 +55,7 @@ extern volatile struct GlobalState *lastActiveCState;
 void state_initStruct(volatile struct GlobalState *cs);
 void state_printDebug(const volatile struct GlobalState *cs);
 
-void state_switchToErrorState();
+void state_checkErrors();
 
 void state_printErrorState();
 uint8_t state_inErrorState();
