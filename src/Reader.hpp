@@ -80,12 +80,6 @@ public:
     
     void setCallbacks(CallbackInterface *cbs);
 
-    /**
-     * Returns weather the device is in a state where
-     * target values might be written to the controllers.
-     * */
-    bool isWritable();
-    
     void processMsg(const Packet &msg);
     
     /**

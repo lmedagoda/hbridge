@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 // 	std::cout << "SQ" << std::endl;
 	proto->processSendQueues();	
 
-	if(reader->isWritable())
+	if(writer->isActuatorConfigured())
 	{
 	    writer->setActiveController(&pwmCtrl);
 	    writer->setTargetValue(pwm);

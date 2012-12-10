@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 // 	std::cout << "SQ" << std::endl;
 	proto->processSendQueues();	
 
-	if(reader->isWritable())
+	if(writer->isActuatorConfigured())
 	{
 	    writer->setActiveController(&speedCtrl);
 	    writer->setTargetValue(10.0);

@@ -15,11 +15,6 @@ void Reader::setCallbacks(Reader::CallbackInterface* cbs)
     callbacks = cbs;
 }
 
-bool Reader::isWritable()
-{
-    return configured;
-}
-
 void Reader::startConfigure()
 {
 //     //configure all controllers
