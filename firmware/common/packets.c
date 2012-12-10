@@ -49,6 +49,10 @@ const char *getPacketName(uint16_t packetId)
 	    return "PACKET_ID_SET_ACTIVE_CONTROLLER";
 	    break;
 	
+	case PACKET_ID_REQUEST_STATE:
+	    return "PACKET_ID_REQUEST_STATE";
+	    break;
+	    
 	case PACKED_ID_REQUEST_VERSION: 
 	    return "PACKED_ID_REQUEST_VERSION";
 	    break;

@@ -21,6 +21,7 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 void state_sensorClearError(int id, unsigned char *data, unsigned short size);
 void state_actuatorClearError(int id, unsigned char *data, unsigned short size);
 void state_setUnconfigured(int id, unsigned char *data, unsigned short size);
+void state_sendStateHandler(int id, unsigned char *data, unsigned short size);
 const char *state_getStateString(enum STATES state);
 
 void state_init()
@@ -37,6 +38,7 @@ void state_init()
     protocol_registerHandler(PACKET_ID_SET_VALUE14, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_UNCONFIGURED, state_setUnconfigured);
+    protocol_registerHandler(PACKET_ID_REQUEST_STATE, state_sendStateHandler);
 }
 
 void state_switchState(uint8_t forceSynchronisation)
@@ -144,6 +146,14 @@ void state_switchToErrorState()
     
 }
 
+void state_sendStateHandler(int id, unsigned char *idata, unsigned short size)
+{
+    protocol_ackPacket(id);
+    struct announceStateData data;
+    data.curState = activeCState->internalState;
+    
+    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));    
+}
 
 void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
 {
