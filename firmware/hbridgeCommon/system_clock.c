@@ -1,5 +1,6 @@
 #include "stm32f10x.h"
 #include "stm32f10x_rcc.h"
+#include "lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_rcc.h"
 
 uint32_t SystemCoreClock;
 
@@ -42,6 +43,11 @@ void SystemInit (void)
     RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
     while(RCC_GetSYSCLKSource() != 0x08)
 	;
+    
+    RCC_ClocksTypeDef RCC_ClocksStatus;
+    RCC_GetClocksFreq(&RCC_ClocksStatus);
+    
+    SystemCoreClock = RCC_ClocksStatus.SYSCLK_Frequency;
 }
 
 
