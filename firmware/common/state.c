@@ -5,6 +5,7 @@
 #include "controllers.h"
 #include "encoder.h"
 #include "printf.h"
+#include "temperature_sensor.h"
 
 volatile struct GlobalState state1;
 volatile struct GlobalState state2;
@@ -22,6 +23,9 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size);
 void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size);
 void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size);
+void state_sensorClearError(int id, unsigned char *data, unsigned short size);
+void state_actuatorClearError(int id, unsigned char *data, unsigned short size);
+void state_setUnconfigured(int id, unsigned char *data, unsigned short size);
 const char *state_getStateString(enum STATES state);
 
 void state_init()
@@ -33,11 +37,14 @@ void state_init()
     inactiveControllerTargetValueData = &controllerTargetValueData2;
 
     protocol_registerHandler(PACKET_ID_SET_SENSOR_CONFIG, state_sensorConfigHandler);
+    protocol_registerHandler(PACKET_ID_CLEAR_SENSOR_ERROR, state_sensorClearError);
     protocol_registerHandler(PACKET_ID_SET_ACTUATOR_CONFIG, state_setActuatorLimitHandler);
+    protocol_registerHandler(PACKET_ID_CLEAR_ACTUATOR_ERROR, state_actuatorClearError);
     protocol_registerHandler(PACKET_ID_SET_ACTIVE_CONTROLLER, state_setActiveControllerHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE14, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
+    protocol_registerHandler(PACKET_ID_SET_UNCONFIGURED, state_setUnconfigured);
 }
 
 void state_switchState(uint8_t forceSynchronisation)
@@ -92,33 +99,34 @@ void state_switchToState(enum STATES nextState)
 	case STATE_ACTUATOR_CONFIGURED:
 	    if(	newState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
-		newState == STATE_SENSOR_ERROR ||
-		newState == STATE_CONTROLLER_CONFIGURED)
+		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_CONTROLLER_CONFIGURED:
 	    if(	newState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
-		newState == STATE_SENSOR_ERROR ||
-		newState == STATE_RUNNING)
+		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_RUNNING)
 		newState = nextState;	    
 	    break;
 	case STATE_RUNNING:
 	    if(	newState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
-		newState == STATE_SENSOR_ERROR ||
-		newState == STATE_CONTROLLER_CONFIGURED)
+		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_ACTUATOR_ERROR:
 	    if(	newState == STATE_ACTUATOR_CONFIGURED ||
 		nextState == STATE_UNCONFIGURED ||
-		newState == STATE_SENSOR_ERROR)
+		nextState == STATE_SENSOR_ERROR ||
+        nextState == STATE_SENSORS_CONFIGURED)
 		newState = nextState;
 	    break;
 	case STATE_SENSOR_ERROR:
 	    if(	nextState == STATE_UNCONFIGURED ||
-		newState == STATE_SENSORS_CONFIGURED)
+		nextState == STATE_SENSORS_CONFIGURED)
 		newState = nextState;
 
 	    break;
@@ -170,6 +178,38 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     
     state_switchState(1);
     printf("State: Got sensor config switching state to configured \n");
+}
+
+void state_sensorClearError(int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id);
+    
+    encoder_deinitEncoder(lastActiveCState->sensorConfig.internalEncoder);
+    encoder_deinitEncoder(lastActiveCState->sensorConfig.externalEncoder);
+    lastActiveCState->sensorConfig.internalEncoder = NO_ENCODER;
+    lastActiveCState->sensorConfig.externalEncoder = NO_ENCODER;
+    
+    struct TemperatureInterface* sTemp = temperatureSensors_getSensorHandle(POSITION_MOTOR);
+    sTemp->sensorDeInit();
+    
+    sTemp = temperatureSensors_getSensorHandle(POSITION_PCB);
+    sTemp->sensorDeInit();
+    
+    state_switchToState(STATE_UNCONFIGURED);
+    
+    state_switchState(1);
+    printf("Cleared sensor-config and switching state to unconfigured");
+}
+
+void state_actuatorClearError(int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id);
+    
+    struct ActuatorConfiguration aCfg;
+    lastActiveCState->actuatorConfig = aCfg;
+    
+    state_switchToState(STATE_SENSORS_CONFIGURED);
+    
+    state_switchState(1);
+    printf("Cleared actuator-config and switsching state to unconfigured");
 }
 
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size)
@@ -427,3 +467,25 @@ void state_clearErrors() {
 }
 
 
+void state_setUnconfigured(int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id);
+    
+    //Needs to be done before, to ensure that nobody reads the config
+    state_switchToState(STATE_UNCONFIGURED);
+    
+    state_switchState(1);
+    
+    encoder_deinitEncoder(lastActiveCState->sensorConfig.internalEncoder);
+    encoder_deinitEncoder(lastActiveCState->sensorConfig.externalEncoder);
+    lastActiveCState->sensorConfig.internalEncoder = NO_ENCODER;
+    lastActiveCState->sensorConfig.externalEncoder = NO_ENCODER;
+    
+    struct TemperatureInterface* sTemp = temperatureSensors_getSensorHandle(POSITION_MOTOR);
+    sTemp->sensorDeInit();
+    
+    sTemp = temperatureSensors_getSensorHandle(POSITION_PCB);
+    sTemp->sensorDeInit();
+    
+    
+    printf("On Userwish: Cleared sensor-config and switching state to unconfigured");
+}
