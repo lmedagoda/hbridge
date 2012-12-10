@@ -56,7 +56,7 @@ enum hostIDs getOwnHostId() {
 	//blink and do nothing
 	assert_failed((uint8_t *)__FILE__, __LINE__);
     }    
-    return (id << 5);
+    return id;
 }
 
 void GPIO_Configuration(void);
@@ -71,18 +71,17 @@ void GPIO_Configuration(void);
 *******************************************************************************/
 int main(void)
 {
-    //setup assert correctly
-    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
-
+    GPIO_Configuration();
     //Enable peripheral clock for GPIO
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);
 
-    GPIO_Configuration();
+    //setup assert correctly
+    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
 
-    USART3_Init(DISABLE);
+    USART3_Init(USART_POLL);
 
-    printf_setSendFunction(USART1_SendData);
+    printf_setSendFunction(USART3_SendData);
     
     //note, this mesage can only be send AFTER usart configuration
     printf("Entered main loop\n");
@@ -94,26 +93,30 @@ int main(void)
     //read address, turn on peripherals etc.
     baseInit();
 
-    printf("Setting up I2C\n");
-    //setup I2C bus for lm73cimk
-    setupI2Cx(0xA0, 100000, I2C1, DISABLE);
-    
-
-    printf("LM73 init\n");
-    //init temperature sensor
-    lm73cimk_init(I2C1);
-    
-    //address of sensor one 148 // 1001110 + r/w bit
-    printf("LM73 Sensor1 setup\n");
-    lm73cimk_setup_sensor(LM73_SENSOR1, 148);
-    printf("LM73 Sensor2 setup\n");
-    lm73cimk_setup_sensor(LM73_SENSOR2, 144);
+//     printf("Setting up I2C\n");
+//     //setup I2C bus for lm73cimk
+//     setupI2Cx(0xA0, 100000, I2C1, DISABLE);
+//     
+// 
+//     printf("LM73 init\n");
+//     //init temperature sensor
+//     lm73cimk_init(I2C1);
+//     
+//     //address of sensor one 148 // 1001110 + r/w bit
+//     printf("LM73 Sensor1 setup\n");
+//     lm73cimk_setup_sensor(LM73_SENSOR1, 148);
+//     printf("LM73 Sensor2 setup\n");
+//     lm73cimk_setup_sensor(LM73_SENSOR2, 144);
 
     
     printf("Peripheral configuration finished\n");
 
+    enum hostIDs id = getOwnHostId();
+    protocol_setOwnHostId(id);
+    
     CAN_Configuration(CAN_REMAP1);
-    CAN_ConfigureFilters(getOwnHostId());
+    CAN_ConfigureFilters(id);
+    
     
     can_protocolInit();
 
@@ -141,6 +144,8 @@ int main(void)
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
 
+    platformInit();
+    
     run();
     
     while(1)
