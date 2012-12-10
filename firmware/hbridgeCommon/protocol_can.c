@@ -22,7 +22,7 @@ signed int can_recvPacket(uint16_t *receiverId, uint16_t *packetId, unsigned cha
     
     int ret = msg->DLC;
 
-    *receiverId = msg->StdId & ~0x0F;
+    *receiverId = (msg->StdId & ~0x0F) >> 4;
     
     *packetId = msg->StdId & 0x0F;
     
