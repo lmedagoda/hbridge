@@ -24,7 +24,7 @@ bool CanBusInterface::readPacket(hbridge::Packet& packet)
     memcpy(packet.data.data(), msg.data, msg.size);
     
     packet.packetId = msg.can_id & 0x0F;
-    packet.senderId = (msg.can_id & 0xF0) >> 4;
+    packet.senderId = ((msg.can_id & 0xF0) >> 4) - 1;
     //not implemented yet
     packet.receiverId = 0;
     
@@ -43,12 +43,14 @@ bool CanBusInterface::sendPacket(const hbridge::Packet& packet)
  
     std::cout << "Is Brodcast " << packet.broadcastMsg << std::endl;
     
+    int revId = ((packet.receiverId + 1)<< 4);
+    
+    
     msg.can_id = 0;
     msg.can_id |= packet.packetId;
     if(!packet.broadcastMsg)
-	msg.can_id |= (packet.receiverId << 4);
+	msg.can_id |= revId;
 	
-    std::cout << "Recv " << packet.receiverId  << " shifted " << (packet.receiverId << 4) << std::endl;
     
     return sendCanMsg(msg);
 }
