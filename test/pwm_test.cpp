@@ -97,8 +97,22 @@ int main(int argc, char *argv[]) {
     
     Reader *reader = handle->getReader();
     Writer *writer = handle->getWriter();
+
+    ActuatorConfiguration &accConf(writer->getActuatorConfig());
+    accConf.maxPWM = 200;
+    accConf.pwmStepPerMs = 200;
+    accConf.openCircuit = 1;
+    accConf.maxCurrent = 2000;
+    accConf.maxCurrentCount = 100;
+    accConf.maxBoardTemp = 80;
+    accConf.maxBoardTempCount = 200;
+    accConf.maxMotorTemp = 60;
+    accConf.maxMotorTempCount = 200;
+    accConf.controllerInputEncoder = INTERNAL;
+    accConf.timeout = 0;
     
-    bool configured = false;
+    configured = false;
+    error = 0;
     
     reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf);
@@ -118,6 +132,22 @@ int main(int argc, char *argv[]) {
 	usleep(1000);
     }
     
+    cnt = 0;
+    
+    std::cout << "Sensors Configured "<< std::endl;
+    
+    writer->setActiveController(&pwmCtrl);
+
+    writer->startConfigure();
+    
+    while(!writer->isActuatorConfigured())
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	usleep(10000);
+    }
+    std::cout << "Actuator Configured "<< std::endl;
+    
     while(!error)
     {    
 	proto->processIncommingPackages();
@@ -126,7 +156,6 @@ int main(int argc, char *argv[]) {
 
 	if(writer->isActuatorConfigured())
 	{
-	    writer->setActiveController(&pwmCtrl);
 	    writer->setTargetValue(pwm);
 // 	    std::cout << "SM" << std::endl;
 	}
