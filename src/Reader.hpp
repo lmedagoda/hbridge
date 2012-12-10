@@ -15,7 +15,6 @@ class HbridgeHandle;
 class Reader
 {
 friend class Protocol;
-friend class Controller;
 friend class HbridgeHandle;
 public:
     class CallbackInterface

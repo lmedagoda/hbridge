@@ -93,19 +93,21 @@ void Protocol::processIncommingPackages()
 	if(!isInProtocol(msg))
 	    continue;
 
-	std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId);
+	if(msg.packetId != PACKET_ID_STATUS)
+	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << std::endl;
 
 	//check if message is a broadcast
 	if(msg.broadcastMsg) {
-	    std::cout << " BROADCAST " << std::endl;
 	    //broadcast, inform all readers
 	    for(std::vector<HbridgeHandle *>::iterator it = handles.begin(); it != handles.end(); it++)
 	    {
 		if(*it)
+		{
+		    (*it)->writer->processMsg(msg);
 		    (*it)->reader->processMsg(msg);
+		}
 	    }
 	} else {
-	    std::cout << " for receiver " << msg.receiverId << std::endl;
 	    //automatic ack handling
 	    if(msg.packetId == firmware::PACKET_ID_ACK)
 	    {
@@ -136,6 +138,7 @@ void Protocol::processIncommingPackages()
 	    }
 	    
 	    handles[msg.senderId]->reader->processMsg(msg);
+	    handles[msg.senderId]->writer->processMsg(msg);
 	}
     }
 }

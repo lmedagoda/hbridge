@@ -10,7 +10,7 @@ struct ControllerTargetData
 {
     uint8_t data[MAX_CONTROLLER_DATA_SIZE];
     uint8_t dataSize;
-};
+} __attribute__((__may_alias__));
 
 struct ControllerData {
     struct pid_data pidData;

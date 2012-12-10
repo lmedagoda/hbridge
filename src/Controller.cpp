@@ -2,8 +2,8 @@
 #include "Protocol.hpp"
 #include <boost/bind.hpp>
 #include "../protocol.hpp"
-#include "Reader.hpp"
 #include <limits>
+#include "Writer.hpp"
 
 namespace hbridge 
 {
@@ -21,7 +21,7 @@ void Controller::sendPacket(const hbridge::Packet& msg, bool isAcked)
 void Controller::packetSendError(const hbridge::Packet& msg)
 {
     printSendError(msg.packetId);
-    handle->getReader()->callbacks->configurationError();
+    handle->getWriter()->callbacks->configurationError();
 }
 
 

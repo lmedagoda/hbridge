@@ -13,7 +13,9 @@ signed int firmwareSendPacket(uint16_t senderId, uint16_t packetId, const unsign
 {
     Packet msg;
     msg.senderId = senderId;
+    msg.receiverId = 0;
     msg.packetId = packetId;
+    msg.broadcastMsg = false;
     msg.data.resize(size);
     
     for(int i = 0; i < size; i++)

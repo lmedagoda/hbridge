@@ -19,15 +19,21 @@ namespace hbridge
         EXTERNAL = 2
     };
     
-    struct Configuration
+    struct SensorConfiguration
+    {
+        unsigned char externalTempSensor;
+	/**
+	 * The frequency in hz in which the firmware should
+	 * report the sensor status. Not, only 'round
+	 * /integer' frequencies are allowed.
+	 * */
+	int statusFrequency;
+    };
+    
+    struct ActuatorConfiguration
     {
 	unsigned short maxPWM;
-	unsigned short maxSpeed;
         unsigned char openCircuit;
-        unsigned char activeFieldCollapse;
-        unsigned char externalTempSensor;
-        unsigned char cascadedPositionController;
-        unsigned char pidDebugActive;
         unsigned char maxMotorTemp;
         unsigned char maxMotorTempCount;
         unsigned char maxBoardTemp;
@@ -40,9 +46,8 @@ namespace hbridge
         /**
          * Initialise all fields of the configuration structure with 0
          */
-        Configuration() :
-            openCircuit(0), activeFieldCollapse(0), externalTempSensor(0),
-            cascadedPositionController(0), pidDebugActive(0), maxMotorTemp(0),
+        ActuatorConfiguration() :
+            openCircuit(0), maxMotorTemp(0),
             maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
             timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0), controllerInputEncoder(INTERNAL)
         {}
@@ -245,7 +250,8 @@ namespace hbridge
     };
 
     struct MotorConfiguration {
-        Configuration base_config;
+	SensorConfiguration sensorConfig;
+	ActuatorConfiguration actuatorConfig;
 	EncoderConfiguration encoder_config_intern;
 	EncoderConfiguration encoder_config_extern;
         base::actuators::DRIVE_MODE    mode;

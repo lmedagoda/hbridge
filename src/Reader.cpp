@@ -54,7 +54,7 @@ void Reader::setConfiguration(const hbridge::MotorConfiguration& config)
 
 void Reader::sendConfigureMsg()
 {
-    Configuration &cfg(configuration.base_config);
+    SensorConfiguration &cfg(configuration.sensorConfig);
     Packet msg;
     msg.packetId = firmware::PACKET_ID_SET_SENSOR_CONFIG;
     msg.data.resize(sizeof(firmware::sensorConfig));
@@ -70,53 +70,13 @@ void Reader::sendConfigureMsg()
     cfg1->encoder2Config.ticksPerTurn = configuration.encoder_config_extern.ticksPerTurnDivided;
     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
 
-// //     struct sensorConfig 
-// // {
-// //     unsigned externalTempSensor :1;
-// //     uint16_t statusEveryMs;
-// //     struct encoderConfiguration encoder1Config;
-// //     struct encoderConfiguration encoder2Config; 
-// // } __attribute__ ((packed)) __attribute__((__may_alias__));
-// //     
-//     
-//     firmware::configureData *cfg1 =
-// 	reinterpret_cast<firmware::configureData *>(msg.data.data());
-//     cfg1->openCircuit                = cfg.openCircuit;
-//     cfg1->externalTempSensor         = cfg.externalTempSensor;
-//     cfg1->unused                     = 0;
-//     cfg1->maxMotorTemp               = cfg.maxMotorTemp;
-//     cfg1->maxMotorTempCount          = cfg.maxMotorTempCount;
-//     cfg1->maxBoardTemp               = cfg.maxBoardTemp;
-//     cfg1->maxBoardTempCount          = cfg.maxBoardTempCount;
-//     cfg1->timeout                    = cfg.timeout;
-//     switch(cfg.controllerInputEncoder)
-//     {
-// 	case hbridge::INTERNAL:
-// 	    cfg1->controllerInputEncoder = firmware::INTERNAL;
-// 	    break;
-// 	case hbridge::EXTERNAL:
-// 	    cfg1->controllerInputEncoder = firmware::EXTERNAL;
-// 	    break;
-//     }
-//     
-//     cfg1->maxCurrent                 = cfg.maxCurrent;
-//     cfg1->maxCurrentCount            = cfg.maxCurrentCount;
-//     cfg1->pwmStepPerMs               = cfg.pwmStepPerMs;
-//     cfg1->encoder1Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type);
-//     cfg1->encoder1Config.ticksPerTurn = configuration.encoder_config_intern.ticksPerTurnDivided;
-//     cfg1->encoder1Config.tickDivider = configuration.encoder_config_intern.tickDivider;
-//     cfg1->encoder2Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_extern.type);
-//     cfg1->encoder2Config.ticksPerTurn = configuration.encoder_config_extern.ticksPerTurnDivided;
-//     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
-// 
-    
     handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 int Reader::getCurrentTickDivider() const
 {
     int tickDivider = 1;
-    switch(configuration.base_config.controllerInputEncoder)
+    switch(configuration.actuatorConfig.controllerInputEncoder)
     {
 	case INTERNAL:
 	    tickDivider = encoderIntern.getEncoderConfig().tickDivider;

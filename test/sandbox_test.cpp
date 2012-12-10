@@ -105,8 +105,24 @@ int main(int argc, char **argv)
 	    cnt = 0;
 	}
 	cnt++;
-	usleep(1000);
+	usleep(10000);
     }
+    
+    cnt = 0;
+    
+    std::cout << "Sensors Configured "<< std::endl;
+    
+    writer->setActiveController(&speedCtrl);
+
+    writer->startConfigure();
+    
+    while(!writer->isActuatorConfigured())
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	usleep(10000);
+    }
+    std::cout << "Actuator Configured "<< std::endl;
     
     while(!error)
     {    
@@ -114,13 +130,15 @@ int main(int argc, char **argv)
 // 	std::cout << "SQ" << std::endl;
 	proto->processSendQueues();	
 
-	if(reader->isWritable())
-	{
-	    writer->setActiveController(&speedCtrl);
+	if(!writer->hasError())
 	    writer->setTargetValue(0.20);
-// 	    std::cout << "SM" << std::endl;
-	}
 	proto->sendSharedMessages();
-	usleep(10000);
+	usleep(10000 * 100);
+	cnt++;
+	
+	if(cnt > 20)
+	    break;
     }
+    
+    return 0;
 }
