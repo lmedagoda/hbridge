@@ -38,7 +38,7 @@ void protocol_registerHandler(int id, void (*handler)(int id, unsigned char *dat
  * Sends out the given data using the given packet id.
  * @return Will return 0 on sucess and 1 on error
  * */
-uint8_t protocol_sendData(int id, unsigned char *data, unsigned short size);
+uint8_t protocol_sendData(int id, const unsigned char* data, short unsigned int size);
 
 /**
  * Internal function. This function processes so calles low priority

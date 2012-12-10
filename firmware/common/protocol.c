@@ -111,7 +111,7 @@ void protocol_ackPacket(int id)
     sendPacket(ownHostId, PACKET_ID_ACK, (uint8_t *) &data, sizeof(struct ackData));
 }
 
-uint8_t protocol_sendData(int id, unsigned char* data, short unsigned int size)
+uint8_t protocol_sendData(int id, const unsigned char* data, short unsigned int size)
 {
     if(id > PACKET_LOW_PRIORITY_DATA)
     {
