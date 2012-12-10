@@ -57,7 +57,6 @@ void HbridgeHandle::registerController(hbridge::Controller* ctrl)
 
 Packet& Protocol::getSharedMsg(unsigned int packetId)
 {
-    std::cout << "Protocol : Requested shared message of type " << getPacketName(packetId) << std::endl;
     if(sharedMessages.size() < packetId + 1)
     {
 	sharedMessages.resize(packetId + 1);

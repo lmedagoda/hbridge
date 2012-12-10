@@ -38,13 +38,9 @@ bool CanBusInterface::sendPacket(const hbridge::Packet& packet)
     canbus::Message msg;
     
     msg.size = packet.data.size();
-    std::cout << "MSG Size" << (int)msg.size <<std::endl;
     memcpy(msg.data, packet.data.data(), packet.data.size());
  
-    std::cout << "Is Brodcast " << packet.broadcastMsg << std::endl;
-    
-    int revId = ((packet.receiverId + 1)<< 4);
-    
+    int revId = ((packet.receiverId + 1)<< 4);    
     
     msg.can_id = 0;
     msg.can_id |= packet.packetId;
