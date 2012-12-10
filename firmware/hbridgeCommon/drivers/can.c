@@ -96,7 +96,7 @@ void CAN_Configuration(enum CAN_REMAP remap)
     CAN_InitStructure.CAN_Prescaler=4;
     if(CAN_Init(CAN1, &CAN_InitStructure) == CANINITFAILED) {
 	printf("Can init failed \n");
-        assert_param(0);
+	assert_failed((uint8_t *)__FILE__, __LINE__);
     }
 
     NVIC_InitTypeDef NVIC_InitStructure;
@@ -147,37 +147,51 @@ unsigned char CAN_SendMessage(CanTxMsg* TxMessage)
 
 void CAN_ConfigureFilters(enum hostIDs boardNr) {
   CAN_FilterInitTypeDef  CAN_FilterInitStructure;
-
-  //Emergency stop, setMode and setValue are matched to FIFO0
-  CAN_FilterInitStructure.CAN_FilterNumber=0;
-  CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
-  CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
-  CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
-  if(boardNr == RECEIVER_ID_H_BRIDGE_1 || boardNr == RECEIVER_ID_H_BRIDGE_2 || boardNr == RECEIVER_ID_H_BRIDGE_3 || boardNr == RECEIVER_ID_H_BRIDGE_4) {
-    CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE14<<5;
-    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=PACKET_LOW_PRIORITY_DATA<<5;
-  } else {
-    CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE58<<5;
-    CAN_FilterInitStructure.CAN_FilterMaskIdHigh=0;      
-  }
-  CAN_FilterInitStructure.CAN_FilterMaskIdLow=0;
-  CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;
-  CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
+  CAN_FilterInitStructure.CAN_FilterNumber = 0;
+  CAN_FilterInitStructure.CAN_FilterMode = CAN_FilterMode_IdMask;
+  CAN_FilterInitStructure.CAN_FilterScale = CAN_FilterScale_32bit;
+  CAN_FilterInitStructure.CAN_FilterIdHigh = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterIdLow = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdHigh = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterMaskIdLow = 0x0000;
+  CAN_FilterInitStructure.CAN_FilterFIFOAssignment = 0;
+  CAN_FilterInitStructure.CAN_FilterActivation = ENABLE;
   CAN_FilterInit(&CAN_FilterInitStructure);
 
-  //configure, configure 2 and set pis values matched to FIFO1
-  CAN_FilterInitStructure.CAN_FilterNumber=1;
-  CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdMask;
-  CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
-  //let pass every message, that matches the boardNr
-  CAN_FilterInitStructure.CAN_FilterIdHigh=(boardNr)<<5;
-  CAN_FilterInitStructure.CAN_FilterIdLow=0;
-  //0x1E0 is the mask that matches all RECEIVER_IDs
-  CAN_FilterInitStructure.CAN_FilterMaskIdHigh= (0x1E0) << 5;
-  CAN_FilterInitStructure.CAN_FilterMaskIdLow=0xFF;
-  CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO1;
-  CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
+  CAN_FilterInitStructure.CAN_FilterNumber = 1;
   CAN_FilterInit(&CAN_FilterInitStructure);
+  
+  
+//   //Emergency stop, setMode and setValue are matched to FIFO0
+//   CAN_FilterInitStructure.CAN_FilterNumber=0;
+//   CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdList;
+//   CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
+//   CAN_FilterInitStructure.CAN_FilterIdHigh=PACKET_ID_EMERGENCY_STOP<<5;
+//   if(boardNr == RECEIVER_ID_H_BRIDGE_1 || boardNr == RECEIVER_ID_H_BRIDGE_2 || boardNr == RECEIVER_ID_H_BRIDGE_3 || boardNr == RECEIVER_ID_H_BRIDGE_4) {
+//     CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE14<<5;
+//     CAN_FilterInitStructure.CAN_FilterMaskIdHigh=(PACKET_LOW_PRIORITY_DATA | (boardNr<<4))<<5;
+//   } else {
+//     CAN_FilterInitStructure.CAN_FilterIdLow=PACKET_ID_SET_VALUE58<<5;
+//     CAN_FilterInitStructure.CAN_FilterMaskIdHigh=0;      
+//   }
+//   CAN_FilterInitStructure.CAN_FilterMaskIdLow=0;
+//   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO0;
+//   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
+//   CAN_FilterInit(&CAN_FilterInitStructure);
+// 
+//   //configure, configure 2 and set pis values matched to FIFO1
+//   CAN_FilterInitStructure.CAN_FilterNumber=1;
+//   CAN_FilterInitStructure.CAN_FilterMode=CAN_FilterMode_IdMask;
+//   CAN_FilterInitStructure.CAN_FilterScale=CAN_FilterScale_16bit;
+//   //let pass every message, that matches the boardNr
+//   CAN_FilterInitStructure.CAN_FilterIdHigh=(boardNr)<<5;
+//   CAN_FilterInitStructure.CAN_FilterIdLow=0;
+//   //0x1E0 is the mask that matches all RECEIVER_IDs
+//   CAN_FilterInitStructure.CAN_FilterMaskIdHigh= (0x1E0) << 4;
+//   CAN_FilterInitStructure.CAN_FilterMaskIdLow=0xFF;
+//   CAN_FilterInitStructure.CAN_FilterFIFOAssignment=CAN_FIFO1;
+//   CAN_FilterInitStructure.CAN_FilterActivation=ENABLE;
+//   CAN_FilterInit(&CAN_FilterInitStructure);
 }
 
 void USB_LP_CAN1_RX0_IRQHandler(void)
