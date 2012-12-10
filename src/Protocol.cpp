@@ -313,7 +313,7 @@ void LowPriorityProtocol::sendPackage(const Packet& msg)
 	lp->sequenceNumber = i;
 	lp->type = firmware::TYPE_DATA;
 // 	std::cout << "LowPrio: Sending Data " << i << std::endl;
-	for(int j = 0; j < dataPerPkg; j++)
+	for(int j = 0; j < toCopy; j++)
 	{
 	    dataPkg.data[sizeof(firmware::LowPrioPacket) + j] = msg.data[dataCnt];	
 	    dataCnt++;
