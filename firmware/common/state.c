@@ -14,11 +14,6 @@ volatile struct GlobalState *lastActiveCState = &state2;
 
 volatile struct ErrorState state_errorState;
 
-volatile struct ControllerTargetData controllerTargetValueData1;
-volatile struct ControllerTargetData controllerTargetValueData2;
-volatile struct ControllerTargetData *activeControllerTargetValueData;
-volatile struct ControllerTargetData *inactiveControllerTargetValueData;
-
 void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size);
 void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size);
 void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size);
@@ -33,9 +28,6 @@ void state_init()
     state_initStruct(&state1);
     state_initStruct(&state2);
     
-    activeControllerTargetValueData = &controllerTargetValueData1;
-    inactiveControllerTargetValueData = &controllerTargetValueData2;
-
     protocol_registerHandler(PACKET_ID_SET_SENSOR_CONFIG, state_sensorConfigHandler);
     protocol_registerHandler(PACKET_ID_CLEAR_SENSOR_ERROR, state_sensorClearError);
     protocol_registerHandler(PACKET_ID_SET_ACTUATOR_CONFIG, state_setActuatorLimitHandler);
@@ -298,9 +290,9 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 	    int i;
 	    for(i = 0; i < size; i++)
 	    {
-		inactiveControllerTargetValueData->data[i] = data[i];
+		lastActiveCState->targetData.data[i] = data[i];
 	    }
-	    inactiveControllerTargetValueData->dataSize = size;
+	    lastActiveCState->targetData.dataSize = size;
 	    break;
 	}
 	case PACKET_ID_SET_VALUE14:
@@ -312,6 +304,7 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 		    case RECEIVER_ID_H_BRIDGE_1:
 		    case RECEIVER_ID_H_BRIDGE_5:
 			value = tdata->board1Value;
+			printf("Got tv %hi\n", value);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
 		    case RECEIVER_ID_H_BRIDGE_6:
@@ -326,22 +319,16 @@ void state_setTargetValueHandler(int id, unsigned char *data, unsigned short siz
 			value = tdata->board4Value;
 			break;
 		}
-	    uint16_t *value_p = (uint16_t *) inactiveControllerTargetValueData->data;
+	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
 	    *value_p = value;
-	    inactiveControllerTargetValueData->dataSize = sizeof(uint16_t);
+	    lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 	}
 	break;
     }
     
-    volatile struct ControllerTargetData *tmp = activeControllerTargetValueData;
-    //atomar switch of data structure
-    activeControllerTargetValueData = inactiveControllerTargetValueData;
-    inactiveControllerTargetValueData = tmp;
-    //copy old values
-    *inactiveControllerTargetValueData = *activeControllerTargetValueData;
-    
     if(activeCState->internalState == STATE_CONTROLLER_CONFIGURED)
 	state_switchToState(STATE_RUNNING);
+    
     state_switchState(0);
 }
 
