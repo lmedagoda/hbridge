@@ -82,7 +82,7 @@ uint32_t currentMeasurement_getValue() {
     rawCurrentValueH2 = rawCurrentValueH2 / (USED_REGULAR_ADC_CHANNELS / 2);
 
     //  set thresholds with respect to adcValueCount
-    uint32_t threshold = AVERAGE_THRESHOLD * adcValueCount;
+//     uint32_t threshold = AVERAGE_THRESHOLD * adcValueCount;
 //     uint32_t thresholdMinH1 = rawCurrentValueH1 - threshold;
 //     uint32_t thresholdMaxH1 = rawCurrentValueH1 + threshold;
 //     uint32_t thresholdMinH2 = rawCurrentValueH2 - threshold;
@@ -113,16 +113,16 @@ uint32_t currentMeasurement_getValue() {
     else
 	currentValueH2 = 0;
 
-    uint32_t curVal[12];
-    
-    for(i = 0; i< 12; i++)
-    {
-	uint32_t tmp = currentValues[i];
-	tmp = tmp * 100 / 17;
-	tmp = tmp * 3300 / 4096;
-	tmp = tmp / adcValueCount;
-	curVal[i] = tmp;
-    }
+//     uint32_t curVal[12];
+//     
+//     for(i = 0; i< 12; i++)
+//     {
+// 	uint32_t tmp = currentValues[i];
+// 	tmp = tmp * 100 / 17;
+// 	tmp = tmp * 3300 / 4096;
+// 	tmp = tmp / adcValueCount;
+// 	curVal[i] = tmp;
+//     }
     
 
     currentValue = currentValueH1 + currentValueH2;
