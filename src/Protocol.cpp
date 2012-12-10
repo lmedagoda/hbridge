@@ -57,6 +57,7 @@ void HbridgeHandle::registerController(hbridge::Controller* ctrl)
 
 Packet& Protocol::getSharedMsg(unsigned int packetId)
 {
+//     std::cout << "Protocol : Requested shared message of type " << getPacketName(packetId) << std::endl;
     if(sharedMessages.size() < packetId + 1)
     {
 	sharedMessages.resize(packetId + 1);
@@ -95,6 +96,10 @@ void Protocol::processIncommingPackages()
 	if(!isInProtocol(msg))
 	    continue;
 
+	//ignore messages where we don't have a handle for
+	if(handles.size() <= msg.senderId || !handles[msg.senderId])
+	    continue;
+	
 	if(msg.packetId != PACKET_ID_STATUS)
 	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << std::endl;
 
