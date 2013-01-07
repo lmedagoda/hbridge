@@ -12,7 +12,7 @@ struct SpeedControllerConfig {
 
 struct ControllerData speedControllerData;
 
-void speedControllerProtocolHandler(int id, unsigned char *idata, unsigned short size)
+void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsigned char *idata, unsigned short size)
 {
     switch(id)
     {
@@ -26,7 +26,7 @@ void speedControllerProtocolHandler(int id, unsigned char *idata, unsigned short
 	    break;
 	}
     }
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
 }
 
 uint8_t speedControllerIsConfigured()

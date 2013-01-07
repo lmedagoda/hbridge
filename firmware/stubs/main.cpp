@@ -4,8 +4,8 @@ extern "C" {
 #include "../interfaces/encoder.h"
 }
 
-signed int firmwareSendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size);
-signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize);
+signed int firmwareSendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packetId, const unsigned char *data, const unsigned int size);
+signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize);
 
 void encodersStubInit();
 

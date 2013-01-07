@@ -5,7 +5,7 @@
 #include "drivers/assert.h"
 #include "stm32f10x_conf.h"
 
-signed int can_recvPacket(uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
+signed int can_recvPacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
 {
     CanRxMsg *msg = CAN_GetNextData();
     
@@ -23,6 +23,7 @@ signed int can_recvPacket(uint16_t *receiverId, uint16_t *packetId, unsigned cha
     int ret = msg->DLC;
 
     *receiverId = (msg->StdId & ~0x0F) >> 4;
+    *senderId = 0;
     
     *packetId = msg->StdId & 0x0F;
     
@@ -32,7 +33,7 @@ signed int can_recvPacket(uint16_t *receiverId, uint16_t *packetId, unsigned cha
     return ret;
 }
 
-signed int can_sendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size)
+signed int can_sendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packetId, const unsigned char *data, const unsigned int size)
 {
     //   assert_param(size <= sizeof(struct CanTxMsg.Data));
 

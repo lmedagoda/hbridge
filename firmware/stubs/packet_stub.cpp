@@ -9,11 +9,11 @@ boost::circular_buffer<hbridge::Packet> driverToFirmware(200);
 boost::circular_buffer<hbridge::Packet> firmwareToDriver(200);
 boost::mutex comMutex;
 
-signed int firmwareSendPacket(uint16_t senderId, uint16_t packetId, const unsigned char *data, const unsigned int size)
+signed int firmwareSendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packetId, const unsigned char *data, const unsigned int size)
 {
     Packet msg;
     msg.senderId = senderId;
-    msg.receiverId = 0;
+    msg.receiverId = receiverId;
     msg.packetId = packetId;
     msg.broadcastMsg = false;
     msg.data.resize(size);
@@ -33,7 +33,7 @@ signed int firmwareSendPacket(uint16_t senderId, uint16_t packetId, const unsign
     return size;  
 }
 
-signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
+signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
 {    
     signed int ret = 0; 
     comMutex.lock();
@@ -46,6 +46,7 @@ signed int firmwareReceivePacket(uint16_t *senderId, uint16_t *packetId, unsigne
 // 	std::cout << "Data size " << dataSize << std::endl;;
 	assert(dataSize >= msg.data.size());
 	*senderId = msg.senderId;
+	*receiverId = msg.receiverId;
 	*packetId = msg.packetId;
 	ret = msg.data.size();
 	for(int i = 0; i < ret; i++)

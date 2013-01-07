@@ -37,7 +37,7 @@ void initPositionControllerConfig(volatile struct PositionControllerConfig *conf
     conf->gotPIDValues = 0;
 }
 
-void positionControllerProtocolHandler(int id, unsigned char *idata, unsigned short size)
+void positionControllerProtocolHandler(int senderId, int receiverId, int id, unsigned char *idata, unsigned short size)
 {
     switch(id)
     {
@@ -65,7 +65,7 @@ void positionControllerProtocolHandler(int id, unsigned char *idata, unsigned sh
 	}
     }
     
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
 }
 
 uint8_t positionControllerIsConfigured()
@@ -160,7 +160,7 @@ int32_t positionControllerStep(struct ControllerTargetData *targetData, int32_t 
 	debugData.encoderVal = wheelPos;
 	debugData.posVal = curVal;
 	
-	protocol_sendData(PACKET_ID_POS_CONTROLLER_DEBUG, (uint8_t *) &debugData, sizeof(struct posDebugData));
+	protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_POS_CONTROLLER_DEBUG, (uint8_t *) &debugData, sizeof(struct posDebugData));
     }
 
     return pwmValue;

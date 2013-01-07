@@ -238,7 +238,7 @@ void systick_sendSensorData(uint32_t index)
     sdata.currentValue = currentValue;
     sdata.index = index;
 
-    protocol_sendData(PACKET_ID_STATUS,(unsigned char *) &sdata, sizeof(struct statusData));
+    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_STATUS,(unsigned char *) &sdata, sizeof(struct statusData));
     
     static unsigned int extendedStatusCounter = 0;
     extendedStatusCounter += activeCState->sensorConfig.statusEveryMs;
@@ -258,7 +258,7 @@ void systick_sendSensorData(uint32_t index)
 	    motorTemperature = 0;
 	esdata.motorTemperature = motorTemperature;
 	
-	protocol_sendData(PACKET_ID_EXTENDED_STATUS, (unsigned char *) &esdata, sizeof(struct extendedStatusData));
+	protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_EXTENDED_STATUS, (unsigned char *) &esdata, sizeof(struct extendedStatusData));
     }
 }
 
@@ -356,6 +356,6 @@ void sendErrorMessage(int32_t temperature, int32_t motorTemperature, uint32_t in
     edata.badConfig = es->badConfig;
     edata.encodersNotInitalized = es->encodersNotInitalized;
 
-    protocol_sendData(PACKET_ID_ERROR, (unsigned char *) &edata, sizeof(struct errorData));
+    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_ERROR, (unsigned char *) &edata, sizeof(struct errorData));
 }
 

@@ -14,14 +14,14 @@ volatile struct GlobalState *lastActiveCState = &state2;
 
 volatile struct ErrorState state_errorState;
 
-void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size);
-void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size);
-void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size);
-void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size);
-void state_sensorClearError(int id, unsigned char *data, unsigned short size);
-void state_actuatorClearError(int id, unsigned char *data, unsigned short size);
-void state_setUnconfigured(int id, unsigned char *data, unsigned short size);
-void state_sendStateHandler(int id, unsigned char *data, unsigned short size);
+void state_sensorConfigHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_setActuatorLimitHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_setActiveControllerHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_sensorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_setUnconfigured(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 const char *state_getStateString(enum STATES state);
 
 void state_init()
@@ -144,7 +144,7 @@ void state_switchToState(enum STATES nextState)
     struct announceStateData data;
     data.curState = nextState;
     
-    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));
+    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));
     
     state_switchState(1);
     
@@ -161,18 +161,18 @@ void state_checkErrors()
     }
 }
 
-void state_sendStateHandler(int id, unsigned char *idata, unsigned short size)
+void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size)
 {
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
     struct announceStateData data;
     data.curState = activeCState->internalState;
     
-    protocol_sendData(PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));    
+    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));    
 }
 
-void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
+void state_sensorConfigHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
     
     if(lastActiveCState->internalState != STATE_UNCONFIGURED)
     {
@@ -196,9 +196,9 @@ void state_sensorConfigHandler(int id, unsigned char *data, unsigned short size)
     printf("State: Got sensor config switching state to configured \n");
 }
 
-void state_sensorClearError(int id, unsigned char *data, unsigned short size){
+void state_sensorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     printf("Got clear Sensor Error \n");
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
     
     encoder_deinitEncoder(lastActiveCState->sensorConfig.internalEncoder);
     encoder_deinitEncoder(lastActiveCState->sensorConfig.externalEncoder);
@@ -216,8 +216,8 @@ void state_sensorClearError(int id, unsigned char *data, unsigned short size){
     printf("Cleared sensor-config and switching state to unconfigured \n");
 }
 
-void state_actuatorClearError(int id, unsigned char *data, unsigned short size){
-    protocol_ackPacket(id);
+void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id, senderId);
     
     struct ActuatorConfiguration aCfg;
     lastActiveCState->actuatorConfig = aCfg;
@@ -227,9 +227,9 @@ void state_actuatorClearError(int id, unsigned char *data, unsigned short size){
     printf("Cleared actuator-config and switsching state to unconfigured");
 }
 
-void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short size)
+void state_setActuatorLimitHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {    
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
     
     if(lastActiveCState->internalState != STATE_SENSORS_CONFIGURED)
     {
@@ -255,9 +255,9 @@ void state_setActuatorLimitHandler(int id, unsigned char *data, unsigned short s
     state_switchToState(STATE_ACTUATOR_CONFIGURED);
 }
 
-void state_setActiveControllerHandler(int id, unsigned char *data, unsigned short size)
+void state_setActiveControllerHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
-    protocol_ackPacket(id);
+    protocol_ackPacket(id, senderId);
     
     struct setActiveControllerData *packet = (struct setActiveControllerData *) data;
     
@@ -280,7 +280,7 @@ void state_setActiveControllerHandler(int id, unsigned char *data, unsigned shor
     state_switchToState(STATE_CONTROLLER_CONFIGURED);
 }
 
-void state_setTargetValueHandler(int id, unsigned char *data, unsigned short size)
+void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     if(activeCState->internalState == STATE_SENSOR_ERROR || activeCState->internalState == STATE_ACTUATOR_ERROR)
     {
@@ -476,8 +476,8 @@ void state_clearErrors() {
 }
 
 
-void state_setUnconfigured(int id, unsigned char *data, unsigned short size){
-    protocol_ackPacket(id);
+void state_setUnconfigured(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id, senderId);
     
     //Needs to be done before, to ensure that nobody reads the config
     state_switchToState(STATE_UNCONFIGURED);

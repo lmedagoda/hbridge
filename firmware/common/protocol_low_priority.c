@@ -3,19 +3,22 @@
 #include "packets.h"
 
 #define MAX_PACKET_SIZE 30
+#define NUM_SENDERS 5
+
+struct LowPrioData {
+    uint8_t protocolBuffer[MAX_PACKET_SIZE];
+    struct LowPrioHeader protocolHeaderBuffer;
+    struct LowPrioHeader *curHeader;
+    uint8_t received;
+};
+
+struct LowPrioData lowPrio_data[NUM_SENDERS];
+
+extern protocol_callback_t protocolHandlers[PACKET_ID_TOTAL_COUNT];
 
 
 
-uint8_t protocolBuffer[MAX_PACKET_SIZE];
-struct LowPrioHeader protocolHeaderBuffer;
-struct LowPrioHeader *curHeader;
-uint8_t received = 0;
-
-extern void (*protocolHandlers[PACKET_ID_TOTAL_COUNT])(int id, unsigned char *data, unsigned short size);
-
-
-
-uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
+uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id, uint8_t *data, uint8_t size)
 {
     //send header
     struct LowPrioPacket packet;
@@ -28,7 +31,7 @@ uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
     header->crc = 0;
 
     uint8_t ret = 0;
-    ret |= protocol_sendData(PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, sizeof(struct LowPrioHeader) + 1);
+    ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, sizeof(struct LowPrioHeader) + 1);
     
     if(ret)
 	return ret;
@@ -49,7 +52,7 @@ uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
 	    data[sizeof(struct LowPrioPacket) + j] = data[sent + j];
 	}
 	
-	ret |= protocol_sendData(PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, curPayloadSize + 1);
+	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, curPayloadSize + 1);
 	if(ret)
 	    return ret;
 	sent += curPayloadSize;
@@ -58,7 +61,7 @@ uint8_t protocol_sendLowPrio(uint16_t id, uint8_t *data, uint8_t size)
     return 0;    
 }
 
-void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
+void protocol_processLowPrio(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     
     const uint8_t maxPacketSize = protocol_getMaxPacketSize();
@@ -66,49 +69,51 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
     
     struct LowPrioPacket *packet = (struct LowPrioPacket *) data;
 
+    struct LowPrioData *lpd = lowPrio_data + senderId;
+    
     switch(packet->type)
     {
 	case TYPE_HEADER:
 	{
-	    if(curHeader)
+	    if(lpd->curHeader)
 		printf("Warning, got new header while old packet was not complete\n");
 	    
 	    struct LowPrioHeader *h = (struct LowPrioHeader *) (data + sizeof(struct LowPrioPacket));
-	    protocolHeaderBuffer = *h;
+	    lpd->protocolHeaderBuffer = *h;
 	    
-	    curHeader = &protocolHeaderBuffer;
-	    received = 0;
+	    lpd->curHeader = &(lpd->protocolHeaderBuffer);
+	    lpd->received = 0;
 	    break;
 	}
 	case TYPE_DATA:
 	{
-	    if(!curHeader)
+	    if(!lpd->curHeader)
 	    {
 		printf("Warning got header without an active packet\n");
 		return;
 	    }
 	    
 	    int i;
-	    uint8_t bytesLeft = curHeader->size - received;
+	    uint8_t bytesLeft = lpd->curHeader->size - lpd->received;
 	    uint8_t toCopy = bytesLeft > maxDataSize ? maxDataSize : bytesLeft;
 	    
 	    for(i = 0;i < toCopy;i++)
 	    {
-		protocolBuffer[i+ received] = data[sizeof(struct LowPrioPacket) + i];
+		lpd->protocolBuffer[i+ lpd->received] = data[sizeof(struct LowPrioPacket) + i];
 	    }
 	    
-	    received+=toCopy;
-	    printf("LOW PRIO received %i \n", received);
-	    if(received >= curHeader->size)
+	    lpd->received+=toCopy;
+	    printf("LOW PRIO received %i \n", lpd->received);
+	    if(lpd->received >= lpd->curHeader->size)
 	    {
-		printf("LOW PRIO GOT PACKET %i %i %i\n", curHeader->id, curHeader->size, received);
+		printf("LOW PRIO GOT PACKET %i %i %i\n", lpd->curHeader->id, lpd->curHeader->size, lpd->received);
 		//TODO calculate CRC
 		
 		//packet complete, call handler
-		protocolHandlers[curHeader->id](curHeader->id, protocolBuffer, curHeader->size);
+		protocolHandlers[lpd->curHeader->id](senderId, receiverId, lpd->curHeader->id, lpd->protocolBuffer, lpd->curHeader->size);
 
-		curHeader = 0;
-		received = 0;
+		lpd->curHeader = 0;
+		lpd->received = 0;
 		
 	    }
 	
@@ -122,8 +127,12 @@ void protocol_processLowPrio(int id, unsigned char *data, unsigned short size)
 
 void protocolLowPriority_init()
 {
-    curHeader = 0;
-    received = 0;
+    int i;
+    for(i = 0; i < NUM_SENDERS; i++)
+    {
+	lowPrio_data[i].curHeader = 0;
+	lowPrio_data[i].received = 0;
+    }
     //register the handler for the encapsulated protocoll
     protocol_registerHandler(PACKET_LOW_PRIORITY_DATA, protocol_processLowPrio);
 };
