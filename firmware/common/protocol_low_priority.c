@@ -20,30 +20,34 @@ extern protocol_callback_t protocolHandlers[PACKET_ID_TOTAL_COUNT];
 
 uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id, uint8_t *data, uint8_t size)
 {
-    //send header
-    struct LowPrioPacket packet;
-    packet.type = TYPE_HEADER;
+    uint8_t sendBuffer[protocol_getMaxPacketSize()];
     
-    struct LowPrioHeader *header = (struct LowPrioHeader *) (data + sizeof(struct LowPrioPacket));
+    //send header
+    struct LowPrioPacket *packet = (struct LowPrioPacket *) sendBuffer;
+    packet->type = TYPE_HEADER;
+    packet->sequenceNumber = 0;
+    
+    struct LowPrioHeader *header = (struct LowPrioHeader *) (sendBuffer + sizeof(struct LowPrioPacket));
     header->id = id;
     header->size = size;
     //TODO 
     header->crc = 0;
 
     uint8_t ret = 0;
-    ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, sizeof(struct LowPrioHeader) + 1);
+    ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, sizeof(struct LowPrioHeader) + sizeof(struct LowPrioPacket));
     
     if(ret)
 	return ret;
     
     //send data
-    const int maxPayloadSize = (protocol_getMaxPacketSize() - 1);
-    int numPackets = size / maxPayloadSize + 1;
+    const int maxPayloadSize = (protocol_getMaxPacketSize() - sizeof(struct LowPrioPacket));
+    int numPackets = (size / maxPayloadSize) + 1;
     int i;
     int sent = 0;
     for(i = 0; i < numPackets; i++)
     {
-	packet.type = TYPE_DATA;
+	packet->type = TYPE_DATA;
+	packet->sequenceNumber = i;
 	int bytesLeft = size - sent;
 	int curPayloadSize = bytesLeft > maxPayloadSize ? maxPayloadSize : bytesLeft;
 	int j;
@@ -52,7 +56,7 @@ uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id
 	    data[sizeof(struct LowPrioPacket) + j] = data[sent + j];
 	}
 	
-	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, (uint8_t *) &packet, curPayloadSize + 1);
+	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, curPayloadSize + sizeof(struct LowPrioPacket));
 	if(ret)
 	    return ret;
 	sent += curPayloadSize;
