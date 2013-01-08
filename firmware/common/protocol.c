@@ -1,7 +1,4 @@
 #include "protocol.h"
-#include "state.h"
-#include "encoder.h"
-#include "controllers.h"
 #include "packets.h"
 #include "printf.h"
 #include <stdio.h>
@@ -110,7 +107,7 @@ uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, sho
 {
     if(id > PACKET_LOW_PRIORITY_DATA)
     {
-// 	return protocol_sendLowPrio(id, data, size);
+ 	return protocol_sendLowPrio(ownHostId, receiverId, id, data, size);
     } else
     {
 	if(size > maxPacketSize)
