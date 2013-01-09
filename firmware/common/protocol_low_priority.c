@@ -36,7 +36,7 @@ uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id
     uint8_t ret = 0;
     ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, sizeof(struct LowPrioHeader) + sizeof(struct LowPrioPacket));
     
-    if(ret)
+    if(!ret)
 	return ret;
     //send data
     const int maxPayloadSize = (protocol_getMaxPacketSize() - sizeof(struct LowPrioPacket));
@@ -56,7 +56,7 @@ uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id
 	}
 	
 	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, curPayloadSize + sizeof(struct LowPrioPacket));
-    if(ret)
+    if(!ret)
 	    return ret;
 	sent += curPayloadSize;
     }

@@ -5,7 +5,7 @@
 
 signed int sendfunc(uint16_t senderId, uint16_t receiverId, uint16_t packetId, const unsigned char *data, const unsigned int size){
     protocol_processLowPrio(senderId, receiverId, packetId, data, size);
-    return 0;
+    return 1;
 }
 
 
