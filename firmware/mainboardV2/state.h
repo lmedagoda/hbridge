@@ -1,37 +1,30 @@
-/* 
-    * File:   mainboard_state.h
-    * Author: clausen
-    *
-    * Created on 23. Dezember 2012, 10:24
-*/
-
-#ifndef MAINBOARD_STATE_H
-#define MAINBOARD_STATE_H
+#ifndef STATE_H
+#define STATE_H
 
 #include "packets.h"
 #include "arc_packet.h"
+#include "bool.h"
 
 
 enum COMSTATES {
-    RUNNING,
-    OFFLINE,
-    ZOMBIE
+    COM_RUNNING,
+    COM_OFFLINE,
+    COM_ZOMBIE
 };
 
 
 struct HBRIDGESTATE {
     enum STATES state;
-    enum COMSTATES connection;
+    bool pending;
 };
 
 typedef struct {
-    ARC_SYSTEM_STATE state;
-    struct HBRIDGESTATE hbridge1;
-    struct HBRIDGESTATE hbridge2;
-    struct HBRIDGESTATE hbridge3;
-    struct HBRIDGESTATE hbridge4;
+    ARC_SYSTEM_STATE mainboardstate;
+    struct HBRIDGESTATE hbridges[4];
     enum COMSTATES computer1;
     enum COMSTATES computer2;
 } MainState;
     
-volatile extern struct MainboardState currentState;
+volatile extern MainState currentState;
+volatile extern MainState wantedState;
+#endif

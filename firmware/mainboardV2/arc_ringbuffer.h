@@ -11,7 +11,7 @@ typedef struct {
 
 arc_packet_t* first(RING_BUFFER* buffer);
 arc_packet_t* last(RING_BUFFER* buffer);
-arc_packet_t* pop_front(RING_BUFFER* buffer);
+int pop_front(RING_BUFFER* buffer, arc_packet_t* packet);
 arc_packet_t* pop_back(RING_BUFFER* buffer);
 int push_back(arc_packet_t packet, RING_BUFFER* buffer);
 int push_front(arc_packet_t packet, RING_BUFFER* buffer);

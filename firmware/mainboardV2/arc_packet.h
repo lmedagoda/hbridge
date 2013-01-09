@@ -60,6 +60,9 @@ typedef enum {
     EMERGENCY = 0x04,
     FULL_AUTONOMOUS = 0x05, //LONG timeout for real autonomous mission without any connection to the vehicle
     SURFACE = 0x06, //Surfacing in case of abort, activly diving thruster up
+    ERROR_HBRIDGE = 0x07,
+    ERROR_CAN = 0x08,
+    ERROR_WRONG_STATE = 0x09,
     UNDEFINED = 0xff
 } ARC_SYSTEM_STATE;
 
@@ -88,8 +91,12 @@ typedef struct {
 	uint8_t quer_vorne;
 	uint8_t quer_hinten;
 	uint8_t motor_rechts;
-		uint8_t motor_links;	
+    uint8_t motor_links;	
 } arc_asv_control_packet_t;
+typedef struct {
+    ARC_SYSTEM_STATE current_state;
+    ARC_SYSTEM_STATE wanted_state;
+} arc_status_packet_t;
 
 typedef struct {
     uint8_t sync;

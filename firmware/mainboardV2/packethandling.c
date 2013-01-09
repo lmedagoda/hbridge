@@ -19,7 +19,7 @@ void initPackethandling(){
     registerHandler(canHandler);
     registerHandler(canAckHandler);
 }
-arc_asv_control_packet_t motor_command;
+volatile arc_asv_control_packet_t motor_command;
 bool handlePacket(arc_packet_t* packet){
     int i = 0;
     for (i=0; i < handlers; i++){

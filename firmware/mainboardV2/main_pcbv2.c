@@ -16,6 +16,9 @@
 #include "arc_packet.h"
 #include "../common/hbridge_cmd.h"
 #include "arc_driver.h"
+#include "mainboardstate.h"
+#include "run.h"
+#include "hbridgestate.h"
 #define SYSTEM_ID 2 //ASV
 #define CAN_ID_STATUS 0x101
 #define CAN_ID_MODE_CHANGED 0x102
@@ -25,6 +28,9 @@
 
 extern arc_asv_control_packet_t motor_command;
 volatile int state;
+volatile MainState currentState;
+volatile MainState wantedState;
+
 int lastPacket;
 void GPIO_Configuration(void);
 void stateHandler(int id, unsigned char *data, unsigned short size){
@@ -75,15 +81,6 @@ void stateHandler(int id, unsigned char *data, unsigned short size){
 
 }
 
-void ackHandler(int id, unsigned char *data, unsigned short size){
-    /*struct ackData *ack = (struct ackData*) &data;
-    if(ack->packetId == lastPacket)
-    {
-        lastPacket = 0;
-    }*/
-    //printf("ack");
-}
-
 void statusHandler(int id, unsigned char *data, unsigned short size){
     //printf("status");
     //printf("status");
@@ -122,7 +119,7 @@ int main(void)
 
         
     CAN_Configuration(CAN_REMAP1);
-    CAN_ConfigureFilters(RECEIVER_ID_ALL);   //TODO using better ID -> understand CAN_IDs
+    CAN_ConfigureFilters(-1);   //TODO using better ID -> understand CAN_IDs
      
     can_protocolInit();
     
@@ -130,24 +127,23 @@ int main(void)
     /*state = STATE_SENSOR_ERROR;
     state = STATE_SENSOR_ERROR;*/
     state = STATE_UNCONFIGURED;
-    protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, &stateHandler);
-    protocol_registerHandler(PACKET_ID_ACK, &ackHandler);
-    protocol_registerHandler(PACKET_ID_STATUS, &statusHandler);
-    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &statusHandler);
+    
     //printf("0\n");
  //   usleep(20);
-    int i;
-    for(i = 0; i < 1000; i++){
+   /* int i;
+    for(i = 0; i < 100; i++){
         printf("waiting...\n");
     }
     //hbridge_sendClearError();
     //while(state == STATE_SENSOR_ERROR){
     //    protocol_processPackage();
    // }
-
-   //hbridge_sendEncoderConfiguration(1);
-    //hbridge_sendEncoderConfiguration(2);
-    hbridge_sendEncoderConfiguration(3);
+    struct sensorConfig sc;
+    hbridge_sensorStructInit(&sc);
+    
+    hbridge_sendSensorConfiguration(1, &sc);
+    hbridge_sendSensorConfiguration(2, &sc);
+    //hbridge_sendSensorConfiguration(3, &sc);
     //hbridge_sendEncoderConfiguration(4);
     //lastPacket = PACKET_ID_SET_SENSOR_CONFIG;
     printf("1\n");
@@ -155,19 +151,23 @@ int main(void)
         protocol_processPackage();
     }
     printf("2\n");
-    hbridge_sendActuatorConfiguration(1);
-    hbridge_sendActuatorConfiguration(2);
-    hbridge_sendActuatorConfiguration(3);
-    hbridge_sendActuatorConfiguration(4);
+    struct actuatorConfig ac;
+    hbridge_actuatorStructInit(&ac);
+    hbridge_sendActuatorConfiguration(1, &ac);
+    hbridge_sendActuatorConfiguration(2, &ac);
+    hbridge_sendActuatorConfiguration(3, &ac);
+    hbridge_sendActuatorConfiguration(4, &ac);
     printf("3\n");
     while(state == STATE_SENSORS_CONFIGURED){
         protocol_processPackage();
     }
     printf("4\n");
-    hbridge_sendControllerConfiguration(1);
-    hbridge_sendControllerConfiguration(2);
-    hbridge_sendControllerConfiguration(3);
-    hbridge_sendControllerConfiguration(4);
+    struct setActiveControllerData cd;
+    hbridge_controllerStructInit(&cd);
+    hbridge_sendControllerConfiguration(1, &cd);
+    hbridge_sendControllerConfiguration(2, &cd);
+    hbridge_sendControllerConfiguration(3, &cd);
+    hbridge_sendControllerConfiguration(4, &cd);
     printf("5\n");
     while(state == STATE_ACTUATOR_CONFIGURED){
         protocol_processPackage();
@@ -190,18 +190,20 @@ int main(void)
     motor_command.motor_rechts = 127;
     motor_command.motor_links = 127;
     initPackethandling();
-    
+    initHbridgeState();
     //state off
     
+    wantedState.hbridges[0].state = RUNNING;
+    
     while(1){
-        printf("test");
+        //printf("test");
       //  hbridge_setValue(2,0,0,2);
-        
-        //process_hbridges
+        hbridge_requestState(1);
+        processHbridgestate();
         //Amber lauschen (Befehle erwarten)
         //packet_handling
-        //process_state
-        //run
+        processMainboardstate();
+        mainboard_run();
         /*
         if ((motor_command.quer_vorne-127)/5 < 30 && (motor_command.quer_vorne-127)/5 > -30 &&
         (motor_command.quer_hinten-127)/5 < 30 && (motor_command.quer_hinten-127)/5 > -30 &&

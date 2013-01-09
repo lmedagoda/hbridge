@@ -117,6 +117,9 @@ add_executable(main
     arc_ringbuffer.c
     tokenhandling.c
     packethandling.c
+    mainboardstate.c
+    run.c
+    hbridgestate.c
 )
 
 target_link_libraries(main)
