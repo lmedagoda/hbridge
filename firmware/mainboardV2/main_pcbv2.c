@@ -33,58 +33,6 @@ volatile MainState wantedState;
 
 int lastPacket;
 void GPIO_Configuration(void);
-void stateHandler(int id, unsigned char *data, unsigned short size){
-    printf("a");
-    struct announceStateData *asd = (struct announceStateData*) data;
-        
-    if (state == STATE_SENSOR_ERROR){
-        printf("try:");
-        if(asd->curState == (uint8_t) STATE_UNCONFIGURED){
-            state = STATE_UNCONFIGURED;
-            printf("HBridge Ready\n");
-        }else{
-            printf("got wrong state: %i, not %i\n", asd->curState, STATE_UNCONFIGURED);
-        }
-    }
-    if (state == STATE_UNCONFIGURED){
-        if(asd->curState == (uint8_t) STATE_SENSORS_CONFIGURED){
-            state = STATE_SENSORS_CONFIGURED;
-            printf("sensors configured\n");
-        }else{
-            printf("got wrong state: %i, not %i\n", asd->curState, STATE_SENSORS_CONFIGURED);
-        }
-    }
-    if(state == STATE_SENSORS_CONFIGURED){
-        if(asd->curState == (uint8_t) STATE_ACTUATOR_CONFIGURED){
-            state = STATE_ACTUATOR_CONFIGURED;
-            printf("Actuators configured\n");
-        }else{
-            printf("got wrong state: %i, not %i\n", asd->curState, STATE_ACTUATOR_CONFIGURED);
-        }
-    }
-    if(state == STATE_ACTUATOR_CONFIGURED){
-        if(asd->curState == (uint8_t) STATE_CONTROLLER_CONFIGURED){
-            state = STATE_CONTROLLER_CONFIGURED;
-            printf("controllers configured");
-        }else{
-            printf("got wrong state: %i, not %i\n", asd->curState, STATE_CONTROLLER_CONFIGURED);
-        }
-    }
-    if(state == STATE_CONTROLLER_CONFIGURED){
-        if(asd->curState == (uint8_t) STATE_RUNNING){
-            state = STATE_RUNNING;
-            printf("running");
-        }else{
-            printf("got wrong state: %i, not %i\n", asd->curState, STATE_RUNNING);
-        }
-    }
-
-}
-
-void statusHandler(int id, unsigned char *data, unsigned short size){
-    //printf("status");
-    //printf("status");
-}
 
 /*******************************************************************************
 * Function Name  : main
@@ -124,71 +72,15 @@ int main(void)
     can_protocolInit();
     
     protocol_init();
-    /*state = STATE_SENSOR_ERROR;
-    state = STATE_SENSOR_ERROR;*/
-    state = STATE_UNCONFIGURED;
     
-    //printf("0\n");
- //   usleep(20);
-   /* int i;
-    for(i = 0; i < 100; i++){
-        printf("waiting...\n");
-    }
-    //hbridge_sendClearError();
-    //while(state == STATE_SENSOR_ERROR){
-    //    protocol_processPackage();
-   // }
-    struct sensorConfig sc;
-    hbridge_sensorStructInit(&sc);
-    
-    hbridge_sendSensorConfiguration(1, &sc);
-    hbridge_sendSensorConfiguration(2, &sc);
-    //hbridge_sendSensorConfiguration(3, &sc);
-    //hbridge_sendEncoderConfiguration(4);
-    //lastPacket = PACKET_ID_SET_SENSOR_CONFIG;
-    printf("1\n");
-    while(state == STATE_UNCONFIGURED){
-        protocol_processPackage();
-    }
-    printf("2\n");
-    struct actuatorConfig ac;
-    hbridge_actuatorStructInit(&ac);
-    hbridge_sendActuatorConfiguration(1, &ac);
-    hbridge_sendActuatorConfiguration(2, &ac);
-    hbridge_sendActuatorConfiguration(3, &ac);
-    hbridge_sendActuatorConfiguration(4, &ac);
-    printf("3\n");
-    while(state == STATE_SENSORS_CONFIGURED){
-        protocol_processPackage();
-    }
-    printf("4\n");
-    struct setActiveControllerData cd;
-    hbridge_controllerStructInit(&cd);
-    hbridge_sendControllerConfiguration(1, &cd);
-    hbridge_sendControllerConfiguration(2, &cd);
-    hbridge_sendControllerConfiguration(3, &cd);
-    hbridge_sendControllerConfiguration(4, &cd);
-    printf("5\n");
-    while(state == STATE_ACTUATOR_CONFIGURED){
-        protocol_processPackage();
-    }
-    printf("6\n");
-    hbridge_setValue(0,0,0,2);
-    printf("7\n");
-    while(state == STATE_CONTROLLER_CONFIGURED){
-        protocol_processPackage();
-    }
-    printf("test\n");
-
-            //hbridge_setValue(2,1,1,1);
-        
-    //platformInit();
-    //run();*/
     initAmber();
+    
+    //127 == 0 (range 0 - 254)
     motor_command.quer_vorne = 127;
     motor_command.quer_hinten = 127;
     motor_command.motor_rechts = 127;
     motor_command.motor_links = 127;
+    
     initPackethandling();
     initHbridgeState();
     //state off
@@ -231,7 +123,7 @@ int main(void)
         //Statemachine
         //Hbridge Command
         //process Amber
-        /*arc_packet_t packet;
+        arc_packet_t packet;
         while (amber_getPacket(&packet)){
             printf("handle Packet\n");
             handlePacket(&packet);
