@@ -18,8 +18,11 @@ void hbridge_sendEncoderConfiguration(int id){
   struct sensorConfig sc;
     sc.encoder1Config = e1c;
     sc.encoder2Config = e1c;
-    sc.externalTempSensor = 0;
-    sc.statusEveryMs = 5;
+    sc.externalTempSensor = 5;
+    sc.statusEveryMs = 0;
+    
+    printf("sensComplete: %i\n", sizeof(sc));
+    printf("enc: %i\n", sizeof(struct encoderConfiguration));
     
   protocol_sendData(id, PACKET_ID_SET_SENSOR_CONFIG, (unsigned char *) &sc, sizeof(struct sensorConfig));
 }

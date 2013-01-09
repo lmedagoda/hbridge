@@ -52,7 +52,7 @@ uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id
 	int j;
 	for(j = 0;j < curPayloadSize; j++)
 	{
-	    data[sizeof(struct LowPrioPacket) + j] = data[sent + j];
+	    sendBuffer[sizeof(struct LowPrioPacket) + j] = data[sent + j];
 	}
 	
 	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, curPayloadSize + sizeof(struct LowPrioPacket));

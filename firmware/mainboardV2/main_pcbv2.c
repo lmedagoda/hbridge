@@ -145,7 +145,7 @@ int main(void)
     //    protocol_processPackage();
    // }
 
-    //hbridge_sendEncoderConfiguration(1);
+   //hbridge_sendEncoderConfiguration(1);
     //hbridge_sendEncoderConfiguration(2);
     hbridge_sendEncoderConfiguration(3);
     //hbridge_sendEncoderConfiguration(4);
