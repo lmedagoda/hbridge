@@ -81,8 +81,7 @@ void protocol_processPackage()
     int bytes = readPacket(&senderId, &receiverId, &packetId, buffer, bufferSize);
     if(bytes)
     {
-        //printf("There is something: %i\n", senderId);
-	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL || ownHostId == -1)
+	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
 	{
         //printf("Got Packet\n");
 	    if(packetId > PACKET_ID_TOTAL_COUNT)
