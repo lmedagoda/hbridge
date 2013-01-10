@@ -81,9 +81,10 @@ void protocol_processPackage()
     int bytes = readPacket(&senderId, &receiverId, &packetId, buffer, bufferSize);
     if(bytes)
     {
+        //printf("There is something: %i\n", senderId);
 	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL || ownHostId == -1)
 	{
-        printf("Got Packet\n");
+        //printf("Got Packet\n");
 	    if(packetId > PACKET_ID_TOTAL_COUNT)
 	    {
 		printf("Error, got packet with to big packet id\n");
@@ -109,9 +110,11 @@ uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, sho
 {
     if(id > PACKET_LOW_PRIORITY_DATA)
     {
+        printf("sende LOW PRIO\n");
  	return protocol_sendLowPrio(ownHostId, receiverId, id, data, size);
     } else if(id == PACKET_LOW_PRIORITY_DATA) {
         //senderId == recieverId in Low-Prio-case
+        printf("sende MIDDLE PRIO\n");
         return sendPacket(receiverId, receiverId, id, data, size);
     }
     {
@@ -119,6 +122,7 @@ uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, sho
 	{
 	    printf("Error, packet to big for high priority transmission");
 	}
+    printf("sende HIGH PRIO: %i an %i\n", id, receiverId);
 	return sendPacket(ownHostId, receiverId, id, data, size);
     }
     

@@ -1,13 +1,14 @@
 #include "hbridge_cmd.h"
 #include "protocol.h"
 #include "printf.h"
+#include <stddef.h>
 
 void hbridge_sendClearSensorError(int hbridgeId){
-    protocol_sendData(hbridgeId, PACKET_ID_CLEAR_SENSOR_ERROR, (const unsigned char*)1, 1);
+    protocol_sendData(hbridgeId, PACKET_ID_CLEAR_SENSOR_ERROR, NULL, 0);
 }
 
 void hbridge_sendClearActuatorError(int hbridgeId){
-    protocol_sendData(hbridgeId, PACKET_ID_CLEAR_ACTUATOR_ERROR, (const unsigned char*)1, 1);
+    protocol_sendData(hbridgeId, PACKET_ID_CLEAR_ACTUATOR_ERROR, NULL, 0);
 }
 
 void hbridge_sensorStructInit(struct sensorConfig *sc){
@@ -62,9 +63,9 @@ void hbridge_setValue(int value1, int value2, int value3, int value4){
 }
 
 void hbridge_requestState(int hbridgeId){
-    protocol_sendData(hbridgeId, PACKET_ID_REQUEST_STATE, (const unsigned char*)1, 1);    
+    protocol_sendData(hbridgeId, PACKET_ID_REQUEST_STATE, NULL, 0);    
 }
 
 void hbridge_setUnconfigured(int hbridgeId){
-    protocol_sendData(hbridgeId, PACKET_ID_SET_UNCONFIGURED, (const unsigned char*)1, 1);    
+    protocol_sendData(hbridgeId, PACKET_ID_SET_UNCONFIGURED, NULL, 0);    
 }
