@@ -83,12 +83,12 @@ void protocol_processPackage()
     {
 	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
 	{
-        //printf("Got Packet\n");
 	    if(packetId > PACKET_ID_TOTAL_COUNT)
 	    {
 		printf("Error, got packet with to big packet id\n");
 		return;
 	    }
+            
 
 	    protocolHandlers[packetId](senderId, receiverId, packetId, buffer, bytes);
 	}
@@ -101,7 +101,6 @@ void protocol_ackPacket(int id, int receiverId)
     data.packetId = id;
 
     printf("acking %i id %i\n", id, id + ownHostId);
-
     sendPacket(ownHostId, receiverId, PACKET_ID_ACK, (uint8_t *) &data, sizeof(struct ackData));
 }
 
@@ -109,19 +108,13 @@ uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, sho
 {
     if(id > PACKET_LOW_PRIORITY_DATA)
     {
-        printf("sende LOW PRIO\n");
  	return protocol_sendLowPrio(ownHostId, receiverId, id, data, size);
-    } else if(id == PACKET_LOW_PRIORITY_DATA) {
-        //senderId == recieverId in Low-Prio-case
-        printf("sende MIDDLE PRIO\n");
-        return sendPacket(receiverId, receiverId, id, data, size);
-    }
+    } else
     {
 	if(size > maxPacketSize)
 	{
 	    printf("Error, packet to big for high priority transmission");
 	}
-    printf("sende HIGH PRIO: %i an %i\n", id, receiverId);
 	return sendPacket(ownHostId, receiverId, id, data, size);
     }
     

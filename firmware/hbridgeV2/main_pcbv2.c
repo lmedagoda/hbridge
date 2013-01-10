@@ -47,7 +47,7 @@ enum hostIDs getOwnHostId() {
     gpioData |= (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) << 3);
 
     //get correct host id from gpio pins
-    id = gpioData +1;
+    id += gpioData;
     printf("Configured as H_BRIDGE_%hu\n", id);
 
     if(id > 8)

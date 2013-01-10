@@ -14,17 +14,17 @@ void ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsig
     {
         lastPacket = 0;
     }*/
-    printf("ack");
+    printf("ack\n");
 }
 
 void hbridgestateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    printf("senderId: %i\n", senderId);
-    printf("receiverId: %i\n", receiverId);
+    printf("StateHandler\n");
     
     struct announceStateData *asd = (struct announceStateData*) data;
     
-    currentState.hbridges[senderId - 1].state = asd->curState;
-    currentState.hbridges[senderId - 1].pending = FALSE;
+    currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].state = asd->curState;
+    currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].pending = FALSE;
+    
 }
 
 void initHbridgeState(){
@@ -42,20 +42,21 @@ void processHbridgestate(){
             currentState.hbridges[i].pending = TRUE;
             
             int wanted;
-            if((wanted = mapState(wantedState.hbridges[i].state) < 0)){
+            if((wanted = mapState(wantedState.hbridges[i].state)) < 0){
                 printf("Are you mad?\n");
             }
             int current;
-            if((current = mapState(currentState.hbridges[i].state) < 0)){
+            if((current = mapState(currentState.hbridges[i].state)) < 0){
                 if(wanted != 0)
                     return;
             }
             
-            
             if(wanted < current){
                 //TODO Unconfigure
+            } else if(wanted == current){
+                continue;
             } else {
-                switchTo(i+1, wanted+1);
+                switchTo(i+RECEIVER_ID_H_BRIDGE_1, current+1);
             }
         }
     }
@@ -71,7 +72,6 @@ void switchTo(int id, int state){
             //TODO
             break;
         case 1:
-            
             hbridge_sensorStructInit(&sc);
             hbridge_sendSensorConfiguration(id, &sc);
             break;

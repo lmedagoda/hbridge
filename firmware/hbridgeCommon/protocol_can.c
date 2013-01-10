@@ -4,12 +4,16 @@
 #include "lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h"
 #include "drivers/assert.h"
 #include "stm32f10x_conf.h"
+#include "drivers/printf.h"
 
 struct packetLayout
 {
-    unsigned sender:3;
-    unsigned receiver:4;
+    //unsigned sender:3;
+    //unsigned receiver:4;
+    //unsigned packetId:4;
     unsigned packetId:4;
+    unsigned receiver:4;
+    unsigned sender:3;
 }  __attribute__ ((packed)) __attribute__((__may_alias__));
 
 signed int can_recvPacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *packetId, unsigned char *data, const unsigned int dataSize)
@@ -30,7 +34,8 @@ signed int can_recvPacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *pa
     int ret = msg->DLC;
 
     struct packetLayout *pl = (struct packetLayout *) &(msg->StdId);
-    if((senderId == SENDER_ID_PC) || (senderId == SENDER_ID_MAINBOARD))
+    
+    if((pl->sender == SENDER_ID_PC) || (pl->sender == SENDER_ID_MAINBOARD))
     {
 	*senderId = pl->sender;
 	*receiverId = pl->receiver;
@@ -43,12 +48,6 @@ signed int can_recvPacket(uint16_t *senderId, uint16_t *receiverId, uint16_t *pa
 	*receiverId = SENDER_ID_MAINBOARD;
     }
     *packetId = pl->packetId;
-
-    
-    *receiverId = (msg->StdId & ~0x0F) >> 4;
-    *senderId = 0;
-    
-    *packetId = msg->StdId & 0x0F;
     
     CAN_MarkNextDataAsRead();
 
@@ -82,7 +81,6 @@ signed int can_sendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packe
 	pl->receiver = senderId;
     }
     pl->packetId = packetId;
-    
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
     msg.DLC=size;

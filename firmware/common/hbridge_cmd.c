@@ -24,7 +24,6 @@ void hbridge_sensorStructInit(struct sensorConfig *sc){
 }
 
 void hbridge_sendSensorConfiguration(int hbridgeId, struct sensorConfig *sc){
-    printf("sc: %i\n", sc->statusEveryMs);
   protocol_sendData(hbridgeId, PACKET_ID_SET_SENSOR_CONFIG, (unsigned char *) sc, sizeof(struct sensorConfig));
 }
 

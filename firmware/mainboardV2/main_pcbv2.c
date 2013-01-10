@@ -26,6 +26,7 @@
 #define MAX_BYTES 30
 #define CONTROL_CHANNEL_TIMEOUT 50
 
+volatile extern enum hostIDs ownHostId;
 extern arc_asv_control_packet_t motor_command;
 volatile int state;
 volatile MainState currentState;
@@ -69,6 +70,7 @@ int main(void)
     CAN_Configuration(CAN_REMAP1);
     CAN_ConfigureFilters(-1);   //TODO using better ID -> understand CAN_IDs
      
+    ownHostId = SENDER_ID_MAINBOARD;
     can_protocolInit();
     
     protocol_init();
@@ -85,12 +87,12 @@ int main(void)
     initHbridgeState();
     //state off
     
-    wantedState.hbridges[0].state = RUNNING;
-    
+    wantedState.hbridges[0].state = STATE_RUNNING;
     while(1){
         //printf("test");
       //  hbridge_setValue(2,0,0,2);
-        hbridge_requestState(1);
+        //hbridge_requestState(1);
+        protocol_processPackage();
         processHbridgestate();
         //Amber lauschen (Befehle erwarten)
         //packet_handling
