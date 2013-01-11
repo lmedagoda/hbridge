@@ -37,9 +37,10 @@ void initHbridgeState(){
 void processHbridgestate(){
     int i;
     for(i = 0; i < 4; i++){
-               
+        printf("wanted: %i current: %i\n", wantedState.hbridges[i].state, currentState.hbridges[i].state);
         if(wantedState.hbridges[i].state != currentState.hbridges[i].state && currentState.hbridges[i].pending == FALSE){
             currentState.hbridges[i].pending = TRUE;
+                //printf("Brücke: %i\n", i);
             
             int wanted;
             if((wanted = mapState(wantedState.hbridges[i].state)) < 0){
@@ -48,11 +49,18 @@ void processHbridgestate(){
             int current;
             if((current = mapState(currentState.hbridges[i].state)) < 0){
                 if(wanted != 0)
-                    return;
+                    continue;
+                if(currentState.hbridges[i].state == STATE_SENSOR_ERROR){
+                    hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
+                }
+                if(currentState.hbridges[i].state == STATE_ACTUATOR_ERROR){
+                    hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
+                }
             }
             
             if(wanted < current){
-                //TODO Unconfigure
+                //printf("Set %i to UNCONFIGURED\n", i);
+                hbridge_setUnconfigured(i+RECEIVER_ID_H_BRIDGE_1);
             } else if(wanted == current){
                 continue;
             } else {

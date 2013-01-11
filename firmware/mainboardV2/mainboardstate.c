@@ -40,8 +40,8 @@ void processMainboardstate(){
         }
         if (allowed == FALSE){
             //TODO error handling
-            currentState.mainboardstate = ERROR_WRONG_STATE;
-            wantedState.mainboardstate = ERROR_WRONG_STATE;
+            //currentState.mainboardstate = ERROR_WRONG_STATE;
+            //wantedState.mainboardstate = ERROR_WRONG_STATE;
         } else {
             currentState.mainboardstate = wantedState.mainboardstate;
         }
@@ -51,6 +51,11 @@ bool toOff(){
     //current state doesn't matter
     //toOff is allowed every time
     //TODO hbridges unconfigure
+    
+    wantedState.hbridges[0].state = STATE_UNCONFIGURED;
+    wantedState.hbridges[1].state = STATE_UNCONFIGURED;
+    wantedState.hbridges[2].state = STATE_UNCONFIGURED;
+    wantedState.hbridges[3].state = STATE_UNCONFIGURED;
     return TRUE;
 }
 
@@ -66,6 +71,9 @@ bool toRunning(){
     wantedState.hbridges[2].state = STATE_RUNNING;
     wantedState.hbridges[3].state = STATE_RUNNING;
     
+    if(currentState.hbridges[0].state != STATE_RUNNING && currentState.hbridges[1].state != STATE_RUNNING && currentState.hbridges[2].state != STATE_RUNNING && currentState.hbridges[3].state != STATE_RUNNING){
+        return FALSE;
+    }
     //TODO hbridges unconfigure
     //TODO hbridges configure
     return TRUE; 

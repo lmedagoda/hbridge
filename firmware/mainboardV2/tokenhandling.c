@@ -17,17 +17,17 @@ initTokenhandling(){
 }
 
 bool handleTokenPacket(arc_packet_t* packet){
-    printf("handle Token Packet \n");
+    //printf("handle Token Packet \n");
     int i = 0;
-        printf("tokenhandlers: %i \n", token_handlers); 
+        //printf("tokenhandlers: %i \n", token_handlers); 
     token_handlers = 3;
     for (i=0; i < token_handlers; i++){
-        printf("i: %i \n", i); 
+        //printf("i: %i \n", i); 
         if (tokenHandlers[i](packet) == TRUE){
             return TRUE;
         }
     }
-    printf("handle Token Packet \n");
+    //printf("handle Token Packet \n");
     return FALSE;
 }
 

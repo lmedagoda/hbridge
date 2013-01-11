@@ -88,7 +88,7 @@ int main(void)
     //state off
     
     currentState.mainboardstate = OFF;
-    wantedState.mainboardstate = RUNNING;
+    wantedState.mainboardstate = OFF;
     
     while(1){
         //printf("test");

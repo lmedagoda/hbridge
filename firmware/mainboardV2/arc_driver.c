@@ -143,10 +143,11 @@ void receivePackets(){
             break;
         } else if (handleTokenPacket(&packet)== FALSE){
             //for a hot fix not token packets can handled here
-            if (!push_back(packet, &read_buffer)){
+            //if (!push_back(packet, &read_buffer)){
                 //Buffer overflow
                 //TODO assert
-            }
+           //}
+            handlePacket(&packet);
         }
     }
 }

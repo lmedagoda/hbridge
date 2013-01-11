@@ -3,6 +3,7 @@
 #include "packethandling.h"
 #include "arc_packet.h"
 #include "printf.h"
+#include "state.h"
 bool (*packetHandlers[MAX_HANDLERS])(arc_packet_t* packet);
 int handlers = 0;
 bool pingHandler(arc_packet_t* packet);
@@ -24,6 +25,7 @@ bool handlePacket(arc_packet_t* packet){
     int i = 0;
     for (i=0; i < handlers; i++){
         if (packetHandlers[i](packet) == TRUE){
+            //printf("handlePacket: %i\n", i);
             return TRUE;
         }
     }
@@ -58,7 +60,9 @@ bool arc_statusHandler(arc_packet_t* packet){
 
 bool setStateHandler(arc_packet_t* packet){
     if (packet->packet_id == SET_STATE){
-        //TODO wanted system State umsetzen
+        ARC_SYSTEM_STATE state = (ARC_SYSTEM_STATE)packet->data[0];
+        printf("State: %i\n", state);
+        wantedState.mainboardstate = state;
         return TRUE;
     } else {
         return FALSE;
