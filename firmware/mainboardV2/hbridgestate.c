@@ -14,14 +14,13 @@ void ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsig
     {
         lastPacket = 0;
     }*/
-    printf("ack\n");
+    //printf("ack\n");
 }
 
 void hbridgestateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    printf("StateHandler\n");
+    //printf("StateHandler\n");
     
     struct announceStateData *asd = (struct announceStateData*) data;
-    
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].state = asd->curState;
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].pending = FALSE;
     
@@ -35,12 +34,15 @@ void initHbridgeState(){
 }
 
 void processHbridgestate(){
-    int i;
+    int i,j;
     for(i = 0; i < 4; i++){
-        printf("wanted: %i current: %i\n", wantedState.hbridges[i].state, currentState.hbridges[i].state);
+
+        //printf("wanted: %i current: %i Pending: %i\n", wantedState.hbridges[i].state, currentState.hbridges[i].state, currentState.hbridges[i].pending);
+        
         if(wantedState.hbridges[i].state != currentState.hbridges[i].state && currentState.hbridges[i].pending == FALSE){
             currentState.hbridges[i].pending = TRUE;
                 //printf("Brücke: %i\n", i);
+            
             
             int wanted;
             if((wanted = mapState(wantedState.hbridges[i].state)) < 0){
@@ -48,18 +50,25 @@ void processHbridgestate(){
             }
             int current;
             if((current = mapState(currentState.hbridges[i].state)) < 0){
-                if(wanted != 0)
+                    //printf("current %i", current);
+                if(wanted != 0){
+                    //printf("test: %i\n", wantedState.hbridges[i].state);
+                    currentState.hbridges[i].pending = FALSE;
+                    //wantedState.hbridges[i].state = currentState.hbridges[i].state;
+                    printf("HBridgeError: %i %i\n", currentState.hbridges[i].state,i);
                     continue;
+                }
                 if(currentState.hbridges[i].state == STATE_SENSOR_ERROR){
-                    hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
+                    printf("Unfonfigure %i",i);
+                    hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
                 }
                 if(currentState.hbridges[i].state == STATE_ACTUATOR_ERROR){
-                    hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
+                    hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
                 }
             }
             
             if(wanted < current){
-                //printf("Set %i to UNCONFIGURED\n", i);
+                printf("Set %i to UNCONFIGURED\n", i);
                 hbridge_setUnconfigured(i+RECEIVER_ID_H_BRIDGE_1);
             } else if(wanted == current){
                 continue;
@@ -72,7 +81,7 @@ void processHbridgestate(){
 }
     
 void switchTo(int id, int state){
-    printf("switchToState: %i\n", state);
+    //printf("switchToState: %i\n", state);
     struct sensorConfig sc;
     struct actuatorConfig ac;
     struct setActiveControllerData cd;
@@ -81,18 +90,24 @@ void switchTo(int id, int state){
             //TODO
             break;
         case 1:
+            printf("HBrücke %i auf State Sensors\n", id);
             hbridge_sensorStructInit(&sc);
             hbridge_sendSensorConfiguration(id, &sc);
             break;
         case 2:
+            printf("HBrücke %i auf State Actuators\n", id);
             hbridge_actuatorStructInit(&ac);
+            if(id == RECEIVER_ID_H_BRIDGE_1 || id == RECEIVER_ID_H_BRIDGE_2)
+                ac.maxCurrent = 3300;
             hbridge_sendActuatorConfiguration(id, &ac);
             break;
         case 3:
+            printf("HBrücke %i auf State Controller\n", id);
             hbridge_controllerStructInit(&cd);
             hbridge_sendControllerConfiguration(id, &cd);
             break;
         case 4:
+            printf("HBrücke %i auf State Running\n", id);
             hbridge_setValue(0,0,0,0);
             break;
     }
@@ -114,6 +129,6 @@ int mapState(enum STATES state){
                 return 3;
             case STATE_RUNNING:
                 return 4;
-            default: return -1;
+            default: return -2;
     }
 }

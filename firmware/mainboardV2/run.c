@@ -20,22 +20,27 @@ void mainboard_run(){
              case OFF:
                  break;
              case AUTONOMOUS:
+                 printf("AUTONOMOUS\n");
                  break;
              case FULL_AUTONOMOUS:
+                 printf("FULL_AUTONOMOUS\n");
                  break;
              case HALT:
-                 printf("The State HALT ist deprecated");
+                 printf("The State HALT ist deprecated\n");
                  break;
              case ERROR_HBRIDGE:
+                 printf("ERROR\n");
                  //TODO check states of hbridges, is there still an error
                  break;
              case ERROR_CAN:
+                 printf("ERROR\n");
                  //TODO check Can-Bus, is there still an errr
                  break;
              case ERROR_WRONG_STATE:
+                 printf("ERROR\n");
                  break;
              default:
-                 printf("Warning: The Mainboard is in a unhandled state");
+                 printf("Warning: The Mainboard is in a unhandled state\n");
          }
      } 
      //Sending a Status packet
@@ -62,12 +67,7 @@ void sendStatusPacket(){
     amber_sendPacket(&packet);
 }
 void runningMotors(){
-   //This will be not nessesary, if the hbridges are really tested 
-    if ((motor_command.quer_vorne-127)/5 < 30 && (motor_command.quer_vorne-127)/5 > -30 &&
-        (motor_command.quer_hinten-127)/5 < 30 && (motor_command.quer_hinten-127)/5 > -30 &&
-        (motor_command.motor_rechts-127)/5 < 30 && (motor_command.motor_rechts-127)/5 > -30 &&
-        (motor_command.motor_links-127)/5 < 30 && (motor_command.motor_links-127)/5 > -30){
-            
+   //This will be not nessesary, if the hbridges are really tested             
         
         /*printf("MOTORENWERTE: %i, %i, %i, %i \n", 
                 (motor_command.quer_vorne-127)/5,
@@ -77,11 +77,9 @@ void runningMotors(){
         
         hbridge_setValue(
                 //printf("MOTORENWERTE: %i, %i, %i, %i \n", 
-                (motor_command.motor_links-127)/5,
-                (motor_command.motor_rechts-127)/5,
-                (motor_command.quer_hinten-127)/5,
-                (motor_command.quer_vorne-127)/5);
-    }
-    else printf("OVERCURRENT \n");//Amber Test
+                (motor_command.motor_rechts-127),
+                (motor_command.motor_links-127),
+                (motor_command.quer_hinten-127),
+                (motor_command.quer_vorne-127));
 
 }

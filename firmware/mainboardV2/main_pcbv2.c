@@ -86,11 +86,18 @@ int main(void)
     initPackethandling();
     initHbridgeState();
     //state off
+
     
     currentState.mainboardstate = OFF;
     wantedState.mainboardstate = OFF;
     
+    currentState.hbridges[0].state = STATE_UNCONFIGURED;
+    currentState.hbridges[1].state = STATE_UNCONFIGURED;
+    currentState.hbridges[2].state = STATE_UNCONFIGURED;
+    currentState.hbridges[3].state = STATE_UNCONFIGURED;
+    
     while(1){
+        
         //printf("test");
       //  hbridge_setValue(2,0,0,2);
         //hbridge_requestState(1);
@@ -132,7 +139,7 @@ int main(void)
             printf("handle Packet\n");
             handlePacket(&packet);
         } */
-        amber_processPackets(); 
+        amber_processPackets();
     }
 }
 

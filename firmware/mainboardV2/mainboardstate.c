@@ -51,7 +51,7 @@ bool toOff(){
     //current state doesn't matter
     //toOff is allowed every time
     //TODO hbridges unconfigure
-    
+    printf("TO_OFF\n");
     wantedState.hbridges[0].state = STATE_UNCONFIGURED;
     wantedState.hbridges[1].state = STATE_UNCONFIGURED;
     wantedState.hbridges[2].state = STATE_UNCONFIGURED;
@@ -60,6 +60,8 @@ bool toOff(){
 }
 
 bool toRunning(){
+    
+    //printf("MB_TO_RUNNING\n");
     //current state doesn't matter
     //toRunning is allowed every time
     if (currentState.mainboardstate == UNDEFINED){

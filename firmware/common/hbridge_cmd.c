@@ -30,14 +30,14 @@ void hbridge_sendSensorConfiguration(int hbridgeId, struct sensorConfig *sc){
 void hbridge_actuatorStructInit(struct actuatorConfig *ac){
     ac->pwmStepPerMs = 200;
     ac->openCircuit = 1;
-    ac->maxCurrent = 2000;
+    ac->maxCurrent = 3000;
     ac->maxCurrentCount = 100;
     ac->maxBoardTemp = 80;
     ac->maxBoardTempCount = 200;
     ac->maxMotorTemp = 60;
     ac->maxMotorTempCount = 200;
     ac->controllerInputEncoder = INTERNAL;
-    ac->timeout = 200;
+    ac->timeout = 2000;
 }
 
 void hbridge_sendActuatorConfiguration(int hbridgeId, struct actuatorConfig *ac){    
@@ -52,12 +52,17 @@ void hbridge_sendControllerConfiguration(int hbridgeId, struct setActiveControll
     protocol_sendData(hbridgeId, PACKET_ID_SET_ACTIVE_CONTROLLER, (unsigned char *) cd, sizeof(struct setActiveControllerData));
 }
 
-void hbridge_setValue(int value1, int value2, int value3, int value4){   
+void hbridge_setValue(int value1, int value2, int value3, int value4){  
+    if(value1 > 100 || value1 < -100 || value2 > 100 || value2 < -100 || value3 > 100 || value3 < -100 || value4 > 100 || value4 < -100)
+    {
+        printf("MotorValue too high!\n");
+        return;
+    }
     struct setValueData values;
-    values.board1Value = value1 * 18;
-    values.board2Value = value2 * 18;
-    values.board3Value = value3 * 18;
-    values.board4Value = value4 * 18;
+    values.board1Value = value1 * 18;   //100% PWM for normal    *18 for value between 0-100
+    values.board2Value = value2 * 18;   //100% PWM for normal    send betweel 0-1800
+    values.board3Value = value3 * 12;   //60% PWM for Querstrahler
+    values.board4Value = value4 * 12;   //60% PWM for Querstrahler
     protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE58, (unsigned char *) &values, sizeof(struct setValueData));
 }
 

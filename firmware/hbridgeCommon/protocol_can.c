@@ -91,8 +91,8 @@ signed int can_sendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packe
 	msg.Data[i] = data[i];
     }
     
-    while(CAN_SendMessage(&msg))
-	;
+    while(CAN_SendMessage(&msg));
+    //printf("Send finished\n");
     
     return size;
 }

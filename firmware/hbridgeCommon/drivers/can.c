@@ -136,9 +136,13 @@ unsigned char CAN_SendMessage(CanTxMsg* TxMessage)
     
     //make this thread non interruptable
     __disable_irq();
-    
-    if(CAN_Transmit(CAN1, TxMessage) == CAN_NO_MB)
+    //char first =0;
+    if(CAN_Transmit(CAN1, TxMessage) == CAN_NO_MB){
+        //if(!first)
+        printf("no mailboxes\n");
+        //first=1;
 	ret = 1;
+    }
     //finished, let's allow interrupts again
     __enable_irq();
     

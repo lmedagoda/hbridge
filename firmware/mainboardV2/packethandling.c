@@ -72,7 +72,7 @@ bool setStateHandler(arc_packet_t* packet){
 bool controlHandler(arc_packet_t* packet){
     
     if (packet->packet_id == CONTROL){
-        printf("CONTROL PACKET\n");
+        //printf("CONTROL PACKET\n");
         int i;
         //printf("EIN WERT1 %i \n", packet->data[0]-127);
         //printf("EIN WERT2 %i \n", packet->data[1]-127);
