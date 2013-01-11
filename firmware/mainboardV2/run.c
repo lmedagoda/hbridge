@@ -75,12 +75,12 @@ void runningMotors(){
                 (motor_command.motor_rechts-127)/5,
                 (motor_command.motor_links-127)/5);
         
-        /*hbridge_setValue(
+        hbridge_setValue(
                 //printf("MOTORENWERTE: %i, %i, %i, %i \n", 
                 (motor_command.motor_links-127)/5,
                 (motor_command.motor_rechts-127)/5,
                 (motor_command.quer_hinten-127)/5,
-                (motor_command.quer_vorne-127)/5);*/
+                (motor_command.quer_vorne-127)/5);
     }
     else printf("OVERCURRENT \n");//Amber Test
 

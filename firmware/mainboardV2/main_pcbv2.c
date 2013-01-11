@@ -87,7 +87,9 @@ int main(void)
     initHbridgeState();
     //state off
     
-    wantedState.hbridges[0].state = STATE_RUNNING;
+    currentState.mainboardstate = OFF;
+    wantedState.mainboardstate = RUNNING;
+    
     while(1){
         //printf("test");
       //  hbridge_setValue(2,0,0,2);
@@ -130,7 +132,7 @@ int main(void)
             printf("handle Packet\n");
             handlePacket(&packet);
         } */
-        //amber_processPackets(); 
+        amber_processPackets(); 
     }
 }
 

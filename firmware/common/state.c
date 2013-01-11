@@ -251,6 +251,8 @@ void state_setActuatorLimitHandler(int senderId, int receiverId, int id, unsigne
     aState->maxCurrent = aCfg->maxCurrent;
     aState->maxCurrentCount = aCfg->maxCurrentCount;
     aState->pwmStepPerMillisecond = aCfg->pwmStepPerMs;
+    
+    printf("Overcurrent: %i\n", aCfg->maxCurrent);
 
     state_switchToState(STATE_ACTUATOR_CONFIGURED);
 }

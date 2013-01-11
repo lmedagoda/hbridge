@@ -60,6 +60,12 @@ bool toRunning(){
     if (currentState.mainboardstate == UNDEFINED){
         return FALSE;
     }
+    
+    wantedState.hbridges[0].state = STATE_RUNNING;
+    wantedState.hbridges[1].state = STATE_RUNNING;
+    wantedState.hbridges[2].state = STATE_RUNNING;
+    wantedState.hbridges[3].state = STATE_RUNNING;
+    
     //TODO hbridges unconfigure
     //TODO hbridges configure
     return TRUE; 

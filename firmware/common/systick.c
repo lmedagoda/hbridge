@@ -57,10 +57,12 @@ void systick_checkTimeout()
 
 void systick_checkOverCurrent(uint32_t currentValue)
 {
+    //printf("current: %i/%i  count: %i/%i\n", currentValue, activeCState->actuatorConfig.maxCurrent, overCurrentCounter, activeCState->actuatorConfig.maxCurrentCount);
+    
     //check for overcurrent
     if(currentValue > activeCState->actuatorConfig.maxCurrent) {
 	overCurrentCounter++;
-
+//printf("current: %i/%i  count: %i/%i\n", currentValue, activeCState->actuatorConfig.maxCurrent, overCurrentCounter, activeCState->actuatorConfig.maxCurrentCount);
 	if(overCurrentCounter > activeCState->actuatorConfig.maxCurrentCount) {
 	    state_getErrorState()->overCurrent = 1;
 	}
