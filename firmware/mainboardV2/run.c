@@ -15,6 +15,7 @@ void mainboard_run(){
      if (currentState.mainboardstate == wantedState.mainboardstate){
          switch (currentState.mainboardstate){
              case RUNNING:
+                 printf("Sendid command\n");
                  runningMotors();
                  break;
              case OFF:

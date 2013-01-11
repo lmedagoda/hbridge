@@ -54,7 +54,7 @@ void processHbridgestate(){
                 if(wanted != 0){
                     //printf("test: %i\n", wantedState.hbridges[i].state);
                     currentState.hbridges[i].pending = FALSE;
-                    //wantedState.hbridges[i].state = currentState.hbridges[i].state;
+                    wantedState.hbridges[i].state = currentState.hbridges[i].state;
                     printf("HBridgeError: %i %i\n", currentState.hbridges[i].state,i);
                     continue;
                 }
@@ -63,6 +63,7 @@ void processHbridgestate(){
                     hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
                 }
                 if(currentState.hbridges[i].state == STATE_ACTUATOR_ERROR){
+                    printf("Unfonfigure 2%i",i);
                     hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
                 }
             }

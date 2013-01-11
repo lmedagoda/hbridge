@@ -3,11 +3,14 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION   1)
 
+set(COMP "arm-none-eabi")
+
 # which compilers to use for C and C++
+
 #
-set(CMAKE_C_COMPILER       arm-none-linux-gnueabi-gcc)
-set(CMAKE_CXX_COMPILER     arm-none-linux-gnueabi-g++)
-set(CMAKE_OBJCOPY          arm-none-linux-gnueabi-objcopy)
+set(CMAKE_C_COMPILER       ${COMP}-gcc)
+set(CMAKE_CXX_COMPILER     ${COMP}-g++)
+set(CMAKE_OBJCOPY          ${COMP}-objcopy)
 #set(CMAKE_CXX_LINK_EXECUTABLE arm-none-linux-gnueabi-ld)
 #set(CMAKE_C_LINK_EXECUTABLE   arm-none-linux-gnueabi-ld)
 
