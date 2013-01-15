@@ -164,6 +164,7 @@ void run()
 
 void systick_deactivateActuator()
 {
+    currentPwmValue = 0;
     //be shure motor is off
     hbridge_setNewPWM(0, activeCState->actuatorConfig.useOpenLoop);
 }
