@@ -7,7 +7,7 @@
 
 int mapState(enum STATES);
 void switchTo(int id, int state);
-
+int loops[4];
 void ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     /*struct ackData *ack = (struct ackData*) &data;
     if(ack->packetId == lastPacket)
@@ -19,9 +19,9 @@ void ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsig
 
 void hbridgestateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     //printf("StateHandler\n");
-    
     struct announceStateData *asd = (struct announceStateData*) data;
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].state = asd->curState;
+    printf("HBRUECKE %i mit Packet %i\n", senderId, asd->curState); 
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].pending = FALSE;
     
 }
@@ -58,20 +58,20 @@ void processHbridgestate(){
                     //printf("HBridgeError: %i %i\n", currentState.hbridges[i].state,i);
                 //printf("Fehler erkannt\n");
                 //if(wanted != 0)
-printf("WANTED UNGLEICH 0\n");
+//                    printf("WANTED UNGLEICH 0 hbridge: %i\n", i);
                     continue;
                 }
                 if(currentState.hbridges[i].state == STATE_SENSOR_ERROR){
                     printf("Clean error sensor %i",i);
                     hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
-                    hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
+                    //hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
                     continue;
                 }
                 if(currentState.hbridges[i].state == STATE_ACTUATOR_ERROR){
                     printf("Clean error actuator%i",i);
                     hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
                    
-                    hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
+                    //hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
                     //currentState.hbridges[i].state = STATE_SENSOR_ERROR;
                     continue;
                 }
@@ -84,6 +84,16 @@ printf("WANTED UNGLEICH 0\n");
                 continue;
             } else {
                 switchTo(i+RECEIVER_ID_H_BRIDGE_1, current+1);
+            }
+        } else {
+            if (currentState.hbridges[i].pending){
+                currentState.hbridges[i].pending++;
+                if (currentState.hbridges[i].pending > 1000){
+                    currentState.hbridges[i].pending = 1;
+                    hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
+                    printf("pending overflow  %i\n", i);
+                }
+
             }
         }
        //printf("DAS I HIER: %i\n", i); 
