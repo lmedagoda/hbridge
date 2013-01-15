@@ -20,7 +20,7 @@ void hbridge_sensorStructInit(struct sensorConfig *sc){
         sc->encoder1Config = e1c;
         sc->encoder2Config = e1c;
         sc->externalTempSensor = 0;
-        sc->statusEveryMs = 0;
+        sc->statusEveryMs = 100;
 }
 
 void hbridge_sendSensorConfiguration(int hbridgeId, struct sensorConfig *sc){
