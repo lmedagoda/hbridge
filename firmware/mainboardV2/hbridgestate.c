@@ -4,10 +4,11 @@
 #include "../common/hbridge_cmd.h"
 #include "../common/protocol.h"
 #include "../hbridgeCommon/drivers/printf.h"
+#define HBRIDGECOUNT 4
+
 
 int mapState(enum STATES);
 void switchTo(int id, int state);
-int loops[4];
 void ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     /*struct ackData *ack = (struct ackData*) &data;
     if(ack->packetId == lastPacket)
@@ -21,21 +22,27 @@ void hbridgestateHandler(int senderId, int receiverId, int id, unsigned char *da
     //printf("StateHandler\n");
     struct announceStateData *asd = (struct announceStateData*) data;
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].state = asd->curState;
-    printf("HBRUECKE %i mit Packet %i\n", senderId, asd->curState); 
+    printf("HBRUECKE %i mit State %i\n", senderId, asd->curState); 
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].pending = FALSE;
     
 }
 
 void initHbridgeState(){
+    
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, &hbridgestateHandler);
     protocol_registerHandler(PACKET_ID_ACK, &ackHandler);
     /*protocol_registerHandler(PACKET_ID_STATUS, &statusHandler);
     protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &statusHandler);*/
+    int i;
+    for(i = 0; i < HBRIDGECOUNT; i++){
+        currentState.hbridges[i].state = STATE_UNCONFIGURED;
+        hbridge_requestState(i);
+    }
 }
 
 void processHbridgestate(){
     int i,j;
-    for(i = 0; i < 4; i++){
+    for(i = 0; i < HBRIDGECOUNT; i++){
 
         //printf("wanted: %i current: %i Pending: %i\n", wantedState.hbridges[i].state, currentState.hbridges[i].state, currentState.hbridges[i].pending);
         

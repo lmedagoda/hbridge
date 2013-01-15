@@ -19,6 +19,8 @@
 #include "mainboardstate.h"
 #include "run.h"
 #include "hbridgestate.h"
+
+
 #define SYSTEM_ID 2 //ASV
 #define CAN_ID_STATUS 0x101
 #define CAN_ID_MODE_CHANGED 0x102
@@ -90,15 +92,13 @@ int main(void)
     
     currentState.mainboardstate = MAINBOARD_OFF;
     wantedState.mainboardstate = MAINBOARD_OFF;
-    
-    currentState.hbridges[0].state = STATE_UNCONFIGURED;
-    currentState.hbridges[1].state = STATE_UNCONFIGURED;
-    currentState.hbridges[2].state = STATE_UNCONFIGURED;
-    currentState.hbridges[3].state = STATE_UNCONFIGURED;
+
     
     while(1){
         //handle CAN packets
         protocol_processPackage();
+        volatile int time;
+        for(time = 0; time < 1000; time++);
         //Statemachine HBridges
         processHbridgestate();
         //Read from Amber-Buffer
