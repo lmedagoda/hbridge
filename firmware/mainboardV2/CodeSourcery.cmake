@@ -3,7 +3,7 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION   1)
 
-set(COMP "arm-none-eabi")
+set(COMP "arm-none-linux-gnueabi")
 
 # which compilers to use for C and C++
 

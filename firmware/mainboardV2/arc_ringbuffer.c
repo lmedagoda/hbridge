@@ -42,8 +42,8 @@ int push_back(arc_packet_t packet, RING_BUFFER* buffer){
        buffer->last = inc(buffer->last);
        packet_copy(&packet, &(buffer->elements[buffer->last]));
        //printf("PACKET ID SOURCE%i\n", packet.packet_id);
-        arc_packet_t* packet2 = last(buffer);
-        //printf("PACKET ID IN BUFFER %i\n", packet2->packet_id);
+       //arc_packet_t* packet2 = last(buffer);
+       //printf("PACKET ID IN BUFFER %i\n", packet2->packet_id);
 
        return 1;
     } else {
@@ -54,9 +54,9 @@ int push_front(arc_packet_t packet, RING_BUFFER* buffer){
     if (dec(buffer->first) != buffer->last){
         buffer->first = dec(buffer->first);
         packet_copy(&packet, &(buffer->elements[buffer->first]));
-        printf("PACKET ID SOURCE%i\n", packet.packet_id);
+        //printf("PACKET ID SOURCE%i\n", packet.packet_id);
         arc_packet_t* packet2 = first(buffer);
-        printf("PACKET ID IN BUFFER %i\n", packet2->packet_id);
+        //printf("PACKET ID IN BUFFER %i\n", packet2->packet_id);
         return 1;
     } else {
         return 0;

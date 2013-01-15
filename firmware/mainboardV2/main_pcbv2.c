@@ -88,8 +88,8 @@ int main(void)
     //state off
 
     
-    currentState.mainboardstate = OFF;
-    wantedState.mainboardstate = OFF;
+    currentState.mainboardstate = MAINBOARD_OFF;
+    wantedState.mainboardstate = MAINBOARD_OFF;
     
     currentState.hbridges[0].state = STATE_UNCONFIGURED;
     currentState.hbridges[1].state = STATE_UNCONFIGURED;
@@ -97,48 +97,21 @@ int main(void)
     currentState.hbridges[3].state = STATE_UNCONFIGURED;
     
     while(1){
-        
-        //printf("test");
-      //  hbridge_setValue(2,0,0,2);
-        //hbridge_requestState(1);
+        //handle CAN packets
         protocol_processPackage();
+        //Statemachine HBridges
         processHbridgestate();
-        //Amber lauschen (Befehle erwarten)
-        //packet_handling
-        processMainboardstate();
-        mainboard_run();
-        /*
-        if ((motor_command.quer_vorne-127)/5 < 30 && (motor_command.quer_vorne-127)/5 > -30 &&
-        (motor_command.quer_hinten-127)/5 < 30 && (motor_command.quer_hinten-127)/5 > -30 &&
-        (motor_command.motor_rechts-127)/5 < 30 && (motor_command.motor_rechts-127)/5 > -30 &&
-        (motor_command.motor_links-127)/5 < 30 && (motor_command.motor_links-127)/5 > -30){
-            
-        
-        printf("MOTORENWERTE: %i, %i, %i, %i \n", 
-                (motor_command.quer_vorne-127)/5,
-                (motor_command.quer_hinten-127)/5,
-                (motor_command.motor_rechts-127)/5,
-                (motor_command.motor_links-127)/5);
-        
-        hbridge_setValue(
-                //printf("MOTORENWERTE: %i, %i, %i, %i \n", 
-                (motor_command.motor_links-127)/5,
-                (motor_command.motor_rechts-127)/5,
-                (motor_command.quer_hinten-127)/5,
-                (motor_command.quer_vorne-127)/5);
-        }
-        else printf("OVERCURRENT \n");//Amber Test
-        //printf ("Test: %i\n", len);
-       //TODO
-        //Read packets and handle packets
-        //Statemachine
-        //Hbridge Command
-        //process Amber
+        //Read from Amber-Buffer
         arc_packet_t packet;
         while (amber_getPacket(&packet)){
-            printf("handle Packet\n");
+//            printf("handle Packet, %i\n", packet.packet_id);
             handlePacket(&packet);
-        } */
+        } 
+        //Statemachine Mainboard
+        processMainboardstate();
+        //Running
+        mainboard_run();
+        //Amber protocol
         amber_processPackets();
     }
 }

@@ -54,17 +54,26 @@ void processHbridgestate(){
                 if(wanted != 0){
                     //printf("test: %i\n", wantedState.hbridges[i].state);
                     currentState.hbridges[i].pending = FALSE;
-                    wantedState.hbridges[i].state = currentState.hbridges[i].state;
-                    printf("HBridgeError: %i %i\n", currentState.hbridges[i].state,i);
+                    //wantedState.hbridges[i].state = currentState.hbridges[i].state;
+                    //printf("HBridgeError: %i %i\n", currentState.hbridges[i].state,i);
+                //printf("Fehler erkannt\n");
+                //if(wanted != 0)
+printf("WANTED UNGLEICH 0\n");
                     continue;
                 }
                 if(currentState.hbridges[i].state == STATE_SENSOR_ERROR){
-                    printf("Unfonfigure %i",i);
+                    printf("Clean error sensor %i",i);
                     hbridge_sendClearSensorError(i+RECEIVER_ID_H_BRIDGE_1);
+                    hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
+                    continue;
                 }
                 if(currentState.hbridges[i].state == STATE_ACTUATOR_ERROR){
-                    printf("Unfonfigure 2%i",i);
+                    printf("Clean error actuator%i",i);
                     hbridge_sendClearActuatorError(i+RECEIVER_ID_H_BRIDGE_1);
+                   
+                    hbridge_requestState(i+RECEIVER_ID_H_BRIDGE_1);
+                    //currentState.hbridges[i].state = STATE_SENSOR_ERROR;
+                    continue;
                 }
             }
             
@@ -77,7 +86,7 @@ void processHbridgestate(){
                 switchTo(i+RECEIVER_ID_H_BRIDGE_1, current+1);
             }
         }
-        
+       //printf("DAS I HIER: %i\n", i); 
     }
 }
     

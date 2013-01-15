@@ -13,42 +13,40 @@ bool toSurface();
 void processMainboardstate(){
     //printf("PROCESS MAINBOARD STATE\n");
 //    printf("wantedState.mainboardstate %i %i %i\n",wantedState.mainboardstate,currentState.mainboardstate,pending);
-    if (currentState.mainboardstate != wantedState.mainboardstate || pending){
+    if (currentState.mainboardstate != wantedState.mainboardstate){
         bool allowed = FALSE;
         //printf("CHANGE STATE\n");
         switch(wantedState.mainboardstate){
-            case OFF:
+            case MAINBOARD_OFF:
                 allowed = toOff();
                 break;
-            case RUNNING:
+            case MAINBOARD_RUNNING:
                 allowed = toRunning();
                 break;
-            case HALT:
+            case MAINBOARD_HALT:
                 printf("WANTED STATE HALT IS DEPRECATED\n");
                 allowed = FALSE;
                 break;
-            case AUTONOMOUS:
+            case MAINBOARD_AUTONOMOUS:
                 allowed = toAutonomous(FALSE);
                 break;
-            case FULL_AUTONOMOUS:
+            case MAINBOARD_FULL_AUTONOMOUS:
                 allowed = toAutonomous(TRUE);
                 break;
-            case SURFACE:
+            case MAINBOARD_SURFACE:
                 allowed = toSurface();
                 break;
             default:
-                printf("WARNING: Unknown state\n");
+                printf("WARNING: Unknown state or senseless state\n");
                 break;
         }
-//        printf("Pending: %i, Allowed: %i\n",pending,allowed);
         if (!allowed){
             //wantedState.mainboardstate = 0;
             //TODO error handling
-            //currentState.mainboardstate = ERROR_WRONG_STATE;
-            //wantedState.mainboardstate = ERROR_WRONG_STATE;
+            currentState.mainboarderror = MAINBOARD_WRONG_STATE_ERROR;
+            wantedState.mainboarderror = MAINBOARD_WRONG_STATE_ERROR;
         } else {
-            if(!pending)
-                    currentState.mainboardstate = wantedState.mainboardstate;
+            //behandelt
         }
     }
 }
@@ -56,62 +54,60 @@ bool toOff(){
     //current state doesn't matter
     //toOff is allowed every time
     //TODO hbridges unconfigure
-//    printf("TO_OFF\n");
-            int i;
-            pending=0;
-            for(i=0;i<4;i++){
-                wantedState.hbridges[i].state = STATE_UNCONFIGURED;
-                if(currentState.hbridges[i].state != STATE_UNCONFIGURED){
-//                        printf("Hbridghe %i is in %i\n",i,currentState.hbridges[i].state);
-                        pending = 1;
-                }
+    int i;
+    if (currentState.mainboardstate != MAINBOARD_CONFIGURING_TO_OFF){
+        for(i=0;i<4;i++){
+            wantedState.hbridges[i].state = STATE_UNCONFIGURED;
+        }
+        printf("to OFF\n");
+        currentState.mainboardstate = MAINBOARD_CONFIGURING_TO_OFF; 
+    } else {
+        bool off_all = TRUE;
+        for (i=0; i<4; i++){
+            if (currentState.hbridges[i].state != STATE_UNCONFIGURED){
+                off_all = FALSE;
             }
+        }
+        if (off_all) {
+            printf("CURRENT TO OFF\n");
+            currentState.mainboardstate = MAINBOARD_OFF;
+        }
+        //else {printf("still not in OFF\n");}
+    }
     return TRUE;
 }
 
 bool toRunning(){
-    
-    //printf("MB_TO_RUNNING\n");
-    //current state doesn't matter
-    //toRunning is allowed every time
-    if (currentState.mainboardstate == UNDEFINED){
+    if (currentState.mainboardstate == MAINBOARD_UNDEFINED){
         printf("undefined\n");
         return FALSE;
     }
-
-   int i;
-   char do_change = 1;
-
-   for(i=0;i<4;i++)
-    if(wantedState.hbridges[i].state == STATE_SENSOR_ERROR || wantedState.hbridges[i].state  == STATE_ACTUATOR_ERROR){
-        do_change = 0;
-        break;
-    }
-  
-   if(do_change){
-            int i;
-            pending=0;
+    
+    int i;
+    if (currentState.mainboardstate != MAINBOARD_CONFIGURING_TO_RUNNING){ 
             for(i=0;i<4;i++){
                 wantedState.hbridges[i].state = STATE_RUNNING;
-                if(currentState.hbridges[i].state != STATE_RUNNING){
-                        pending = 1;
-                }
             }
-    }else{
-        printf("We stil lhave an error %i\n", currentState.mainboardstate);
-        return FALSE;
-    }
+            currentState.mainboardstate = MAINBOARD_CONFIGURING_TO_RUNNING;
+            printf("to RUNNING\n");
+    } else {
+        bool run_all = TRUE;
+        for (i=0; i<4; i++){
+            if (currentState.hbridges[i].state != STATE_RUNNING){
+                run_all = FALSE;
+            }
+        }
+        if (run_all) {
+            currentState.mainboardstate = MAINBOARD_RUNNING;
+            printf("Now in Running\n");
 
-    if(currentState.hbridges[0].state != STATE_RUNNING && currentState.hbridges[1].state != STATE_RUNNING && currentState.hbridges[2].state != STATE_RUNNING && currentState.hbridges[3].state != STATE_RUNNING){
-        printf("Not running yet %i \n",currentState.mainboardstate);
-        return FALSE;
+        }
+        //else {printf("Still not in Running\n");}
     }
-    //TODO hbridges unconfigure
-    //TODO hbridges configure
     return TRUE; 
 }
 bool toAutonomous(bool full_autonomous){
-    if (currentState.mainboardstate == UNDEFINED){
+    if (currentState.mainboardstate == MAINBOARD_UNDEFINED){
         return FALSE;
     }
     //TODO everything for autonomous
@@ -120,7 +116,7 @@ bool toAutonomous(bool full_autonomous){
 }
 
 bool toSurface(){
-    if (currentState.mainboardstate == UNDEFINED){
+    if (currentState.mainboardstate == MAINBOARD_UNDEFINED){
         return FALSE;
     }
     //TODO get the control from the PC

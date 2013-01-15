@@ -5,7 +5,7 @@
 #include "usart.h"
 #include "printf.h"
 #define MAX_BYTES 30
-
+#define SYSTEM_ID 2
 RING_BUFFER read_buffer;
 RING_BUFFER send_buffer;
 volatile bool has_token = FALSE;
@@ -26,12 +26,12 @@ void initAmber(){
 }
 int amber_getPacket(arc_packet_t* packet){
     int ret = pop_front(&read_buffer, packet);
-    printf("AN DIESER STEKLLE DIE ID? %i \n", packet->packet_id);
+    //printf("AN DIESER STEKLLE DIE ID? %i \n", packet->packet_id);
     return ret;
 }
 
 int amber_sendPacket(arc_packet_t* packet){
-    return push_back(*packet, &read_buffer); 
+    return push_back(*packet, &send_buffer); 
 }
 
 void amber_processPackets(){
@@ -143,11 +143,17 @@ void receivePackets(){
             break;
         } else if (handleTokenPacket(&packet)== FALSE){
             //for a hot fix not token packets can handled here
-            //if (!push_back(packet, &read_buffer)){
-                //Buffer overflow
-                //TODO assert
-           //}
-            handlePacket(&packet);
+            //packet for me?
+            if (packet.system_id == (ARC_SYSTEM_ID) SYSTEM_ID){
+                if (!push_back(packet, &read_buffer)){
+                    //Buffer overflow
+                    //TODO asse
+                    printf("packet in den buffer\n");
+                }
+           } else {
+               printf("packet to other system %i\n", packet.system_id);
+           }
+           //handlePacket(&packet);
         }
     }
 }
