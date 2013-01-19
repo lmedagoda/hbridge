@@ -11,4 +11,4 @@ INSTALL(FILES
     Writer.hpp
     Protocol.hpp
     DESTINATION include)
-INSTALL(FILES firmware/common/protocol.h DESTINATION include/firmware)
+INSTALL(FILES ../firmware/common/protocol.h DESTINATION include/firmware)
