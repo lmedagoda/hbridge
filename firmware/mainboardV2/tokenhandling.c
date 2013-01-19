@@ -32,7 +32,6 @@ bool handleTokenPacket(arc_packet_t* packet){
 }
 
 void registerTokenHandler(bool (*handler)(arc_packet_t* packet)){
-    printf("register \n");
     if (token_handlers >= MAX_HANDLERS){
         //TODO assert
         return;
@@ -50,14 +49,14 @@ bool giveTokenHandler(arc_packet_t* packet){
         //still unregistered
         if (amber_state == AMBER_UNREGISTERED){
             if (packet->system_id == REGISTER_CHANCE){
-                printf("REGISTER CHANCE\n");
                 if (random_register == 0){
                     sendProtocolPacket(REGISTER);
+                    printf("Tried register with ID %i\n", MY_SYSTEM_ID); 
                     //TODO random_register zufaellig setzen
                 } else {
                     random_register--;
                 }
-            }
+            } 
         //token to me
         } 
         if (packet->system_id == (ARC_SYSTEM_ID) MY_SYSTEM_ID){
@@ -70,6 +69,11 @@ bool giveTokenHandler(arc_packet_t* packet){
         }
         return TRUE;
     } else {
+        if (amber_state == AMBER_UNREGISTERED){
+           //while i'm unregistered. i hearing only to Registerchance packets
+           //This Packet isn't a registerchance, so it's handled
+            return TRUE;
+        }
         return FALSE;
     }
 }

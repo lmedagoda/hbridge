@@ -5,7 +5,7 @@
 #include "../hbridgeCommon/drivers/printf.h"
 
 #define SYSTEM_ID 2 //ASV
-#define STATUS_PACKET_PERIOD 10000
+#define STATUS_PACKET_PERIOD 2000 
 volatile extern arc_asv_control_packet_t motor_command;
 void sendStatusPacket();
 void runningMotors();
@@ -15,7 +15,7 @@ void mainboard_run(){
      if (currentState.mainboardstate == wantedState.mainboardstate){
          switch (currentState.mainboardstate){
              case MAINBOARD_RUNNING:
-                 printf("Sendid command\n");
+                 //printf("Sendid command\n");
                  runningMotors();
                  break;
              case MAINBOARD_OFF:
@@ -35,7 +35,7 @@ void mainboard_run(){
      } 
      //Sending a Status packet
      if (status_loops >= STATUS_PACKET_PERIOD){
-//         sendStatusPacket();
+         sendStatusPacket();
          status_loops = 0;
      } else {
          status_loops++;
@@ -47,13 +47,14 @@ void sendStatusPacket(){
     status_information.wanted_state = wantedState.mainboardstate;
     arc_packet_t packet;
     packet.originator = SLAVE;
-    packet.system_id = 3;//(ARC_SYSTEM_ID) SYSTEM_ID;
+    packet.system_id = ASV;//(ARC_SYSTEM_ID) SYSTEM_ID;
     packet.packet_id = STATUS;
     packet.length = sizeof(arc_status_packet_t);
     int i;
     for (i=0; i<sizeof(arc_status_packet_t); i++){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
+    printf("send status packet\n");
     amber_sendPacket(&packet);
 }
 void runningMotors(){
@@ -65,8 +66,7 @@ void runningMotors(){
                 (motor_command.motor_rechts-127)/5,
                 (motor_command.motor_links-127)/5);*/
         
-        hbridge_setValue(
-                //printf("MOTORENWERTE: %i, %i, %i, %i \n", 
+        hbridge_setValue( 
                 (motor_command.motor_rechts-127),
                 (motor_command.motor_links-127),
                 (motor_command.quer_hinten-127),

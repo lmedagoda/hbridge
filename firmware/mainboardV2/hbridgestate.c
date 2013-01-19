@@ -26,13 +26,15 @@ void hbridgestateHandler(int senderId, int receiverId, int id, unsigned char *da
     currentState.hbridges[senderId - RECEIVER_ID_H_BRIDGE_1].pending = FALSE;
     
 }
+void hbridgestatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
 
+} 
 void initHbridgeState(){
     
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, &hbridgestateHandler);
     protocol_registerHandler(PACKET_ID_ACK, &ackHandler);
-    /*protocol_registerHandler(PACKET_ID_STATUS, &statusHandler);
-    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &statusHandler);*/
+    protocol_registerHandler(PACKET_ID_STATUS, &hbridgestatusHandler);
+    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgestatusHandler);
     int i;
     for(i = 0; i < HBRIDGECOUNT; i++){
         currentState.hbridges[i].state = STATE_UNCONFIGURED;

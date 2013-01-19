@@ -4,6 +4,7 @@
 #include "arc_packet.h"
 #include "printf.h"
 #include "state.h"
+#include "arc_driver.h"
 bool (*packetHandlers[MAX_HANDLERS])(arc_packet_t* packet);
 int handlers = 0;
 bool pingHandler(arc_packet_t* packet);
@@ -43,6 +44,9 @@ void registerHandler(bool (*handler)(arc_packet_t* packet)){
 bool pingHandler(arc_packet_t* packet){
     if (packet->packet_id == PING){
         //TODO Ping behandeln
+        printf("PING\n");
+        packet->originator = SLAVE;
+        amber_sendPacket(packet);
         return TRUE;
     } else {
         return FALSE;

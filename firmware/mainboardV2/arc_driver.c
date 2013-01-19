@@ -108,6 +108,7 @@ void sendPendingPackets(){
            if (MAX_BYTES-send_bytes > len){
                pop_front(&send_buffer, packet);
                USART1_SendData(tmp_send_buffer, len);
+               //sendProtocolPacket(GIVE_BACK);
            } else {
                break;
            }
@@ -123,7 +124,6 @@ void sendProtocolPacket(ARC_PACKET_ID id){
     packet.system_id = (ARC_SYSTEM_ID) MY_SYSTEM_ID; 
     packet.packet_id = id; 
     packet.length = 0;
-    
     int len = createPacket(&packet, tmp_send_buffer);
     USART1_SendData(tmp_send_buffer, len);
 }
@@ -144,16 +144,15 @@ void receivePackets(){
         } else if (handleTokenPacket(&packet)== FALSE){
             //for a hot fix not token packets can handled here
             //packet for me?
-            if (packet.system_id == (ARC_SYSTEM_ID) SYSTEM_ID){
-                if (!push_back(packet, &read_buffer)){
-                    //Buffer overflow
-                    //TODO asse
-                    printf("packet in den buffer\n");
+                if (packet.system_id == (ARC_SYSTEM_ID) SYSTEM_ID){
+                    if (!push_back(packet, &read_buffer)){
+                        //Buffer overflow
+                        //TODO asse
+                    }
+                } else {
+                    printf("packet to other system %i\n", packet.system_id);
                 }
-           } else {
-               printf("packet to other system %i\n", packet.system_id);
-           }
-           //handlePacket(&packet);
+                //handlePacket(&packet);
         }
     }
 }

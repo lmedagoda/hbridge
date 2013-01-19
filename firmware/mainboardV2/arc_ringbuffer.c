@@ -41,9 +41,7 @@ int push_back(arc_packet_t packet, RING_BUFFER* buffer){
     if (buffer->first != inc(buffer->last)){
        buffer->last = inc(buffer->last);
        packet_copy(&packet, &(buffer->elements[buffer->last]));
-       //printf("PACKET ID SOURCE%i\n", packet.packet_id);
-       //arc_packet_t* packet2 = last(buffer);
-       //printf("PACKET ID IN BUFFER %i\n", packet2->packet_id);
+       arc_packet_t* packet2 = last(buffer);
 
        return 1;
     } else {
