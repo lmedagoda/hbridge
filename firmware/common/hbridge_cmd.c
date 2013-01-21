@@ -3,11 +3,11 @@
 #include "printf.h"
 #include <stddef.h>
 
-void hbridge_sendClearSensorError(int hbridgeId){
+void hbridge_sendClearSensorError(enum hostIDs hbridgeId){
     protocol_sendData(hbridgeId, PACKET_ID_CLEAR_SENSOR_ERROR, NULL, 0);
 }
 
-void hbridge_sendClearActuatorError(int hbridgeId){
+void hbridge_sendClearActuatorError(enum hostIDs hbridgeId){
     protocol_sendData(hbridgeId, PACKET_ID_CLEAR_ACTUATOR_ERROR, NULL, 0);
 }
 
@@ -23,7 +23,7 @@ void hbridge_sensorStructInit(struct sensorConfig *sc){
         sc->statusEveryMs = 100;
 }
 
-void hbridge_sendSensorConfiguration(int hbridgeId, struct sensorConfig *sc){
+void hbridge_sendSensorConfiguration(enum hostIDs hbridgeId, struct sensorConfig *sc){
   protocol_sendData(hbridgeId, PACKET_ID_SET_SENSOR_CONFIG, (unsigned char *) sc, sizeof(struct sensorConfig));
 }
 
@@ -40,7 +40,7 @@ void hbridge_actuatorStructInit(struct actuatorConfig *ac){
     ac->timeout = 2000;
 }
 
-void hbridge_sendActuatorConfiguration(int hbridgeId, struct actuatorConfig *ac){    
+void hbridge_sendActuatorConfiguration(enum hostIDs hbridgeId, struct actuatorConfig *ac){    
   protocol_sendData(hbridgeId, PACKET_ID_SET_ACTUATOR_CONFIG, (unsigned char *) ac, sizeof(struct actuatorConfig));
 }
 
@@ -48,7 +48,7 @@ void hbridge_controllerStructInit(struct setActiveControllerData *cd){
     cd->controllerId = CONTROLLER_MODE_PWM;
 }
 
-void hbridge_sendControllerConfiguration(int hbridgeId, struct setActiveControllerData *cd){
+void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiveControllerData *cd){
     protocol_sendData(hbridgeId, PACKET_ID_SET_ACTIVE_CONTROLLER, (unsigned char *) cd, sizeof(struct setActiveControllerData));
 }
 
@@ -66,10 +66,10 @@ void hbridge_setValue(int value1, int value2, int value3, int value4){
     protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE58, (unsigned char *) &values, sizeof(struct setValueData));
 }
 
-void hbridge_requestState(int hbridgeId){
+void hbridge_requestState(enum hostIDs hbridgeId){
     protocol_sendData(hbridgeId, PACKET_ID_REQUEST_STATE, NULL, 0);    
 }
 
-void hbridge_setUnconfigured(int hbridgeId){
+void hbridge_setUnconfigured(enum hostIDs hbridgeId){
     protocol_sendData(hbridgeId, PACKET_ID_SET_UNCONFIGURED, NULL, 0);    
 }
