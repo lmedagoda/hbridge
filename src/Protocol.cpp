@@ -15,6 +15,7 @@ HbridgeHandle::HbridgeHandle(int id, Protocol* protocol):boardId(id), protocol(p
     reader = new Reader(this);
     writer = new Writer(this);
     lowPrioProtocol = new LowPriorityProtocol(protocol);
+    msgHandlers.resize(PACKET_ID_TOTAL_COUNT, NULL);
 }
 
 Protocol::Protocol(BusInterface *bus) : bus(bus)
@@ -41,16 +42,19 @@ HbridgeHandle* Protocol::getHbridgeHandle(int id)
     return handles[id];
 }
 
-void HbridgeHandle::registerForMsg(PacketReveiver* reveiver, int packetId)
+void HbridgeHandle::registerForMsg(PacketReveiver* receiver, int packetId)
 {
-
+    if(packetId < 0 || packetId > PACKET_ID_TOTAL_COUNT)
+	throw std::out_of_range("HbridgeHandle: Error tried to register receiver for invalid id " + packetId);
+    
+    msgHandlers[packetId] = receiver;
 }
 
 
 void HbridgeHandle::registerController(hbridge::Controller* ctrl)
 {
     if(controllers[ctrl->getControllerId()])
-	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id X registered");
+	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
     
     controllers[ctrl->getControllerId()] = ctrl;
 }
@@ -149,6 +153,10 @@ void Protocol::processIncommingPackages()
 	    
 	    handles[msg.senderId]->reader->processMsg(msg);
 	    handles[msg.senderId]->writer->processMsg(msg);
+	    if(handles[msg.senderId]->msgHandlers[msg.packetId])
+	    {
+		handles[msg.senderId]->msgHandlers[msg.packetId]->processMsg(msg);
+	    }
 	}
     }
 }
