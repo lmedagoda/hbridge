@@ -1,5 +1,8 @@
 #include "CanBusInterface.hpp"
+#include "../protocol.hpp"
 #include <iostream>
+
+using namespace firmware;
 
 namespace hbridge 
 {
@@ -13,6 +16,13 @@ uint16_t CanBusInterface::getMaxPacketSize()
     return 8;
 }
 
+struct CanIdLayout
+{
+    unsigned sender:3;
+    unsigned receiver:4;
+    unsigned packetId:4;
+}  __attribute__ ((packed)) __attribute__((__may_alias__));
+
 bool CanBusInterface::readPacket(hbridge::Packet& packet)
 {
     canbus::Message msg;
@@ -22,13 +32,22 @@ bool CanBusInterface::readPacket(hbridge::Packet& packet)
     
     packet.data.resize(msg.size);
     memcpy(packet.data.data(), msg.data, msg.size);
+
+    CanIdLayout *cil = (CanIdLayout *) &(msg.can_id);
     
-    packet.packetId = msg.can_id & 0x0F;
-    packet.senderId = ((msg.can_id & 0xF0) >> 4) - 1;
-    //not implemented yet
-    packet.receiverId = 0;
+    packet.packetId = cil->packetId;
+    if(cil->sender == SENDER_ID_H_BRIDGE)
+    {
+	packet.receiverId = RECEIVER_ID_PC;
+	packet.senderId = cil->receiver;
+    }
+    else
+    {
+	packet.receiverId = cil->receiver;
+	packet.senderId = cil->sender;
+    }
     
-    packet.broadcastMsg = (msg.can_id & 0xF0) == 0;
+    packet.broadcastMsg = (cil->receiver == RECEIVER_ID_ALL);
     
     return true;
 }
@@ -40,13 +59,14 @@ bool CanBusInterface::sendPacket(const hbridge::Packet& packet)
     msg.size = packet.data.size();
     memcpy(msg.data, packet.data.data(), packet.data.size());
  
-    int revId = ((packet.receiverId + 1)<< 4);    
+    CanIdLayout *cil = (CanIdLayout *) &(msg.can_id);
     
-    msg.can_id = 0;
-    msg.can_id |= packet.packetId;
-    if(!packet.broadcastMsg)
-	msg.can_id |= revId;
-	
+    cil->receiver = RECEIVER_ID_H_BRIDGE_1 + packet.receiverId;
+    cil->packetId = packet.packetId;
+    cil->sender = SENDER_ID_PC;
+    
+    if(packet.broadcastMsg)
+	cil->receiver = RECEIVER_ID_ALL;
     
     return sendCanMsg(msg);
 }
