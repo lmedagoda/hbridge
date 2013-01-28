@@ -7,7 +7,9 @@ using namespace firmware;
 
 namespace hbridge 
 {
-CanBusInterface::CanBusInterface()
+
+CanBusInterface::CanBusInterface(canbus::Interface *interface):
+    interface(interface)
 {
 
 }

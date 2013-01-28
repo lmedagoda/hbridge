@@ -11,11 +11,12 @@
 
 using namespace hbridge;
 
-class CanDriver: public CanBusInterface
+class CanDriver: public CanBusInterface, public canbus::Interface
 {
     canbus::Driver *driver;
 public:
-    CanDriver(const std::string &dev)
+    CanDriver(const std::string &dev):
+        CanBusInterface(this)
     {
 	driver = canbus::openCanDevice(dev);	
     };
