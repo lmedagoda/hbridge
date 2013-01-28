@@ -111,13 +111,15 @@ add_executable(main
     ${MD_COMMON_DIR}/encoder.c
     ${MD_COMMON_DIR}/systick.c
     ${MD_COMMON_DIR}/packets.c
+    ${MD_COMMON_DIR}/hbridge_cmd.c
+    ${MD_COMMON_DIR}/hbridge_cmd2.c
     arc_packet.c
-    ../common/hbridge_cmd.c
     arc_driver.c
     arc_ringbuffer.c
     tokenhandling.c
     packethandling.c
     mainboardstate.c
+
     run.c
     hbridgestate.c
 )
