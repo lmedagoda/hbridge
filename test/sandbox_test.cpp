@@ -80,6 +80,8 @@ int main(int argc, char **argv)
 
     hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
     
+    proto->setSendTimeout(base::Time::fromMilliseconds(500));
+    
     PWMController pwmCtrl(handle);
     SpeedPIDController speedCtrl(handle);
     PosPIDController posCtrl(handle);

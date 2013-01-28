@@ -21,6 +21,9 @@ namespace hbridge
     
     struct SensorConfiguration
     {
+	SensorConfiguration() : externalTempSensor(0), statusFrequency(10)
+	{
+	}
         unsigned char externalTempSensor;
 	/**
 	 * The frequency in hz in which the firmware should
