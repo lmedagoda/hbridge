@@ -25,7 +25,7 @@ void Controller::packetSendError(const hbridge::Packet& msg)
 }
 
 
-void Controller::registerForCanId(int canId)
+void Controller::registerForPacketId(int canId)
 {
     handle->registerForMsg(this, canId);
 }
@@ -43,7 +43,7 @@ void Controller::setTargetValue(double value)
 
 SpeedPIDController::SpeedPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_SPEED)
 {
-    registerForCanId(firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG);
+    registerForPacketId(firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG);
 }
 
 unsigned short SpeedPIDController::getTargetValue(double value)
@@ -110,7 +110,7 @@ void SpeedPIDController::sendControllerConfig()
 
 PosPIDController::PosPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_POSITION)
 {
-    registerForCanId(firmware::PACKET_ID_POS_CONTROLLER_DEBUG);
+    registerForPacketId(firmware::PACKET_ID_POS_CONTROLLER_DEBUG);
 }
 
 void PosPIDController::processMsg(const hbridge::Packet& msg)

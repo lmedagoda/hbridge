@@ -27,7 +27,7 @@ public:
      * Whenever a packet packet with this id is received,
      * processMsg will be called;
      * */
-    void registerForCanId(int packetId);
+    void registerForPacketId(int packetId);
     
     /**
      * Callback, gets called if an error while sending
@@ -51,6 +51,10 @@ public:
 	return mode;
     };
     
+    /**
+     * Convenience send method. Sends out the given message.
+     * The receiver, sender will be filled in automatically
+     * */
     void sendPacket(const Packet &msg, bool isAcked);
 private:
     firmware::controllerModes mode;
