@@ -15,12 +15,43 @@ class Reader;
     
 class Controller: public PacketReveiver
 {
+private:
+    firmware::controllerModes mode;
+    HbridgeHandle *handle;
+    const static int maxCommandSize = 8;
+    std::vector<uint8_t> commandData;
+    bool hasCommand;
 public:
     Controller(HbridgeHandle *handle, firmware::controllerModes controllerId);
     virtual void sendControllerConfig() {};
     virtual void printSendError(int packetId) {};
     
     virtual unsigned short getTargetValue(double value) = 0;
+    
+    const std::vector<uint8_t> *getCommandData()
+    {
+	if(!hasCommand)
+	    return NULL;
+	
+	return &commandData;
+    }
+    
+    void clearCommand()
+    {
+	hasCommand = false;
+    };
+    
+    template <class A>
+    void sendCommand(const A &command)
+    {
+	if(sizeof(command) > maxCommandSize)
+	    throw std::runtime_error("Error: Command is too big");
+	
+	commandData.resize(sizeof(command));
+	A *ptr = reinterpret_cast<A *>(commandData.data()); 
+	*ptr = command;
+	hasCommand = true;
+    }
     
     /**
      * Registeres the controller for the given packet Id.
@@ -56,9 +87,6 @@ public:
      * The receiver, sender will be filled in automatically
      * */
     void sendPacket(const Packet &msg, bool isAcked);
-private:
-    firmware::controllerModes mode;
-    HbridgeHandle *handle;
 };
 
 
