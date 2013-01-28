@@ -1,5 +1,6 @@
 #include "CanBusInterface.hpp"
 #include "../protocol.hpp"
+#include "../firmware/common/protocol.h"
 #include <iostream>
 
 using namespace firmware;
