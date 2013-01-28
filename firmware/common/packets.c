@@ -4,8 +4,8 @@ const char *getPacketName(uint16_t packetId)
 {
     switch(packetId)
     {
-	case PACKET_ID_SET_OVERWRITE: 
-	    return "PACKET_ID_SET_OVERWRITE";
+	case PACKET_ID_SET_ALLOWED_SENDER: 
+	    return "PACKET_ID_SET_ALLOWED_SENDER";
 	    break;
 	
 	case PACKET_ID_ERROR: 

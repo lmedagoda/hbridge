@@ -77,6 +77,8 @@ void protocol_setRecvFunc(recv_func_t func);
  * */
 void protocol_setMaxPacketSize(uint8_t maxPacketSize);
 
+void protocol_setAllowedSender(enum hostIDs);
+
 /**
  * @arg ownHostId host id used for sending packets
  * */

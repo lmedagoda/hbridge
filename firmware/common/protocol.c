@@ -8,6 +8,8 @@ uint8_t maxPacketSize;
 volatile enum hostIDs ownHostId;
 protocol_callback_t protocolHandlers[PACKET_ID_TOTAL_COUNT];
 
+uint8_t protocol_onlyMaster;
+
 send_func_t sendPacket;
 recv_func_t readPacket;
 
@@ -23,12 +25,6 @@ void protocol_setRecvFunc(recv_func_t func)
     readPacket = func;
 }
 
-void protocol_ackHandler(int id, unsigned char *data, unsigned short size)
-{
-    //We do not support error handling or resend support on the
-    //motor driver firmware. So we just ignore the ack.
-}
-
 enum hostIDs protocol_getOwnHostId()
 {
     return ownHostId;
@@ -37,6 +33,12 @@ enum hostIDs protocol_getOwnHostId()
 void protocol_defaultHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     printf("Warning, packet with id %i %s was not handled \n", id, getPacketName(id));
+}
+
+void protocol_setAllowedSenderHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    struct setAllowedSenderData *sasd = (struct setAllowedSenderData *) data;
+    protocol_onlyMaster = sasd->onlyMainboard;
 }
 
 uint8_t protocol_getMaxPacketSize()
@@ -56,12 +58,16 @@ void protocol_setOwnHostId(enum hostIDs id)
 
 
 void protocol_init()
-{    
+{   
+    //initially we only listen to the bus master
+    protocol_onlyMaster = 1;
     int i = 0;
     for(i = 0; i < PACKET_ID_TOTAL_COUNT; i++)
     {
 	protocolHandlers[i] = protocol_defaultHandler;
     }   
+    
+    protocolHandlers[PACKET_ID_SET_ALLOWED_SENDER] = protocol_setAllowedSenderHandler;
 }
 
 
@@ -70,6 +76,15 @@ void protocol_registerHandler(int id, protocol_callback_t handler)
 {
     protocolHandlers[id] = handler;
 }
+
+void protocol_setAllowedSender(enum hostIDs allowed)
+{
+    if(allowed == SENDER_ID_MAINBOARD)
+	protocol_onlyMaster = 1;
+    
+    protocol_onlyMaster = 0;
+}
+
 
 void protocol_processPackage()
 {
@@ -89,6 +104,12 @@ void protocol_processPackage()
 		return;
 	    }
             
+            //this means that only packets from the mainboard are allowed
+            if(protocol_onlyMaster && senderId != SENDER_ID_MAINBOARD)
+	    {
+		printf("DNM");
+		return;
+	    }
 
 	    protocolHandlers[packetId](senderId, receiverId, packetId, buffer, bytes);
 	}

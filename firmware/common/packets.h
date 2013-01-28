@@ -17,7 +17,7 @@ enum STATES
 enum HIGH_PRIORITY_IDs
 {
     PACKET_ID_EMERGENCY_STOP,
-    PACKET_ID_SET_OVERWRITE,
+    PACKET_ID_SET_ALLOWED_SENDER,
     PACKET_ID_ERROR,
     PACKET_ID_ANNOUNCE_STATE,
     PACKET_ID_STATUS,
@@ -99,6 +99,21 @@ struct ackData {
 
 struct announceStateData {
     enum STATES curState:8;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct setAllowedSenderData {
+    /**
+     * If this value is != 0 this
+     * means that only the mainboard 
+     * is allowed to send. The effect 
+     * of this is that any packet originating
+     * from an different sender is discarded.
+     * 
+     * To allow the PC to communicate with
+     * the motor driver set this value to
+     * Zero.
+     * */
+    uint8_t onlyMainboard;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct encoderConfiguration {
