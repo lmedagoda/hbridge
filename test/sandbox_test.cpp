@@ -82,6 +82,8 @@ int main(int argc, char **argv)
     
     proto->setSendTimeout(base::Time::fromMilliseconds(500));
     
+    proto->setDriverAsBusMaster();
+    
     PWMController pwmCtrl(handle);
     SpeedPIDController speedCtrl(handle);
     PosPIDController posCtrl(handle);

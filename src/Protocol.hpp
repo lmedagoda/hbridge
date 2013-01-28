@@ -199,6 +199,18 @@ public:
      * packets and timeout checks.
      * */
     void processSendQueues();
+    
+    /**
+     * This function sends a packet that switches 
+     * the motor drivers from only Mainboard mode
+     * to Driver mode. This means that the motor 
+     * drivers will accept packets from the pc-driver
+     * after this message call.
+     * 
+     * WARNING 	This function must only be used if no
+     *		Mainboard is present in you system. 
+     * */
+    void setDriverAsBusMaster();
 };
 
 }

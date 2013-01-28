@@ -3,6 +3,7 @@
 #include "Controller.hpp"
 #include "Reader.hpp"
 #include "Writer.hpp"
+#include "../firmware/common/protocol.h"
 
 canbus::Message msg;
 using namespace firmware;
@@ -166,7 +167,7 @@ void Protocol::sendPacket(int boardId, const hbridge::Packet& msg, bool isAcked,
     SendQueue::Entry entry;
     entry.msg = msg;
     entry.msg.receiverId = boardId;
-    entry.msg.senderId = 0;
+    entry.msg.senderId = SENDER_ID_PC;
     entry.errorCallback = errorCallback;
     entry.ackedCallback = ackedCallback;
     entry.retryCnt = retryCount;
@@ -219,6 +220,25 @@ void Protocol::processSendQueues()
 	    curEntry.sendTime = curTime;	    
 	}
     }
+}
+
+void Protocol::setDriverAsBusMaster()
+{
+    Packet pkg;
+    pkg.broadcastMsg = 1;
+    pkg.packetId = firmware::PACKET_ID_SET_ALLOWED_SENDER;
+    pkg.data.resize(sizeof(setAllowedSenderData));
+    pkg.senderId = SENDER_ID_MAINBOARD;
+    pkg.receiverId = RECEIVER_ID_ALL;
+    
+    setAllowedSenderData *sasd = (setAllowedSenderData *) pkg.data.data();
+    sasd->onlyMainboard = 0;
+    
+    //note this message bypasses 
+    //the setting of the sender 
+    //and therfor directly accesses 
+    //the bus.
+    bus->sendPacket(pkg);
 }
 
 LowPriorityProtocol::LowPriorityProtocol(Protocol* proto) : maxPacketSize(proto->bus->getMaxPacketSize()), hasHeader(false), bus(proto->bus)
