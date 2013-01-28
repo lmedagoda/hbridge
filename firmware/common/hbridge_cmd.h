@@ -1,3 +1,5 @@
+#ifndef HBRIDGE_CMD_H
+#define HBRIDGE_CMD_H
 #include "packets.h"
 #include "protocol.h"
 
@@ -79,3 +81,11 @@ void hbridge_requestState(enum hostIDs hbridgeId);
  * @param hbridgeId
  */
 void hbridge_setUnconfigured(enum hostIDs hbridgeId);
+
+/**
+ * Sets the given HBridge to state unconfigured
+ * @param hbridgeId
+ */
+void hbridge_setActuatorUnconfigured(enum hostIDs hbridgeId);
+
+#endif

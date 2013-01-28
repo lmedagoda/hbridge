@@ -73,3 +73,8 @@ void hbridge_requestState(enum hostIDs hbridgeId){
 void hbridge_setUnconfigured(enum hostIDs hbridgeId){
     protocol_sendData(hbridgeId, PACKET_ID_SET_UNCONFIGURED, NULL, 0);    
 }
+
+void hbridge_setActuatorUnconfigured(enum hostIDs hbridgeId)
+{
+    protocol_sendData(hbridgeId, PACKET_ID_SET_ACTUATOR_UNCONFIGURED, NULL, 0);    
+}

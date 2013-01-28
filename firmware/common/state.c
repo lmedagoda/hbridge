@@ -18,6 +18,7 @@ void state_sensorConfigHandler(int senderId, int receiverId, int id, unsigned ch
 void state_setActuatorLimitHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_setActiveControllerHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_setActuatorUnconfiguredHandler(int senderId, int receiverId, int id, unsigned char *data, short unsigned int size);
 void state_sensorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_setUnconfigured(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
@@ -33,6 +34,7 @@ void state_init()
     protocol_registerHandler(PACKET_ID_CLEAR_SENSOR_ERROR, state_sensorClearError);
     protocol_registerHandler(PACKET_ID_SET_ACTUATOR_CONFIG, state_setActuatorLimitHandler);
     protocol_registerHandler(PACKET_ID_CLEAR_ACTUATOR_ERROR, state_actuatorClearError);
+    protocol_registerHandler(PACKET_ID_SET_ACTUATOR_UNCONFIGURED, state_setActuatorUnconfiguredHandler);
     protocol_registerHandler(PACKET_ID_SET_ACTIVE_CONTROLLER, state_setActiveControllerHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE14, state_setTargetValueHandler);
@@ -89,6 +91,7 @@ void state_switchToState(enum STATES nextState)
 	case STATE_SENSORS_CONFIGURED:
 	    if(nextState == STATE_UNCONFIGURED || 
 		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_SENSORS_CONFIGURED ||
 		nextState == STATE_ACTUATOR_CONFIGURED)
 		newState = nextState;
 	    break;
@@ -96,6 +99,7 @@ void state_switchToState(enum STATES nextState)
 	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_SENSORS_CONFIGURED ||
 		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
 	    break;
@@ -103,6 +107,7 @@ void state_switchToState(enum STATES nextState)
 	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_SENSORS_CONFIGURED ||
 		nextState == STATE_RUNNING)
 		newState = nextState;	    
 	    break;
@@ -110,6 +115,7 @@ void state_switchToState(enum STATES nextState)
 	    if(	nextState == STATE_ACTUATOR_ERROR ||
 		nextState == STATE_UNCONFIGURED ||
 		nextState == STATE_SENSOR_ERROR ||
+		nextState == STATE_SENSORS_CONFIGURED ||
 		nextState == STATE_CONTROLLER_CONFIGURED)
 		newState = nextState;
 	    
@@ -216,11 +222,17 @@ void state_sensorClearError(int senderId, int receiverId, int id, unsigned char 
     printf("Cleared sensor-config and switching state to unconfigured \n");
 }
 
-void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+void state_setActuatorUnconfiguredHandler(int senderId, int receiverId, int id, unsigned char *data, short unsigned int size)
+{
+    printf("Got actuator unconfigure \n");
     protocol_ackPacket(id, senderId);
     
-    struct ActuatorConfiguration aCfg;
-    lastActiveCState->actuatorConfig = aCfg;
+    state_switchState(STATE_SENSORS_CONFIGURED);    
+    printf("Cleared actuator-config and switsching state to unconfigured");
+}
+
+void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    protocol_ackPacket(id, senderId);
     
     state_switchToState(STATE_SENSORS_CONFIGURED);
     
