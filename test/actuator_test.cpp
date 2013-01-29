@@ -11,32 +11,14 @@
 
 using namespace hbridge;
 
-class CanDriver: public CanBusInterface, public canbus::Interface
-{
+class CanDriver: public CanBusInterface{
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        CanBusInterface(this)
+        driver(canbus::openCanDevice(dev)),
+        CanBusInterface(driver)
     {
-	driver = canbus::openCanDevice(dev);	
     };
-    
-    virtual bool readCanMsg(canbus::Message& msg)
-    {
-        if(driver->getPendingMessagesCount() > 0)
-	{
-	    msg = driver->read();
-	    return true;
-	}
-	
-	return false;
-    }
-    
-    virtual bool sendCanMsg(const canbus::Message& msg)
-    {
-	driver->write(msg);
-	return true;
-    }
 };
 
 int hbridge_id;
