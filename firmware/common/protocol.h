@@ -32,7 +32,7 @@ enum hostIDs {
 /**
  * Initializes the internal data structures of the protocol handler.
  * */
-void protocol_init();
+void protocol_init(int isMaster);
 
 /**
  * Returns the host id of this device

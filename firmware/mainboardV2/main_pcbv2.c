@@ -88,7 +88,7 @@ int main(void)
     ownHostId = SENDER_ID_MAINBOARD;
     can_protocolInit();
     
-    protocol_init();
+    protocol_init(TRUE);
     
     initAmber();
 

@@ -114,7 +114,7 @@ void baseInit()
     motorTemperature = 0;
     overCurrentCounter = 0;
 
-    protocol_init();
+    protocol_init(0);
     protocolLowPriority_init();
     state_init();
     encoder_init();

@@ -57,10 +57,10 @@ void protocol_setOwnHostId(enum hostIDs id)
 }
 
 
-void protocol_init()
+void protocol_init(int isMaster)
 {   
     //initially we only listen to the bus master
-    protocol_onlyMaster = 1;
+    protocol_onlyMaster = !isMaster;
     int i = 0;
     for(i = 0; i < PACKET_ID_TOTAL_COUNT; i++)
     {
