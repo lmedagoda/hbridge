@@ -112,7 +112,7 @@ add_executable(main
     ${MD_COMMON_DIR}/systick.c
     ${MD_COMMON_DIR}/packets.c
     ${MD_COMMON_DIR}/hbridge_cmd.c
-    ${MD_COMMON_DIR}/hbridge_cmd2.c
+    #    ${MD_COMMON_DIR}/hbridge_cmd2.c
     arc_packet.c
     arc_driver.c
     arc_ringbuffer.c
@@ -122,6 +122,7 @@ add_executable(main
 
     run.c
     hbridgestate.c
+    watchdog.c
 )
 
 target_link_libraries(main)

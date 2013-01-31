@@ -20,6 +20,10 @@
 #include "run.h"
 #include "hbridgestate.h"
 
+//For Amber PING Watchdog
+#include "thread.h"
+#include "watchdog.h"
+
 
 #define SYSTEM_ID 2 //ASV
 #define CAN_ID_STATUS 0x101
@@ -36,6 +40,15 @@ volatile MainState wantedState;
 
 int lastPacket;
 void GPIO_Configuration(void);
+
+
+/**
+ * Function that will registered to the watchdog system to shutdown
+ * the hbridges when not receiving pings from the ocu anymore
+ */
+void shutdownHBridgesAfterTimeout() {
+	wantedState.mainboardstate = MAINBOARD_OFF;
+}
 
 /*******************************************************************************
 * Function Name  : main
@@ -78,6 +91,12 @@ int main(void)
     protocol_init();
     
     initAmber();
+
+    //Init Watchdog listing for PING pakets on Amber
+    //Setting frequeucy below 5 crashes the system for some reason :-/
+    watchdog_init(20);
+    watchdog_registerWatchDogFunc(shutdownHBridgesAfterTimeout);
+    startHardPeriodicThread(5, watchdog_tick);
     
     //127 == 0 (range 0 - 254)
     motor_command.quer_vorne = 127;
