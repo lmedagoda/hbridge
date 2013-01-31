@@ -21,7 +21,6 @@ void mainboard_run(){
              case MAINBOARD_OFF:
                  break;
              case MAINBOARD_AUTONOMOUS:
-                 printf("AUTONOMOUS\n");
                  break;
              case MAINBOARD_FULL_AUTONOMOUS:
                  printf("FULL_AUTONOMOUS\n");

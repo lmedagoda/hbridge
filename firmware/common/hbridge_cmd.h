@@ -88,4 +88,11 @@ void hbridge_setUnconfigured(enum hostIDs hbridgeId);
  */
 void hbridge_setActuatorUnconfigured(enum hostIDs hbridgeId);
 
+/**
+ * Sets the sender restrictions of the hbridges
+ * @param hostId - ID of the HBridge which should receive the message
+ * @param allAlowed - if true everyone is allowed to send commands otherwise only commands from mainboard are allowed
+ */
+void hbridge_sendAllowedSenderConfiguration(enum hostIDs hbridgeId, int allAllowed);
+
 #endif

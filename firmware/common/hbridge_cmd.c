@@ -78,3 +78,9 @@ void hbridge_setActuatorUnconfigured(enum hostIDs hbridgeId)
 {
     protocol_sendData(hbridgeId, PACKET_ID_SET_ACTUATOR_UNCONFIGURED, NULL, 0);    
 }
+
+void hbridge_sendAllowedSenderConfiguration(enum hostIDs hbridgeId, int allAllowed) {
+    struct setAllowedSenderData sasd;
+    sasd.onlyMainboard = !allAllowed;
+    protocol_sendData(hbridgeId, PACKET_ID_SET_ALLOWED_SENDER, (unsigned char*) &sasd, sizeof(struct setAllowedSenderData));
+}

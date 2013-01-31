@@ -3,6 +3,9 @@
 #include "bool.h"
 #include "../hbridgeCommon/drivers/printf.h"
 
+//TODO: This is a hack, and should be done in hbridgestate.c ...
+#include "../common/hbridge_cmd.h"
+
 volatile extern MainState currentState;
 volatile extern MainState wantedState;
 volatile uint8_t pending=0;
@@ -50,30 +53,34 @@ void processMainboardstate(){
         }
     }
 }
+
+void switchHBridgeState(enum MAINBOARDSTATE pendingState, enum MAINBOARDSTATE finishedState, int wantedHBridgeState) {
+    int i;
+    if (currentState.mainboardstate != pendingState){
+        for(i=0;i<4;i++){
+            wantedState.hbridges[i].state = wantedHBridgeState;
+        }
+        printf("to %d\n", wantedHBridgeState);
+        currentState.mainboardstate = pendingState; 
+    } else {
+        bool still_pending = FALSE;
+        for (i=0; i<4; i++){
+            if (currentState.hbridges[i].state != wantedHBridgeState){
+                still_pending = TRUE;
+            }
+        }
+        if (!still_pending) {
+            printf("finished HBridge transition to %d\n", wantedHBridgeState);
+            currentState.mainboardstate = finishedState;
+        }
+    }
+
+}
+
 bool toOff(){
     //current state doesn't matter
     //toOff is allowed every time
-    //TODO hbridges unconfigure
-    int i;
-    if (currentState.mainboardstate != MAINBOARD_CONFIGURING_TO_OFF){
-        for(i=0;i<4;i++){
-            wantedState.hbridges[i].state = STATE_UNCONFIGURED;
-        }
-        printf("to OFF\n");
-        currentState.mainboardstate = MAINBOARD_CONFIGURING_TO_OFF; 
-    } else {
-        bool off_all = TRUE;
-        for (i=0; i<4; i++){
-            if (currentState.hbridges[i].state != STATE_UNCONFIGURED){
-                off_all = FALSE;
-            }
-        }
-        if (off_all) {
-            printf("CURRENT TO OFF\n");
-            currentState.mainboardstate = MAINBOARD_OFF;
-        }
-        //else {printf("still not in OFF\n");}
-    }
+    switchHBridgeState(MAINBOARD_CONFIGURING_TO_OFF, MAINBOARD_OFF, STATE_UNCONFIGURED);
     return TRUE;
 }
 
@@ -83,34 +90,17 @@ bool toRunning(){
         return FALSE;
     }
     
-    int i;
-    if (currentState.mainboardstate != MAINBOARD_CONFIGURING_TO_RUNNING){ 
-            for(i=0;i<4;i++){
-                wantedState.hbridges[i].state = STATE_RUNNING;
-            }
-            currentState.mainboardstate = MAINBOARD_CONFIGURING_TO_RUNNING;
-            printf("to RUNNING\n");
-    } else {
-        bool run_all = TRUE;
-        for (i=0; i<4; i++){
-            if (currentState.hbridges[i].state != STATE_RUNNING){
-                run_all = FALSE;
-            }
-        }
-        if (run_all) {
-            currentState.mainboardstate = MAINBOARD_RUNNING;
-            printf("Now in Running\n");
-
-        }
-        //else {printf("Still not in Running\n");}
-    }
+    switchHBridgeState(MAINBOARD_CONFIGURING_TO_RUNNING, MAINBOARD_RUNNING, STATE_RUNNING);
     return TRUE; 
 }
 bool toAutonomous(bool full_autonomous){
     if (currentState.mainboardstate == MAINBOARD_UNDEFINED){
         return FALSE;
     }
-    //TODO everything for autonomous
+    switchHBridgeState(MAINBOARD_CONFIGURING_TO_AUTONOMOUS, MAINBOARD_AUTONOMOUS, STATE_UNCONFIGURED);
+    //Allow the hbridges to communicate with the pc
+    //TODO: This is a hack, and should be done in hbridgestate.c ...
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_ALL, TRUE);
 
     return TRUE;
 }
