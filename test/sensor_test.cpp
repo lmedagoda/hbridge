@@ -4,6 +4,7 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <canbus.hh>
+#include <canmessage.hh>
 #include "../src/CanBusInterface.hpp"
 #include "../src/Reader.hpp"
 #include "../src/Writer.hpp"
@@ -55,8 +56,9 @@ int main(int argc, char *argv[]) {
 	std::cerr << "usage: ./pwm_test <id>" << std::endl;
 	exit(0);
     }
-
-    hbridge::Protocol *proto = new Protocol(new CanDriver("can0"));
+    canbus::Driver *driver = canbus::openCanDevice("can0"); 
+    CanBusInterface *interface = new CanBusInterface(driver);
+    hbridge::Protocol *proto = new Protocol(interface);
 
     proto->setSendTimeout(base::Time::fromMilliseconds(150));
     

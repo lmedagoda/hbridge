@@ -128,7 +128,6 @@ void protocol_processPackage()
     if(bytes)
     {
 	protocol_checkCallHandler(senderId, receiverId, packetId, buffer, bytes);
-
     }
 }
 

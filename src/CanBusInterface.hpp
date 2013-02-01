@@ -4,7 +4,7 @@
 #include "Protocol.hpp"
 #include "canmessage.hh"
 #include "canbus.hh"
-
+#include <iostream>
 namespace hbridge {
 
 class CanBusInterface: public BusInterface
@@ -23,6 +23,7 @@ public:
     };
 
     virtual bool sendCanMsg(const canbus::Message &msg){
+	std::cout << "Send any Can Message" << std::endl;
         assert(interface);
         return interface->sendCanMsg(msg);
     }
