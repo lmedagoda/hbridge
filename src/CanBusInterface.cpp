@@ -35,7 +35,6 @@ bool CanBusInterface::readPacket(hbridge::Packet& packet)
     if(!readCanMsg(msg))
 	return false;
     
-    std::cout << "READ PACKET" << std::endl;
     
     packet.data.resize(msg.size);
     memcpy(packet.data.data(), msg.data, msg.size);
@@ -43,22 +42,18 @@ bool CanBusInterface::readPacket(hbridge::Packet& packet)
     CanIdLayout *cil = (CanIdLayout *) &(msg.can_id);
     
     packet.packetId = cil->packetId;
-    std::cout << "Packet ID" << cil->packetId<< std::endl;
-    std::cout << "Sender ID" << cil->sender<< std::endl;
-    std::cout << "Receiver ID" << cil->receiver<< std::endl;
     if(cil->sender >= SENDER_ID_H_BRIDGE)
     {
 	packet.receiverId = RECEIVER_ID_PC;
-	packet.senderId = cil->receiver;
+	packet.senderId = cil->receiver-RECEIVER_ID_H_BRIDGE_1;
     }
     else
     {
-	packet.receiverId = cil->receiver;
+	packet.receiverId = cil->receiver-RECEIVER_ID_H_BRIDGE_1;
 	packet.senderId = cil->sender;
     }
     
     packet.broadcastMsg = (cil->receiver == RECEIVER_ID_ALL);
-    
     return true;
 }
 
@@ -72,13 +67,10 @@ bool CanBusInterface::sendPacket(const hbridge::Packet& packet)
  
     CanIdLayout *cil = (CanIdLayout *) &(msg.can_id);
     
-    std::cout << "Receiver ID: " << packet.receiverId << std::endl; 
-    std::cout << "CAN ID first: " << msg.can_id << std::endl; 
-    cil->receiver = 3 + packet.receiverId;
+    cil->receiver = RECEIVER_ID_H_BRIDGE_1 + packet.receiverId;
     cil->packetId = packet.packetId;
     cil->sender = SENDER_ID_PC;
     
-    std::cout << "CAN ID last: " << msg.can_id << std::endl; 
     if(packet.broadcastMsg)
 	cil->receiver = RECEIVER_ID_ALL;
     

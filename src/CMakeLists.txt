@@ -14,3 +14,4 @@ INSTALL(FILES
     Types.hpp
     DESTINATION include/hbridge)
 INSTALL(FILES ../firmware/common/packets.h DESTINATION include/hbridge/firmware/common)
+

@@ -23,7 +23,7 @@ public:
     };
 
     virtual bool sendCanMsg(const canbus::Message &msg){
-	std::cout << "Send any Can Message" << std::endl;
+	std::cout << "SENDED CAN MSG ID" << msg.can_id << std::endl;
         assert(interface);
         return interface->sendCanMsg(msg);
     }

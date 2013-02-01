@@ -97,12 +97,14 @@ void Protocol::processIncommingPackages()
     while(bus->readPacket(msg))
     {
 	//ignore non prtocoll messages
-	if(!isInProtocol(msg))
+	if(!isInProtocol(msg)){
+	    std::cout << "Warning Received none protocol message" << std::endl;
 	    continue;
-
+        }
 	//ignore messages where we don't have a handle for
-	if(handles.size() <= msg.senderId || !handles[msg.senderId])
+	if(handles.size() <= msg.senderId || !handles[msg.senderId]){
 	    continue;
+        }
 	
 	if(msg.packetId != PACKET_ID_STATUS)
 	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << std::endl;
