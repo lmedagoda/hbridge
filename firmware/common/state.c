@@ -442,7 +442,9 @@ void state_printDebug(const volatile struct GlobalState* cs)
 	    ctrl_s = "ERROR INVALID";
 	    break;
     }
-    printf("ControllMode: %s ,internal State: %s ,openloop:%hi ,pwmstep %hu \n", ctrl_s, int_state_s, cs->actuatorConfig.useOpenLoop, cs->actuatorConfig.pwmStepPerMillisecond);    
+    //TODO: This is a hack, the field name should be published in the header or be accessable by a function
+    extern uint8_t protocol_onlyMaster; 
+    printf("ControllMode: %s ,internal State: %s ,openloop:%hi ,pwmstep: %hu ,only_master: %d\n", ctrl_s, int_state_s, cs->actuatorConfig.useOpenLoop, cs->actuatorConfig.pwmStepPerMillisecond, protocol_onlyMaster);    
 }
 
 uint8_t state_inErrorState() {

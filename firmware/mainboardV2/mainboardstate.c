@@ -81,6 +81,11 @@ bool toOff(){
     //current state doesn't matter
     //toOff is allowed every time
     switchHBridgeState(MAINBOARD_CONFIGURING_TO_OFF, MAINBOARD_OFF, STATE_UNCONFIGURED);
+    //TODO: This is a hack, and should be done in hbridgestate.c ...
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_1, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_2, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_3, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_4, FALSE);
     return TRUE;
 }
 
@@ -91,6 +96,11 @@ bool toRunning(){
     }
     
     switchHBridgeState(MAINBOARD_CONFIGURING_TO_RUNNING, MAINBOARD_RUNNING, STATE_RUNNING);
+    //TODO: This is a hack, and should be done in hbridgestate.c ...
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_1, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_2, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_3, FALSE);
+    hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_H_BRIDGE_4, FALSE);
     return TRUE; 
 }
 bool toAutonomous(bool full_autonomous){
