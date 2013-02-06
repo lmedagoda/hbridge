@@ -63,7 +63,7 @@ void hbridge_setValue(int value1, int value2, int value3, int value4){
     values.board2Value = value2 * 9;   //100% PWM for normal    send betweel 0-1800
     values.board3Value = value3 * 4;   //60% PWM for Querstrahler
     values.board4Value = value4 * 4;   //60% PWM for Querstrahler
-    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE58, (unsigned char *) &values, sizeof(struct setValueData));
+    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE14, (unsigned char *) &values, sizeof(struct setValueData));
 }
 
 void hbridge_requestState(enum hostIDs hbridgeId){

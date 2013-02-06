@@ -318,6 +318,7 @@ void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned 
     
     int ownHostId = protocol_getOwnHostId();
     
+    uint16_t value = 0;
     switch(id)
     {
 	case PACKET_ID_SET_VALUE:
@@ -331,28 +332,44 @@ void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned 
 	    break;
 	}
 	case PACKET_ID_SET_VALUE14:
-	case PACKET_ID_SET_VALUE58:
 	{
 	    struct setValueData *tdata = (struct setValueData *) data;
-	    uint16_t value = 0;
 	    switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
-		    case RECEIVER_ID_H_BRIDGE_5:
 			value = tdata->board1Value;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
-		    case RECEIVER_ID_H_BRIDGE_6:
 			value = tdata->board2Value;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
-		    case RECEIVER_ID_H_BRIDGE_7:
 			value = tdata->board3Value;
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
-		    case RECEIVER_ID_H_BRIDGE_8:
 			value = tdata->board4Value;
 			break;
 		}
+	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
+	    *value_p = value;
+	    lastActiveCState->targetData.dataSize = sizeof(uint16_t);
+	}
+	break;
+	case PACKET_ID_SET_VALUE58:
+	{
+	    struct setValueData *tdata = (struct setValueData *) data;
+	    switch(ownHostId) {
+		    case RECEIVER_ID_H_BRIDGE_5:
+			value = tdata->board1Value;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_6:
+			value = tdata->board2Value;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_7:
+			value = tdata->board3Value;
+			break;
+		    case RECEIVER_ID_H_BRIDGE_8:
+			value = tdata->board4Value;
+			break;
+	    }
 	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
 	    *value_p = value;
 	    lastActiveCState->targetData.dataSize = sizeof(uint16_t);
