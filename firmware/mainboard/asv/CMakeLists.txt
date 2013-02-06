@@ -26,8 +26,8 @@ macro(OBJCOPY_FILE EXE_NAME)
  set_source_files_properties("${FO}" PROPERTIES GENERATED TRUE)
 endmacro(OBJCOPY_FILE)
 
-set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../hbridgeCommon) 
-set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../common) 
+set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../../hbridgeCommon) 
+set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../../common) 
 
 #compile asm files with gcc
 set_source_files_properties(${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
@@ -59,8 +59,6 @@ include_directories(
 
 add_executable(main
     main_pcbv2.c
-    hbridgev2.c
-    current_measurementv2.c
     ${STM32_COMMON_DIR}/system_clock.c
   ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
   ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
@@ -101,15 +99,9 @@ add_executable(main
     ${STM32_COMMON_DIR}/protocol_can.c
     ${MD_COMMON_DIR}/pid.c
     ${MD_COMMON_DIR}/temperature_sensor.c
-    ${MD_COMMON_DIR}/position_controller.c
-    ${MD_COMMON_DIR}/speed_controller.c
-    ${MD_COMMON_DIR}/pwm_controller.c
-    ${MD_COMMON_DIR}/controllers.c
     ${MD_COMMON_DIR}/protocol.c
     ${MD_COMMON_DIR}/protocol_low_priority.c
-    ${MD_COMMON_DIR}/state.c
     ${MD_COMMON_DIR}/encoder.c
-    ${MD_COMMON_DIR}/systick.c
     ${MD_COMMON_DIR}/packets.c
     ${MD_COMMON_DIR}/hbridge_cmd.c
     #    ${MD_COMMON_DIR}/hbridge_cmd2.c

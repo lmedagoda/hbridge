@@ -4,14 +4,13 @@
 #include "stm32f10x_it.h"
 #include "printf.h"
 #include "usart.h"
-#include "systick.h"
-#include "current_measurement.h"
 #include "can.h"
 #include "assert.h"
 #include "i2c.h"
 #include "lm73cimk.h"
 #include "protocol_can.h"
 #include "packethandling.h"
+#include "protocol_low_priority.h"
 #include <stdlib.h>
 #include "arc_packet.h"
 #include "../common/hbridge_cmd.h"
@@ -78,7 +77,8 @@ int main(void)
     printf("This firmware is developed in Dec 2012 by AUV 12\n");
     //init basic functionality
     //read address, turn on peripherals etc.
-    baseInit();
+    protocol_init(TRUE);
+    protocolLowPriority_init();
     printf("Peripheral configuration finished\n");
 
         
@@ -88,8 +88,7 @@ int main(void)
     ownHostId = SENDER_ID_MAINBOARD;
     can_protocolInit();
     
-    protocol_init(TRUE);
-    
+
     initAmber();
 
     //Init Watchdog listing for PING pakets on Amber
