@@ -28,6 +28,7 @@ endmacro(OBJCOPY_FILE)
 
 set(STM32_COMMON_DIR ${STM32_SOURCE_DIR}/../../hbridgeCommon) 
 set(MD_COMMON_DIR ${STM32_SOURCE_DIR}/../../common) 
+set(MB_COMMON_DIR ${STM32_SOURCE_DIR}/../common) 
 
 #compile asm files with gcc
 set_source_files_properties(${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
@@ -48,6 +49,7 @@ include_directories(
   ${STM32_COMMON_DIR}/../
   ${STM32_COMMON_DIR}/../interfaces
   ${MD_COMMON_DIR}
+  ${MB_COMMON_DIR}
   ${STM32_COMMON_DIR}/drivers/
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/
   ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/inc
@@ -105,10 +107,10 @@ add_executable(main
     ${MD_COMMON_DIR}/packets.c
     ${MD_COMMON_DIR}/hbridge_cmd.c
     #    ${MD_COMMON_DIR}/hbridge_cmd2.c
-    arc_packet.c
-    arc_driver.c
-    arc_ringbuffer.c
-    tokenhandling.c
+    ${MB_COMMON_DIR}/arc_packet.c
+    ${MB_COMMON_DIR}/arc_driver.c
+    ${MB_COMMON_DIR}/arc_ringbuffer.c
+    ${MB_COMMON_DIR}/tokenhandling.c
     packethandling.c
     mainboardstate.c
 
