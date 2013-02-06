@@ -1,22 +1,27 @@
 #include "arc_driver.h"
-#include "bool.h"
 #include "tokenhandling.h"
 #include "printf.h"
 //How many Tokens wasn't my Token since my last Token
 int given_tokens;
 int random_register = 0;
-bool (*tokenHandlers[MAX_HANDLERS])(arc_packet_t* packet);
+
+token_handler_t tokenHandlers[MAX_HANDLERS];
+
+#define TRUE 1
+#define FALSE 0
+
 int token_handlers = 0;
-bool giveTokenHandler(arc_packet_t* packet);
-bool giveBackHandler(arc_packet_t* packet);
-bool registerPacketHandler(arc_packet_t* packet);
+uint8_t giveTokenHandler(arc_packet_t* packet);
+uint8_t giveBackHandler(arc_packet_t* packet);
+uint8_t registerPacketHandler(arc_packet_t* packet);
+
 initTokenhandling(){
     registerTokenHandler(giveTokenHandler);
     registerTokenHandler(registerPacketHandler);
     registerTokenHandler(giveBackHandler);
 }
 
-bool handleTokenPacket(arc_packet_t* packet){
+uint8_t handleTokenPacket(arc_packet_t* packet){
     //printf("handle Token Packet \n");
     int i = 0;
         //printf("tokenhandlers: %i \n", token_handlers); 
@@ -31,7 +36,7 @@ bool handleTokenPacket(arc_packet_t* packet){
     return FALSE;
 }
 
-void registerTokenHandler(bool (*handler)(arc_packet_t* packet)){
+void registerTokenHandler(token_handler_t handler){
     if (token_handlers >= MAX_HANDLERS){
         //TODO assert
         return;
@@ -39,7 +44,7 @@ void registerTokenHandler(bool (*handler)(arc_packet_t* packet)){
     tokenHandlers[token_handlers++] = handler;
 }
 
-bool giveTokenHandler(arc_packet_t* packet){
+uint8_t giveTokenHandler(arc_packet_t* packet){
     //printf("GIVE TOKEN HANDLER\n");
     if (packet->packet_id == GIVE_TOKEN){
         //printf("Das war ein Token Packet\n");
@@ -78,7 +83,7 @@ bool giveTokenHandler(arc_packet_t* packet){
     }
 }
 
-bool giveBackHandler(arc_packet_t* packet){
+uint8_t giveBackHandler(arc_packet_t* packet){
     //printf("TokenBackHandler");
     if (packet->packet_id == GIVE_TOKEN){
         //Nothing to do while master is not implemented 
@@ -88,7 +93,7 @@ bool giveBackHandler(arc_packet_t* packet){
     }
 }
 
-bool registerPacketHandler(arc_packet_t* packet){
+uint8_t registerPacketHandler(arc_packet_t* packet){
     //printf("Register Packet handler");
     if (packet->packet_id == REGISTER){
         //Nothing to do while master is not implemented 

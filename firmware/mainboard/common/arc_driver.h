@@ -1,6 +1,5 @@
 #ifndef ARC_DRIVER_H
 #define ARC_DRIVER_H
-#include "bool.h"
 #include "arc_packet.h"
 #define MY_SYSTEM_ID 2
 //extern volatile bool has_token;

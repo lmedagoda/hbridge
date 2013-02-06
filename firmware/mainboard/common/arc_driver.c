@@ -1,14 +1,13 @@
 #include "arc_driver.h"
 #include "tokenhandling.h"
 #include "arc_ringbuffer.h"
-#include "bool.h"
 #include "usart.h"
 #include "printf.h"
 #define MAX_BYTES 30
 #define SYSTEM_ID 2
 RING_BUFFER read_buffer;
 RING_BUFFER send_buffer;
-volatile bool has_token = FALSE;
+volatile uint8_t has_token = 0;
 volatile AMBER_STATE amber_state = AMBER_UNREGISTERED;
 int stat_bad_packets = 0;
 int send_bytes = 0;
@@ -129,7 +128,7 @@ void sendProtocolPacket(ARC_PACKET_ID id){
 }
 
 void giveTokenBack(){
-    has_token = FALSE;
+    has_token = 0;
     sendProtocolPacket(GIVE_BACK);
 }
 
@@ -141,7 +140,7 @@ void receivePackets(){
         if (result<0){
             printf("Got an error by reading Packets");
             break;
-        } else if (handleTokenPacket(&packet)== FALSE){
+        } else if (!handleTokenPacket(&packet)){
             //for a hot fix not token packets can handled here
             //packet for me?
                 if (packet.system_id == (ARC_SYSTEM_ID) SYSTEM_ID){
