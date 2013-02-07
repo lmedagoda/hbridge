@@ -1,7 +1,7 @@
 #ifndef ENCODER_HPP
 #define ENCODER_HPP
 
-#include "../HBridge.hpp"
+#include "Types.hpp"
 
 namespace hbridge {
 

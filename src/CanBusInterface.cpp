@@ -1,5 +1,5 @@
 #include "CanBusInterface.hpp"
-#include "../protocol.hpp"
+#include "Protocol.hpp"
 #include "../firmware/common/protocol.h"
 #include <iostream>
 

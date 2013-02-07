@@ -19,7 +19,8 @@ ADD_CUSTOM_TARGET(doc doxygen Doxyfile)
 
 CONFIGURE_FILE(hbridge.pc.in hbridge.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/hbridge.pc DESTINATION lib/pkgconfig)
-INSTALL(FILES HBridge.hpp DESTINATION include)
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
 
 add_subdirectory(firmware/stubs)
 

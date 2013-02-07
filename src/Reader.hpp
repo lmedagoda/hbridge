@@ -1,7 +1,7 @@
 #ifndef READER_HPP
 #define READER_HPP
 
-#include "../HBridge.hpp"
+#include "Types.hpp"
 #include <canmessage.hh>
 #include <boost/function.hpp>
 #include "Encoder.hpp"

@@ -1,7 +1,7 @@
 #include "Controller.hpp"
 #include "Protocol.hpp"
 #include <boost/bind.hpp>
-#include "../protocol.hpp"
+#include "Protocol.hpp"
 #include <limits>
 #include "Writer.hpp"
 

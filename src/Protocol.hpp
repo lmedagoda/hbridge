@@ -8,6 +8,13 @@
 #include <map>
 #include <base/time.h>
 
+namespace firmware
+{
+    extern "C" {
+#include "firmware/common/packets.h"
+    }
+}
+
 namespace hbridge {
     
 class Controller;

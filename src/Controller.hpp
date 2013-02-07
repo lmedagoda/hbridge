@@ -4,8 +4,7 @@
 #include <canmessage.hh>
 #include <vector>
 #include <base/actuators/commands.h>
-#include "../protocol.hpp"
-#include "../HBridge.hpp"
+#include "Types.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge 

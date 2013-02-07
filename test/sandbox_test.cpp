@@ -1,6 +1,5 @@
 #include "../src/Protocol.hpp"
 #include "../src/Controller.hpp"
-#include "../protocol.hpp"
 #include "../src/Reader.hpp"
 #include "../src/Writer.hpp"
 #include "../firmware/stubs/packet_stub.hpp"

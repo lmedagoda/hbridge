@@ -1,5 +1,4 @@
 #include "Protocol.hpp"
-#include "../protocol.hpp"
 #include "Controller.hpp"
 #include "Reader.hpp"
 #include "Writer.hpp"

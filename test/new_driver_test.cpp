@@ -1,6 +1,5 @@
 #include "../src/Protocol.hpp"
 #include "../src/Controller.hpp"
-#include "../protocol.hpp"
 #include "../src/Reader.hpp"
 #include "../src/Writer.hpp"
 
@@ -54,7 +53,8 @@ public:
 		fakeAck.receiverId = packet.senderId;
 		fakeAck.senderId = packet.receiverId;
 		fakeAck.broadcastMsg = false;
-		assert(packet.senderId == boardId);
+		std::cout << "Sender id " << packet.senderId << " receiver id " << packet.receiverId << " board id " << boardId << std::endl;
+		assert(packet.receiverId == boardId);
 		fakeAck.data.resize(sizeof(firmware::ackData));
 		firmware::ackData *ackData =
 		    reinterpret_cast<firmware::ackData *>(fakeAck.data.data());

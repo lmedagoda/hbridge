@@ -2,7 +2,7 @@
 #define WRITER_HPP
 #include <canmessage.hh>
 #include <vector>
-#include "../HBridge.hpp"
+#include "Types.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge

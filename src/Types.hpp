@@ -1,5 +1,5 @@
-#ifndef HBRIDGE_HPP
-#define HBRIDGE_HPP
+#ifndef HBRIDGE_TYPES_HPP
+#define HBRIDGE_TYPES_HPP
 
 #include <stdint.h>
 #include <stdexcept>

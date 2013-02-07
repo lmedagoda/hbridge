@@ -11,5 +11,6 @@ INSTALL(FILES
     Writer.hpp
     Protocol.hpp
     CanBusInterface.hpp
+    Types.hpp
     DESTINATION include/hbridge)
-INSTALL(FILES ../firmware/common/packets.h DESTINATION include/hbridge/firmware)
+INSTALL(FILES ../firmware/common/packets.h DESTINATION include/hbridge/firmware/common)

@@ -1,6 +1,5 @@
 #include "Reader.hpp"
 #include "Controller.hpp"
-#include "../protocol.hpp"
 #include "Protocol.hpp"
 
 using namespace firmware;
