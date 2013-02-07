@@ -56,6 +56,15 @@ void protocol_registerHandler(int id, protocol_callback_t handler);
 uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, short unsigned int size);
 
 /**
+ * This function checks if the sender is allowed and if we are 
+ * the correct receiver. If this is the case the packet handler
+ * ist called. If not, the packet is discared.
+ * 
+ * Note this function is the only place were packets should be dropped
+ * */
+void protocol_checkCallHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+
+/**
  * Internal function. This function processes so calles low priority
  * data packets. This packets have an own internal header an allow
  * to send packets that are actually bigger as maxPacketSize.

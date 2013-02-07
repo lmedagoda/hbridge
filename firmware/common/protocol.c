@@ -85,6 +85,37 @@ void protocol_setAllowedSender(enum hostIDs allowed)
     protocol_onlyMaster = 0;
 }
 
+void protocol_checkCallHandler(int senderId, int receiverId, int id, unsigned char* data, short unsigned int size)
+{
+    if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
+    {
+	if(id > PACKET_ID_TOTAL_COUNT)
+	{
+	    printf("Error, got packet with to big packet id\n");
+	    return;
+	}
+	
+	//this means that only packets from the mainboard are allowed
+	if(protocol_onlyMaster && senderId != SENDER_ID_MAINBOARD 
+	    //we also allowe low priority trafic
+	    //the low priority handler calls us back as soon as the 
+	    //packets are assembled
+	    && id != PACKET_LOW_PRIORITY_DATA
+	    //request state is also allways allowed
+	    && id != PACKET_ID_REQUEST_STATE
+	    //request sensor config ist also allowed
+	    //as the reader tasks needs it
+	    && id != PACKET_ID_REQUEST_SENDOR_CONFIG
+	)
+	{
+	    printf("DNM");
+	    return;
+	}
+
+	protocolHandlers[id](senderId, receiverId, id, data, size);
+    }
+}
+
 
 void protocol_processPackage()
 {
@@ -96,23 +127,8 @@ void protocol_processPackage()
     int bytes = readPacket(&senderId, &receiverId, &packetId, buffer, bufferSize);
     if(bytes)
     {
-	if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
-	{
-	    if(packetId > PACKET_ID_TOTAL_COUNT)
-	    {
-		printf("Error, got packet with to big packet id\n");
-		return;
-	    }
-            
-            //this means that only packets from the mainboard are allowed
-            if(protocol_onlyMaster && senderId != SENDER_ID_MAINBOARD)
-	    {
-		printf("DNM");
-		return;
-	    }
+	protocol_checkCallHandler(senderId, receiverId, packetId, buffer, bytes);
 
-	    protocolHandlers[packetId](senderId, receiverId, packetId, buffer, bytes);
-	}
     }
 }
 

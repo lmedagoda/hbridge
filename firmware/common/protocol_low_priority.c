@@ -14,10 +14,6 @@ struct LowPrioData {
 
 struct LowPrioData lowPrio_data[NUM_SENDERS];
 
-extern protocol_callback_t protocolHandlers[PACKET_ID_TOTAL_COUNT];
-
-
-
 uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id, uint8_t *data, uint8_t size)
 {
     uint8_t sendBuffer[protocol_getMaxPacketSize()];
@@ -113,11 +109,10 @@ void protocol_processLowPrio(int senderId, int receiverId, int id, unsigned char
 		//TODO calculate CRC
 		
 		//packet complete, call handler
-		protocolHandlers[lpd->curHeader->id](senderId, receiverId, lpd->curHeader->id, lpd->protocolBuffer, lpd->curHeader->size);
+		protocol_checkCallHandler(senderId, receiverId, lpd->curHeader->id, lpd->protocolBuffer, lpd->curHeader->size);
 
 		lpd->curHeader = 0;
 		lpd->received = 0;
-		
 	    }
 	
 	    break;
