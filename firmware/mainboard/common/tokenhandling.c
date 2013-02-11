@@ -15,7 +15,7 @@ uint8_t giveTokenHandler(arc_packet_t* packet);
 uint8_t giveBackHandler(arc_packet_t* packet);
 uint8_t registerPacketHandler(arc_packet_t* packet);
 
-initTokenhandling(){
+void initTokenhandling(){
     registerTokenHandler(giveTokenHandler);
     registerTokenHandler(registerPacketHandler);
     registerTokenHandler(giveBackHandler);
@@ -55,7 +55,7 @@ uint8_t giveTokenHandler(arc_packet_t* packet){
         if (amber_state == AMBER_UNREGISTERED){
             if (packet->system_id == REGISTER_CHANCE){
                 if (random_register == 0){
-                    sendProtocolPacket(REGISTER);
+                    arc_sendProtocolPacket(REGISTER);
                     printf("Tried register with ID %i\n", MY_SYSTEM_ID); 
                     //TODO random_register zufaellig setzen
                 } else {
