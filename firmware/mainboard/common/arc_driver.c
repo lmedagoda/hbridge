@@ -1,7 +1,7 @@
+#include <stddef.h>
 #include "arc_driver.h"
 #include "tokenhandling.h"
 #include "arc_ringbuffer.h"
-#include "usart.h"
 #include "printf.h"
 #define MAX_BYTES 30
 #define SYSTEM_ID 2
@@ -12,42 +12,51 @@ volatile AMBER_STATE amber_state = AMBER_UNREGISTERED;
 int stat_bad_packets = 0;
 int send_bytes = 0;
 
+arc_send_func_t arc_sendFunc;
+arc_recv_func_t arc_recvFunc;
+
 //privats
-int amber_newreadPacket(arc_packet_t* packet);
-void receivePackets();
-void sendPendingPackets();
-int amber_readPacket(arc_packet_t* packet); 
-void receivePackets();
-void giveTokenBack();
+int arc_newreadPacket(arc_packet_t* packet);
+void arc_receivePackets();
+void arc_sendPendingPackets();
+int arc_readPacket(arc_packet_t* packet); 
+void arc_receivePackets();
+void arc_giveTokenBack();
+
+
 //public
-void initAmber(){
+void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc)
+{
+    arc_sendFunc = sendFunc;
+    arc_recvFunc = recvFunc;
     initTokenhandling();
 }
-int amber_getPacket(arc_packet_t* packet){
+
+int arc_getPacket(arc_packet_t* packet){
     int ret = pop_front(&read_buffer, packet);
     //printf("AN DIESER STEKLLE DIE ID? %i \n", packet->packet_id);
     return ret;
 }
 
-int amber_sendPacket(arc_packet_t* packet){
+int arc_sendPacket(arc_packet_t* packet){
     return push_back(*packet, &send_buffer); 
 }
 
-void amber_processPackets(){
-    receivePackets();
-    sendPendingPackets();
+void arc_processPackets(){
+    arc_receivePackets();
+    arc_sendPendingPackets();
     return;
 }
 
 //privat
-int amber_readPacket(arc_packet_t* packet) {
+int arc_readPacket(arc_packet_t* packet) {
     int len, ret;
     unsigned char packet_buffer[ARC_MAX_FRAME_LENGTH];
-    while((ret = USART1_GetData(packet_buffer, 1))>0){
+    while((ret = arc_recvFunc(packet_buffer, 1))>0){
         int idx = 1;
         if (packet_buffer[0] == SYNC_MARKER){
             while (idx < ARC_MAX_FRAME_LENGTH){
-                len=USART1_GetData(packet_buffer+idx, 1);
+                len=arc_recvFunc(packet_buffer+idx, 1);
                 if (len < 0) {return -1;}
                 int ret2 = parsePacket(packet_buffer, idx+1, packet); // ;-) nice variablenames need time
                 if (ret2 > 0){
@@ -68,9 +77,9 @@ int amber_readPacket(arc_packet_t* packet) {
 
 unsigned char packet_buffer[ARC_MAX_FRAME_LENGTH];
 int idx = 0;
-int amber_newreadPacket(arc_packet_t* packet){
+int arc_newreadPacket(arc_packet_t* packet){
     int ret;
-    while((ret = USART1_GetData(packet_buffer+idx, 1))>0){
+    while((ret = arc_recvFunc(packet_buffer+idx, 1))>0){
         if (idx == 0){
             if (packet_buffer[0] == SYNC_MARKER){
                 idx++;
@@ -97,7 +106,7 @@ int amber_newreadPacket(arc_packet_t* packet){
     return 0;
 }
 
-void sendPendingPackets(){
+void arc_sendPendingPackets(){
     arc_packet_t* packet;
     int len = 0;
     uint8_t tmp_send_buffer[ARC_MAX_FRAME_LENGTH];
@@ -106,17 +115,26 @@ void sendPendingPackets(){
            len = createPacket(packet, tmp_send_buffer); 
            if (MAX_BYTES-send_bytes > len){
                pop_front(&send_buffer, packet);
-               USART1_SendData(tmp_send_buffer, len);
+	       int sent = 0;
+	       while(sent < len)
+	       {
+		    int ret = arc_sendFunc(tmp_send_buffer, len);
+		    {
+			printf("Got an error by sending Packet");
+			break;
+		    }
+		    sent += ret;
+	       }
                //sendProtocolPacket(GIVE_BACK);
            } else {
                break;
            }
         }
-        giveTokenBack();
+        arc_giveTokenBack();
     }
 }
 
-void sendProtocolPacket(ARC_PACKET_ID id){
+void arc_sendProtocolPacket(ARC_PACKET_ID id){
     uint8_t tmp_send_buffer[ARC_MAX_FRAME_LENGTH];
     arc_packet_t packet;
     packet.originator = SLAVE;
@@ -124,19 +142,29 @@ void sendProtocolPacket(ARC_PACKET_ID id){
     packet.packet_id = id; 
     packet.length = 0;
     int len = createPacket(&packet, tmp_send_buffer);
-    USART1_SendData(tmp_send_buffer, len);
+    int sent = 0;
+    while(sent < len)
+    {
+	int ret = arc_sendFunc(tmp_send_buffer, len);
+	if(ret < 0)
+	{
+	    printf("Got an error by sending Packet");
+	    break;
+	}
+	sent += ret;
+    }
 }
 
-void giveTokenBack(){
+void arc_giveTokenBack(){
     has_token = 0;
-    sendProtocolPacket(GIVE_BACK);
+    arc_sendProtocolPacket(GIVE_BACK);
 }
 
-void receivePackets(){
+void arc_receivePackets(){
     //printf("RECEIVE PACKETS\n");
     arc_packet_t packet;
     int32_t result;
-    while ((result = amber_newreadPacket(&packet)) != 0){
+    while ((result = arc_newreadPacket(&packet)) != 0){
         if (result<0){
             printf("Got an error by reading Packets");
             break;
