@@ -1,120 +1,134 @@
-#define MAX_HANDLERS 20
-#include "bool.h"
 #include "packethandling.h"
-#include "arc_packet.h"
+#include "mainboardstate.h"
 #include "printf.h"
-#include "state.h"
-#include "arc_driver.h"
-#include "watchdog.h"
-bool (*packetHandlers[MAX_HANDLERS])(arc_packet_t* packet);
-int handlers = 0;
-bool pingHandler(arc_packet_t* packet);
-bool arc_statusHandler(arc_packet_t* packet);
-bool setStateHandler(arc_packet_t* packet);
-bool controlHandler(arc_packet_t* packet);
-bool canHandler(arc_packet_t* packet);
-bool canAckHandler(arc_packet_t* packet);
-void initPackethandling(){
-    registerHandler(arc_statusHandler);
-    registerHandler(pingHandler);
-    registerHandler(setStateHandler);
-    registerHandler(controlHandler);
-    registerHandler(canHandler);
-    registerHandler(canAckHandler);
-}
-volatile arc_asv_control_packet_t motor_command;
-bool handlePacket(arc_packet_t* packet){
-    int i = 0;
-    for (i=0; i < handlers; i++){
-        if (packetHandlers[i](packet) == TRUE){
-            //printf("handlePacket: %i\n", i);
-            return TRUE;
-        }
-    }
-    printf("WARNING: One received Packet was not handled");
-    return FALSE;
+#include "../../hbridgeCommon/drivers/can.h"
+#include "timeout.h"
+#include <firmware/hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
+
+#define PACKET_MAX_HANDLERS 10
+
+packet_callback_t packet_handlers[PACKET_MAX_HANDLERS];
+
+void packet_pingHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    timeout_reset();
 }
 
-void registerHandler(bool (*handler)(arc_packet_t* packet)){
-    if (handlers >= MAX_HANDLERS){
-        //TODO assert
+void packet_statusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    printf("Mainboard has receive a Statuspacket, this should not happen...\n");
+}
+
+void packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    timeout_reset();
+//     assert(sizeof(enum MAINBOARDSTATE) == size);
+    
+    enum MAINBOARDSTATE wantedState = (enum MAINBOARDSTATE) *data;
+    if(mbstate_changeState(wantedState))
+    {
+	printf("State changed: %i\n", wantedState);
+    }
+    else
+    {
+	printf("Error switching to state %i\n", wantedState);
+    }
+}
+
+void packet_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    printf("Warning: Got control packet and handler was not overwritten by mainboard implementation\n");
+    mbstate_changeState(MAINBOARD_OFF);
+}
+
+struct canMsg
+{
+    unsigned canId:12;
+    unsigned index:4;
+    //warning this may be invalid depending on the size...
+    uint8_t data[8];
+};
+
+void packet_canSendData(struct canMsg *inMsg, unsigned short size)
+{
+    const uint8_t payloadSize = size-2;
+    CanTxMsg msg;
+    msg.StdId = inMsg->canId;
+    msg.DLC = payloadSize;
+    int i;
+    //copy down data as first two are CAN id and index
+    for(i=0; i < payloadSize; i++) {
+	msg.Data[i] = inMsg->data[i];
+    }
+    
+    CAN_SendMessage(&msg);
+}
+
+void packet_canHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    timeout_reset();
+    
+    packet_canSendData((struct canMsg *) data, size);
+}
+
+struct canAckMsg
+{
+    unsigned canId:12;
+    unsigned index:4;
+};
+
+void packet_canAckHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    timeout_reset();
+    
+    static uint8_t lastIndex = 255;
+    
+    struct canMsg *inMsg = (struct canMsg *) data;
+
+    /* prevent duplicates
+     * This may happen if the mainboard just 
+     * received the packet and sends the can
+     * packet, at the moment the ocu times out.
+     * In this case the OCU would resend the 
+     * packet even it it was allready written
+     * to the can bus.
+     */
+    if(lastIndex == inMsg->index)
+	return;
+    
+    packet_canSendData(inMsg, size);
+
+    //send ack
+    struct canAckMsg ack;
+    ack.canId = inMsg->canId;
+    ack.index = inMsg->index;
+    
+    //TODO SEND
+    
+    lastIndex = inMsg->index;
+}
+
+void packet_defaultHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    printf("Warning, got unhandeled packet wit id %i\n", id);
+}
+
+void packet_init()
+{
+    int i;
+    for(i=0;i<PACKET_MAX_HANDLERS; i++)
+    {
+	packet_handlers[i] = packet_defaultHandler;
+    }
+}
+
+
+void packet_registerHandler(int id, packet_callback_t callback)
+{
+    if (id >= PACKET_MAX_HANDLERS){
+	printf("ERROR, registered handler with to high id\n");
         return;
     }
-    packetHandlers[handlers++] = handler;
-}
-
-bool pingHandler(arc_packet_t* packet){
-    if (packet->packet_id == PING){
-        //TODO Ping behandeln
-	printf("PING\n");
-	watchdog_reset();
-//        printf("PING\n");
-/*        packet->originator = SLAVE;
-        amber_sendPacket(packet);*/
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-bool arc_statusHandler(arc_packet_t* packet){
-    if (packet->packet_id == STATUS){
-        printf("Mainboard has receive a Statuspacket, this should not happen...\n");
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-bool setStateHandler(arc_packet_t* packet){
-    if (packet->packet_id == SET_STATE){
-        ARC_SYSTEM_STATE state = (ARC_SYSTEM_STATE)packet->data[0];
-        printf("State: %i\n", state);
-        wantedState.mainboardstate = state;
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-bool controlHandler(arc_packet_t* packet){
-    
-    if (packet->packet_id == CONTROL){
-        //printf("CONTROL PACKET\n");
-        int i;
-        //printf("EIN WERT1 %i \n", packet->data[0]-127);
-        //printf("EIN WERT2 %i \n", packet->data[1]-127);
-        //printf("EIN WERT3 %i \n", packet->data[2]-127);
-        //printf("EIN WERT4 %i \n", packet->data[3]-127);
-
-        for (i = 0; i <sizeof(arc_asv_control_packet_t); i++){
-           ((char*) &motor_command)[i] = packet->data[i];
-        }
-        
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-
-
-
-bool canHandler(arc_packet_t* packet){
-    if (packet->packet_id == ID_CAN){
-        printf("CAN PACKET BEKOMMEN\n");
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-bool canAckHandler(arc_packet_t* packet){
-    if (packet->packet_id == ID_CAN_ACKED){
-        //TODO Can resend and ackowledge can packet 
-        return TRUE;
-    } else {
-        return FALSE;
-    }
+    packet_handlers[id] = callback;
 }
 
