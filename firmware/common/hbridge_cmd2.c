@@ -28,13 +28,28 @@ struct hbridgeState
     enum DRIVER_STATE driverState;
     uint8_t gotState;
     enum STATES state;
+    
+    uint8_t pendingAck;
+    uint8_t pendingAckId;
 };
 
 struct hbridgeState hbridge_states[MAX_HBRIDGES];
 
 void hbridge_ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
+    if(!hbridge_states[senderId].pendingAck)
+    {
+	printf("Warning, got unexpected ack from hb %i\n", senderId);
+	return;
+    }
     
+    if(hbridge_states[senderId].pendingAckId != id)
+    {
+	printf("Warning, got ack for unexpected packet id %s expected %s, id %i\n", getPacketName(id), getPacketName(hbridge_states[senderId].pendingAckId), senderId);
+	return;
+    }
+
+    hbridge_states[senderId].pendingAck = 0;
 }
 
 void hbridge_stateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
@@ -62,7 +77,38 @@ void hbridge_init(uint16_t numHbridges)
     
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, hbridge_stateHandler);
     protocol_registerHandler(PACKET_ID_ACK, hbridge_ackHandler);
+}
+
+uint8_t hbridge_getControlledHbridges()
+{
+    return hbridge_nrHbridges;
+}
+
+uint8_t hbridge_configureError()
+{
+    printf("TODO IMPLEMENT ME\n");
+    return 0;
+}
+
+void hbridge_resetActuators()
+{
+    printf("TODO IMPLEMENT ME\n");
+}
+
+void hbridge_resetSensors()
+{
+    printf("TODO IMPLEMENT ME\n");
+}
+
+struct actuatorConfig* getActuatorConfig(uint16_t hbridgeNr)
+{
+    if(hbridgeNr > hbridge_nrHbridges)
+    {
+	printf("ERROR, requested actuator config for invalid hbridge id\n");
+	return NULL;
+    }
     
+    return hbridge_actuatorConfig + hbridgeNr;    
 }
 
 struct sensorConfig* getSensorConfig(uint16_t hbridgeNr)
@@ -76,6 +122,10 @@ struct sensorConfig* getSensorConfig(uint16_t hbridgeNr)
     return hbridge_sensorConfig + hbridgeNr;
 }
 
+enum STATES hbridge_getState(uint16_t hbridgeNr)
+{
+    return hbridge_states[hbridgeNr].state;
+}
 
 void hbridge_requestStates()
 {
@@ -153,8 +203,42 @@ uint8_t hbridge_actuatorsConfigured()
     return 1;
 }
 
+uint8_t hbridge_configureSensors()
+{
+    hbridge_triggerSensorConfiguration();
+    
+    while(1)
+    {
+	if(hbridge_configureError())
+	{
+	    return 0;
+	}
+	
+	if(hbridge_actuatorsConfigured())
+	    return 1;
+	
+	hbridge_process();
+    }
+    return 0;
+}
 
-void hbrige_process_single(int hbId)
+
+uint8_t hbridge_configureActuators()
+{
+    while(1)
+    {
+	if(hbridge_actuatorsConfigured())
+	{
+	    return 1;
+	}
+	
+	hbridge_process();
+    }
+    return 0;
+}
+
+
+void hbrige_processSingle(int hbId)
 {
     struct hbridgeState *state = hbridge_states + hbId;
     switch(state->driverState)
@@ -200,7 +284,7 @@ void hbridge_process()
     int i;
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
-	hbrige_process_single(i);
+	hbrige_processSingle(i);
     }
 }
 

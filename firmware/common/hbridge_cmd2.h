@@ -6,6 +6,8 @@
 
 void hbridge_init(uint16_t numHbridges);
 
+uint8_t hbridge_getControlledHbridges();
+
 /**
  * This method assumes that is is called
  * roughly every millisecond. It processes
@@ -20,6 +22,9 @@ void hbridge_process();
 struct sensorConfig *getSensorConfig(uint16_t hbridgeNr);
 
 void hbridge_requestStates();
+enum STATES hbridge_getState(uint16_t hbridgeNr);
+
+uint8_t hbridge_configureSensors();
 
 void hbridge_triggerSensorConfiguration();
 uint8_t hbridge_sensorsConfigured();
@@ -30,12 +35,15 @@ uint8_t hbridge_sensorsConfigured();
  * */
 struct actuatorConfig *getActuatorConfig(uint16_t hbridgeNr);
 
+uint8_t hbridge_configureActuators();
+
 void hbridge_triggerActuatorConfiguration();
 uint8_t hbridge_actuatorsConfigured();
 
 uint8_t hbridge_configureError();
 
-void hbridge_resetDevices();
+void hbridge_resetActuators();
+void hbridge_resetSensors();
 
 
 
