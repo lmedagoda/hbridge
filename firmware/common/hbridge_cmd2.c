@@ -40,6 +40,21 @@ struct hbridgeState
 
 struct hbridgeState hbridge_states[MAX_HBRIDGES];
 
+
+enum STATES hbridge_getLowestHBState()
+{
+    int i;
+    enum STATES lowestState = STATE_RUNNING;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	if(hbridge_states[i].state < lowestState)
+	{
+	    lowestState = hbridge_states[i].state;
+	}
+    }
+    return lowestState;
+}
+
 void hbridge_ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     if(!hbridge_states[senderId].pendingAck)

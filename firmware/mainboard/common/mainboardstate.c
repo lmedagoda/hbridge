@@ -21,23 +21,11 @@ void mbstate_defaultHandler()
     //do nothing
 }
 
-enum STATES mbstate_getLowestHBState()
-{
-    int i;
-    enum STATES lowestState = STATE_RUNNING;
-    for(i = 0; i < hbridge_getControlledHbridges(); i++)
-    {
-	if(hbridge_getState(i) < lowestState)
-	{
-	    lowestState = hbridge_getState(i);
-	}
-    }
-    return lowestState;
-}
+
 
 uint8_t mbstate_toOffHandler()
 {
-    enum STATES lowestState = mbstate_getLowestHBState();
+    enum STATES lowestState = hbridge_getLowestHBState();
     
     if(lowestState >= STATE_SENSORS_CONFIGURED)
     {
@@ -58,7 +46,7 @@ uint8_t mbstate_toRunningHandler()
     //be shure the pc can not interrupt
     hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_ALL, 0);
     
-    enum STATES lowestState = mbstate_getLowestHBState();
+    enum STATES lowestState = hbridge_getLowestHBState();
     
     if(lowestState < STATE_SENSORS_CONFIGURED)
     {
@@ -77,7 +65,7 @@ uint8_t mbstate_toRunningHandler()
 
 uint8_t mbstate_toAutonomous()
 {
-    enum STATES lowestState = mbstate_getLowestHBState();
+    enum STATES lowestState = hbridge_getLowestHBState();
     
     if(lowestState >= STATE_SENSORS_CONFIGURED)
     {

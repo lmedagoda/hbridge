@@ -23,6 +23,7 @@ struct sensorConfig *getSensorConfig(uint16_t hbridgeNr);
 
 void hbridge_requestStates();
 enum STATES hbridge_getState(uint16_t hbridgeNr);
+enum STATES hbridge_getLowestHBState();
 
 uint8_t hbridge_configureSensors();
 
