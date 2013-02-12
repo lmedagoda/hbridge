@@ -3,6 +3,7 @@ set(MB_DIR ${CMAKE_SOURCE_DIR}/firmware/mainboard/)
 
 include_directories(
     ${MD_DIR}
+    ${MB_DIR}
     ${MD_DIR}/interfaces
     ${MD_DIR}/hbridgeCommon/
     ${MD_DIR}/hbridgeCommon/drivers

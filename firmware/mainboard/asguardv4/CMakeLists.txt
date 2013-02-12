@@ -48,6 +48,7 @@ include_directories(
     ${STM32_COMMON_DIR}/.
     ${STM32_COMMON_DIR}/../
     ${STM32_COMMON_DIR}/../interfaces
+    ${STM32_COMMON_DIR}/../mainboard/
     ${MD_COMMON_DIR}
     ${MB_COMMON_DIR}
     ${STM32_COMMON_DIR}/drivers/
