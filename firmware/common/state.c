@@ -289,8 +289,15 @@ void state_setActiveControllerHandler(int senderId, int receiverId, int id, unsi
 	return;	
     }
     
-    lastActiveCState->controllMode = packet->controllerId;
+    const struct ControllerInterface *ctrlInterface = controllers_getController(packet->controllerId);
+    if(!ctrlInterface->isConfigured())
+    {
+	state_switchToState(STATE_ACTUATOR_ERROR);
+	printf("Error, controller is not configured\n");
+	return;	
+    }
     
+    lastActiveCState->controllMode = packet->controllerId;    
     state_switchToState(STATE_CONTROLLER_CONFIGURED);
 }
 
