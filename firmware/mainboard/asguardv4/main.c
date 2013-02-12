@@ -83,8 +83,16 @@ int main()
 	    lastStateTime = curTime;
 	}
 
-	//process incomming packets
-	packet_handlePacket();	
+	//process arc packets
+	arc_processPackets();
+	
+	arc_packet_t packet;
+	
+	while(arc_getPacket(&packet))
+	{
+	    //process incomming packet
+	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
+	}
     }
     
     return 0;
