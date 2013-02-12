@@ -7,7 +7,7 @@ set(CMAKE_SYSTEM_VERSION   1)
 #
 set(CMAKE_C_COMPILER       arm-none-eabi-gcc)
 set(CMAKE_CXX_COMPILER     arm-none-eabi-g++)
-set(CMAKE_OBJCOPY          arm-none-linux-gnueabi-objcopy)
+set(CMAKE_OBJCOPY          arm-none-eabi-objcopy)
 #set(CMAKE_CXX_LINK_EXECUTABLE arm-none-linux-gnueabi-ld)
 #set(CMAKE_C_LINK_EXECUTABLE   arm-none-linux-gnueabi-ld)
 
