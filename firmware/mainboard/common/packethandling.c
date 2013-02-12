@@ -4,6 +4,7 @@
 #include "../../hbridgeCommon/drivers/can.h"
 #include "timeout.h"
 #include <firmware/hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
+#include "mb_types.h"
 
 #define PACKET_MAX_HANDLERS 10
 
@@ -41,14 +42,6 @@ void packet_controlHandler(int senderId, int receiverId, int id, unsigned char *
     mbstate_changeState(MAINBOARD_OFF);
 }
 
-struct canMsg
-{
-    unsigned canId:12;
-    unsigned index:4;
-    //warning this may be invalid depending on the size...
-    uint8_t data[8];
-};
-
 void packet_canSendData(struct canMsg *inMsg, unsigned short size)
 {
     const uint8_t payloadSize = size-2;
@@ -70,12 +63,6 @@ void packet_canHandler(int senderId, int receiverId, int id, unsigned char *data
     
     packet_canSendData((struct canMsg *) data, size);
 }
-
-struct canAckMsg
-{
-    unsigned canId:12;
-    unsigned index:4;
-};
 
 void packet_canAckHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {

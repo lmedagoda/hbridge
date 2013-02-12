@@ -6,11 +6,7 @@
 #include "../../common/hbridge_cmd2.h"
 #include "../../hbridgeCommon/drivers/usart.h"
 
-struct MotionCommand
-{
-    uint8_t traversalSpeed;
-    uint8_t rotationalSpeed;
-} __attribute__ ((packed)) __attribute__((__may_alias__));
+
 
 struct MotionCommand curCmd;
 uint8_t cmdValid;
