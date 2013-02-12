@@ -3,7 +3,7 @@
 #include "printf.h"
 #include "../../hbridgeCommon/drivers/can.h"
 #include "timeout.h"
-#include <firmware/hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
+#include <hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
 #include "mb_types.h"
 
 #define PACKET_MAX_HANDLERS 10
@@ -117,5 +117,15 @@ void packet_registerHandler(int id, packet_callback_t callback)
         return;
     }
     packet_handlers[id] = callback;
+}
+
+void packet_handlePacket(int senderId, int receiverId, int id, unsigned char* data, short unsigned int size)
+{
+    if (id >= PACKET_MAX_HANDLERS){
+	printf("ERROR, tried to handle packet with to high id\n");
+        return;
+    }
+    packet_handlers[id](senderId, receiverId, id, data, size);
+    
 }
 
