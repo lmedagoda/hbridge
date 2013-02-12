@@ -37,6 +37,7 @@ add_library(mainboard_sandbox_lib
     ${MB_DIR}/common/packethandling.c
     ${MB_DIR}/common/mainboardstate.c
     ${MB_DIR}/stubs/usart_noop_stub.c
+    ${MB_DIR}/stubs/can_noop_stub.c
 
 
 #     printf_stub.c
