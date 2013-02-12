@@ -62,7 +62,7 @@ int main()
     mbstate_init();
     packet_init();
 
-    packet_registerHandler(CONTROL, asguard_cmdHandler);
+    packet_registerHandler(MB_CONTROL, asguard_cmdHandler);
  
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);

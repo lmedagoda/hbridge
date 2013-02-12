@@ -157,7 +157,7 @@ void arc_sendProtocolPacket(ARC_PACKET_ID id){
 
 void arc_giveTokenBack(){
     has_token = 0;
-    arc_sendProtocolPacket(GIVE_BACK);
+    arc_sendProtocolPacket(MB_GIVE_BACK);
 }
 
 void arc_receivePackets(){
