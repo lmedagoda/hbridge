@@ -107,6 +107,13 @@ void packet_init()
     {
 	packet_handlers[i] = packet_defaultHandler;
     }
+    
+    packet_registerHandler(MB_PING, packet_pingHandler);
+    packet_registerHandler(MB_STATUS, packet_statusHandler);
+    packet_registerHandler(MB_ID_CAN, packet_canHandler);
+    packet_registerHandler(MB_ID_CAN_ACK, packet_canAckHandler);
+    packet_registerHandler(MB_SET_STATE, packet_setStateHandler);
+    packet_registerHandler(MB_CONTROL, packet_controlHandler);
 }
 
 
