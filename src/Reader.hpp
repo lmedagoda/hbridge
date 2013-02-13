@@ -55,7 +55,7 @@ public:
 	 * This function will be called every time when the
 	 * device announces its internal state on the bus.
 	 * */
-	virtual void gotInternalState() {};
+	virtual void gotInternalState(const enum firmware::STATES state) {};
     };
 
 
@@ -71,6 +71,7 @@ private:
     MotorConfiguration configuration;
     
     BoardState state;
+    enum firmware::STATES internal_state;
     
     Encoder encoderIntern;
     Encoder encoderExtern;

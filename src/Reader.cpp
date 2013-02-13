@@ -207,8 +207,11 @@ void Reader::processMsg(const Packet &msg)
 			default:
 			    break;
 		    }
-	    }
+                this->internal_state = stateData->curState;
+                if (callbacks)
+                    callbacks->gotInternalState(stateData->curState);    
 		break;
+	    }
 
 	    default:
 		std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
