@@ -56,7 +56,7 @@ void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiv
  * @param value3
  * @param value4
  */
-void hbridge_setValue( int value1, int value2, int value3, int value4);
+void hbridge_setValue( int16_t value1, int16_t value2, int16_t value3, int16_t value4);
 
 /**
  * Clears a sensorerror of the given HBridge

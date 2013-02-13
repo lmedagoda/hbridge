@@ -52,17 +52,13 @@ void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiv
     protocol_sendData(hbridgeId, PACKET_ID_SET_ACTIVE_CONTROLLER, (unsigned char *) cd, sizeof(struct setActiveControllerData));
 }
 
-void hbridge_setValue(int value1, int value2, int value3, int value4){  
-    if(value1 > 100 || value1 < -100 || value2 > 100 || value2 < -100 || value3 > 100 || value3 < -100 || value4 > 100 || value4 < -100)
-    {
-        printf("MotorValue too high!\n");
-        return;
-    }
+void hbridge_setValue(int16_t value1, int16_t value2, int16_t value3, int16_t value4){  
     struct setValueData values;
-    values.board1Value = value1 * 9;   //100% PWM for normal    *18 for value between 0-100
-    values.board2Value = value2 * 9;   //100% PWM for normal    send betweel 0-1800
-    values.board3Value = value3 * 4;   //60% PWM for Querstrahler
-    values.board4Value = value4 * 4;   //60% PWM for Querstrahler
+    values.board1Value = value1;
+    values.board2Value = value2;
+    values.board3Value = value3;
+    values.board4Value = value4;
+    
     protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE14, (unsigned char *) &values, sizeof(struct setValueData));
 }
 
