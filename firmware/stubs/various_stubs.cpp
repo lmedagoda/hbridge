@@ -28,4 +28,10 @@ uint8_t GPIO_ReadInputDataBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
     return 1;
 }
+typedef signed int (*printf_send_func_t)(const unsigned char *, const unsigned int);
+
+void printf_setSendFunction(printf_send_func_t function)
+{
+}
+
 }

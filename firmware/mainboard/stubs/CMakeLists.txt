@@ -28,6 +28,7 @@ add_library(mainboard_sandbox_lib
     ${MD_DIR}/common/protocol_low_priority.c
     ${MD_DIR}/common/hbridge_cmd.c
     ${MD_DIR}/common/hbridge_cmd2.c
+    ${MD_DIR}/hbridgeCommon/protocol_can.c
 
     ${MB_DIR}/common/arc_driver.c
     ${MB_DIR}/common/arc_packet.c
@@ -39,6 +40,8 @@ add_library(mainboard_sandbox_lib
     ${MB_DIR}/common/mainboardstate.c
     ${MB_DIR}/stubs/usart_noop_stub.c
     ${MB_DIR}/stubs/can_noop_stub.c
+    ${MD_DIR}/stubs/various_stubs.cpp
+    ${MD_DIR}/stubs/thread_stub.cpp
 
 
 #     printf_stub.c
@@ -48,4 +51,4 @@ add_library(mainboard_sandbox_lib
 # target_link_libraries(sandbox_lib pthread rt)
 # 
 add_executable(test_mb ${MB_DIR}/asguardv4/main.c)
-target_link_libraries(test_mb mainboard_sandbox_lib)
+target_link_libraries(test_mb mainboard_sandbox_lib pthread)
