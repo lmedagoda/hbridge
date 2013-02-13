@@ -7,35 +7,31 @@
 #include "common/time.h"
 
 #define MAX_HBRIDGES 8
+#define MAX_CONTROLLER_DATA_SIZE 20
+struct hbridge_controllerData 
+{
+    uint8_t hasData;
+    enum controllerModes controller;
+    int packetId;
+    uint16_t dataSize;
+    uint8_t data[MAX_CONTROLLER_DATA_SIZE];
+};
 
 int hbridge_nrHbridges;
-uint32_t hbridge_configureTimeout = 30;
-uint32_t hbridge_stateReplyTimeout = 30;
+uint32_t hbridge_configureTimeout = 3000;
+uint32_t hbridge_stateReplyTimeout = 3000;
+uint32_t hbridge_stateAnnounceTimeout = 3000;
+
 struct sensorConfig hbridge_sensorConfig[MAX_HBRIDGES];
 struct actuatorConfig hbridge_actuatorConfig[MAX_HBRIDGES];
-struct setActiveControllerData hbridge_controllerConfig[MAX_HBRIDGES];
-
-enum DRIVER_STATE
-{
-    NONE,
-    COM_ERROR,
-    REQUESTING_STATE,
-    GOT_STATE,
-    CONFIGURING_SENSORS,
-    CONFIGURING_SENSORS_SENT,
-    CONFIGURING_SENSORS_DONE,
-    CONFIGURING_ACTUATORS,
-    CONFIGURING_ACTUATORS_SENT,
-    CONFIGURING_ACTUATORS_DONE,
-    CONFIGURING_CONTROLLERS,
-    CONFIGURING_CONTROLLERS_DONE,
-};
+struct hbridge_controllerData hbridge_controllerData[MAX_HBRIDGES];
 
 struct hbridgeState
 {
-    enum DRIVER_STATE driverState;
     enum STATES state;
     uint32_t stateTime;
+    uint8_t pendingStateUpdate;
+    uint32_t pendingStateTime;
     
     uint8_t pendingAck;
     int pendingAckId;
@@ -44,6 +40,50 @@ struct hbridgeState
 };
 
 struct hbridgeState hbridge_states[MAX_HBRIDGES];
+
+void hbridge_setStatePending(int hbId)
+{
+    hbridge_states[hbId].pendingStateUpdate = 1;
+    hbridge_states[hbId].pendingStateTime = time_getTimeInMs();
+}
+
+void hbridge_setAllStatePending()
+{
+    int i;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	hbridge_setStatePending(i);
+    }
+}
+
+uint8_t hbridge_checkStateTimeout(char *state)
+{
+    int ret = 0;
+    int i;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	uint32_t diff = time_getTimeInMs() - hbridge_states[i].pendingStateTime;
+	if(diff > hbridge_stateAnnounceTimeout)
+	{
+	    printf("hbridge: Motor driver %i had a state timeout changing to state %s diff %i\n", i, state, diff);
+	    ret = 1;
+	}
+    }
+    return ret;
+}
+
+uint8_t hbridge_checkGotStates()
+{
+    int ret = 1;
+    int i;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	if(hbridge_states[i].pendingStateUpdate)
+	    ret = 0;
+    }
+    return ret;
+}
+
 
 void hbridge_setPendingAck(int hbId, int packetId)
 {
@@ -77,23 +117,23 @@ uint8_t hbridge_checkTimeout(uint32_t timeout, char *job)
     return ret;
 }
 
+uint8_t hbridge_checkAllAcked()
+{
+    int i;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	if(hbridge_states[i].pendingAck)
+	    return 0;
+    }
+    return 1;
+}
+
 uint8_t hbridge_checkAllInState(enum STATES state)
 {
     int i;
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
 	if(hbridge_states[i].state != state)
-	    return 0;
-    }
-    return 1;
-}
-
-uint8_t hbridge_checkAllInDriverState(enum DRIVER_STATE state)
-{
-    int i;
-    for(i = 0; i < hbridge_nrHbridges; i++)
-    {
-	if(hbridge_states[i].driverState != state)
 	    return 0;
     }
     return 1;
@@ -115,19 +155,23 @@ enum STATES hbridge_getLowestHBState()
 
 void hbridge_ackHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
-    if(!hbridge_states[senderId].pendingAck)
+    int hbId = senderId - SENDER_ID_H_BRIDGE_1;
+    struct ackData *aData = (struct ackData *) data;
+    
+    if(!hbridge_states[hbId].pendingAck)
     {
-	printf("Warning, got unexpected ack from hb %i\n", senderId);
+	printf("Warning, got unexpected ack from hb %i for packet %s\n", hbId, getPacketName(aData->packetId));
 	return;
     }
     
-    if(hbridge_states[senderId].pendingAckId != id)
+    if(hbridge_states[hbId].pendingAckId != aData->packetId)
     {
-	printf("Warning, got ack for unexpected packet id %s expected %s, id %i\n", getPacketName(id), getPacketName(hbridge_states[senderId].pendingAckId), senderId);
+	printf("Warning, got ack for unexpected packet id %s expected %s hbId %i\n", getPacketName(aData->packetId), getPacketName(hbridge_states[hbId].pendingAckId), hbId);
 	return;
     }
 
-    hbridge_states[senderId].pendingAck = 0;
+    printf("Got ack from hb %i for packet %s\n", hbId, getPacketName(aData->packetId));
+    hbridge_states[hbId].pendingAck = 0;
 }
 
 void hbridge_stateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
@@ -138,13 +182,11 @@ void hbridge_stateHandler(int senderId, int receiverId, int id, unsigned char *d
 	printf("Error, got state announce for invalid hbridge id\n");
 	return;
     }
-    //printf("StateHandler\n");
     struct announceStateData *asd = (struct announceStateData*) data;
     hbridge_states[hbId].state = asd->curState;
-    hbridge_states[hbId].stateTime = time_getTimeInMs();
-    
-    if(hbridge_states[hbId].driverState == REQUESTING_STATE)
-	hbridge_states[hbId].driverState = GOT_STATE;
+    hbridge_states[hbId].stateTime = time_getTimeInMs();    
+    hbridge_states[hbId].pendingStateUpdate = 0;    
+    printf("StateHandler hb %i s %i\n", hbId, asd->curState);
 }
 
 void hbridge_init(uint16_t numHbridges)
@@ -153,15 +195,46 @@ void hbridge_init(uint16_t numHbridges)
     int i;
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
-	hbridge_states[i].driverState = NONE;
 	hbridge_states[i].pendingAck = 0;
+	hbridge_states[i].pendingStateUpdate = 0;
+	hbridge_controllerData[i].dataSize = 0;
+	hbridge_controllerData[i].hasData = 0;
     }
+    
+    uint8_t *ptr = (uint8_t *) hbridge_sensorConfig;
+    for(i = 0; i < sizeof(struct sensorConfig) * MAX_HBRIDGES; i++)
+    {
+	*ptr = 0;
+	ptr++;
+    }
+//     memset(hbridge_sensorConfig, 0, sizeof(struct sensorConfig) * MAX_HBRIDGES);
     
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, hbridge_stateHandler);
     protocol_registerHandler(PACKET_ID_ACK, hbridge_ackHandler);
+}
 
-    //request initial state of all hbs
-    hbridge_requestStates();
+void hbridge_setControllerWithData(const uint16_t hbridgeId, enum controllerModes controller, const int packetId, const char* data, const uint8_t dataSize)
+{
+    if(hbridgeId > hbridge_nrHbridges)
+    {
+	printf("Error, trying to set controller for invalid id %i\n", hbridgeId);
+	return;
+    }
+    
+    if(dataSize > MAX_CONTROLLER_DATA_SIZE)
+    {
+	printf("Error, controller data size to big increase MAX_CONTROLLER_DATA_SIZE\n");
+	return;
+    }
+    
+    hbridge_controllerData[hbridgeId].dataSize = dataSize;
+    int i;
+    for(i = 0; i < dataSize; i++)
+	hbridge_controllerData[hbridgeId].data[i] = data[i];
+    
+    hbridge_controllerData[hbridgeId].packetId = packetId;
+    hbridge_controllerData[hbridgeId].controller = controller;
+    hbridge_controllerData[hbridgeId].hasData = 1;
 }
 
 uint8_t hbridge_getControlledHbridges()
@@ -173,12 +246,22 @@ uint8_t hbridge_getControlledHbridges()
 
 void hbridge_resetActuators()
 {
-    printf("hbridge_resetActuators TODO IMPLEMENT ME\n");
+    int i;
+    for(i=0; i < hbridge_nrHbridges; i++)
+    {
+	hbridge_setActuatorUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
+	hbridge_setPendingAck(i, PACKET_ID_SET_ACTUATOR_UNCONFIGURED);
+    }
 }
 
 void hbridge_resetSensors()
 {
-    printf("hbridge_resetSensors TODO IMPLEMENT ME\n");
+    int i;
+    for(i=0; i < hbridge_nrHbridges; i++)
+    {
+	hbridge_setActuatorUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
+	hbridge_setPendingAck(i, PACKET_ID_SET_UNCONFIGURED);
+    }
 }
 
 struct actuatorConfig* getActuatorConfig(uint16_t hbridgeNr)
@@ -215,225 +298,269 @@ void hbridge_requestStates()
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
 	hbridge_requestState(i + RECEIVER_ID_H_BRIDGE_1);
-	hbridge_states[i].driverState = REQUESTING_STATE;
-	hbridge_states[i].sendTime = time_getTimeInMs();
-    }    
+	hbridge_setPendingAck(i, PACKET_ID_REQUEST_STATE);
+	hbridge_setStatePending(i);
+    }   
+    printf("Requesting motor driver state done\n");
+    
 }
 
-void hbridge_triggerSensorConfiguration()
+uint8_t hbridge_deconfigureActuator()
 {
-	
+    if(hbridge_checkAllInState(STATE_SENSORS_CONFIGURED))
+	return 1;
+    
     int i;
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
-	if(hbridge_states[i].state != STATE_UNCONFIGURED)
-	    hbridge_setUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
-	
-	hbridge_states[i].driverState = CONFIGURING_SENSORS;
-	hbridge_setPendingAck(i, PACKET_ID_SET_UNCONFIGURED);
+	hbridge_setActuatorUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
+	hbridge_setPendingAck(i, PACKET_ID_SET_ACTUATOR_UNCONFIGURED);
+	hbridge_setStatePending(i);
     }
+
+    while(!hbridge_checkAllAcked())
+    {
+	hbridge_process();
+	
+	if(hbridge_checkTimeout(hbridge_configureTimeout, "unconfigure actuators"))
+	{
+	    return 0;
+	}
+    }
+
+    //wait for state change
+    while(!hbridge_checkGotStates())
+    {
+	//process incomming packages
+	hbridge_process();
+
+	if(hbridge_checkStateTimeout("SENSORS_CONFIGURED"))
+	{
+	    return 0;
+	}
+    }
+
+    while(!hbridge_checkAllInState(STATE_SENSORS_CONFIGURED))
+    {
+	printf("Error motor drivers in unexprected state");
+	return 0;
+    }
+    
+    return 1;
 }
 
 uint8_t hbridge_configureSensors()
 {
-    uint8_t error = 0;
+    hbridge_requestStates();
+    
+    printf("before First check done\n");
     int i;
+    while(!hbridge_checkGotStates())
+    {
+	hbridge_process();
+	
+	if(hbridge_checkStateTimeout("initial"))
+	    return 0;
+    }
+    
+    printf("First check done\n");
+
+    //check if allready configured
+    enum STATES lowest = hbridge_getLowestHBState();
+    if(lowest >= STATE_SENSORS_CONFIGURED)
+    {
+	printf("Deconfiguring actuators\n");
+	return hbridge_deconfigureActuator();
+    }
+    
+    printf("Configuration motor drivers\n");
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
-	if(hbridge_states[i].driverState < GOT_STATE)
+	if(hbridge_states[i].state != STATE_UNCONFIGURED)
 	{
-	    printf("Error, hbridge %i did not send state, can not configure\n", i);
-	    error = 1;
+	    hbridge_setUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
+	    hbridge_setPendingAck(i, PACKET_ID_SET_UNCONFIGURED);
+	    hbridge_setStatePending(i);
+	}	
+    }
+    
+    //wait for state change
+    while(!hbridge_checkGotStates())
+    {
+	//process incomming packages
+	hbridge_process();
+	
+	if(hbridge_checkStateTimeout("UNCONFIGURED"))
+	{
+	    return 0;
 	}
     }
-    if(error)
-	return 0;
-
-    printf("Configuration motor drivers\n");
-    hbridge_triggerSensorConfiguration();
     
-    while(1)
+    if(!hbridge_checkAllInState(STATE_UNCONFIGURED))
     {
+	printf("Error, motor drives in unexpected state\n");
+	return 0;
+    }
+
+    printf("configuring motor driver sensors\n");
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	hbridge_sendSensorConfiguration(i + RECEIVER_ID_H_BRIDGE_1, hbridge_sensorConfig + i);
+	hbridge_setPendingAck(i, PACKET_ID_SET_SENSOR_CONFIG);
+	hbridge_setStatePending(i);
+    }
+
+    //wait for state change
+    while(!hbridge_checkGotStates())
+    {
+	//process incomming packages
+	hbridge_process();
+
 	if(hbridge_checkTimeout(hbridge_configureTimeout, "configuring sensors"))
 	{
 	    return 0;
 	}
-	
-	if(hbridge_checkAllInDriverState(CONFIGURING_SENSORS_DONE))
-	    return 1;
-	
-	hbridge_process();
-    }
-    return 0;
-}
 
-void hbridge_triggerActuatorConfiguration()
-{
-    int i;
-    for(i = 0; i < hbridge_nrHbridges; i++)
-    {
-	if(hbridge_states[i].state < STATE_SENSORS_CONFIGURED)
-	{
-	    //ERROR
-	    printf("Error configuring Actuators\n");
-	    return;
-	}
-    }
-    
-    for(i = 0; i < hbridge_nrHbridges; i++)
-    {
-	if(hbridge_states[i].state == STATE_ACTUATOR_ERROR)
-	{
-	    hbridge_sendClearActuatorError(i + RECEIVER_ID_H_BRIDGE_1);
-	    hbridge_setPendingAck(i, PACKET_ID_CLEAR_ACTUATOR_ERROR);
-	}
-	else
-	{
-	    hbridge_setActuatorUnconfigured(i + RECEIVER_ID_H_BRIDGE_1);
-	    hbridge_setPendingAck(i, PACKET_ID_SET_ACTUATOR_UNCONFIGURED);
-	}
-	
-	hbridge_states[i].driverState = CONFIGURING_ACTUATORS;
-    }
-}
-
-
-uint8_t hbridge_configureActuators()
-{
-    enum STATES lowestState = hbridge_getLowestHBState();
-    if(lowestState < STATE_SENSORS_CONFIGURED)
-    {
-	printf("Error, hbridges have lowest state %i, can not configure actuators\n", lowestState);
-	return 0;
-    }
-	
-    hbridge_triggerActuatorConfiguration();
-    while(1)
-    {
-	if(hbridge_checkTimeout(hbridge_configureTimeout, "configuring actuators"))
+	if(hbridge_checkStateTimeout("SENSORS_CONFIGURED"))
 	{
 	    return 0;
 	}
-	
-	if(hbridge_checkAllInDriverState(CONFIGURING_ACTUATORS_DONE))
-	{
-	    return 1;
-	}
-	
-	hbridge_process();
     }
-    return 0;
+    
+    if(!hbridge_checkAllInState(STATE_SENSORS_CONFIGURED))
+    {
+	printf("Error, configured sensors but motor drivers are not in state SENSORS_CONFIGURED\n");
+	return 0;
+    }
+    
+    return 1;
 }
 
-uint8_t hbridge_setControllers()
+uint8_t hbridge_configureActuators()
 {
-    if(!hbridge_checkAllInDriverState(STATE_ACTUATOR_CONFIGURED))
-    {
-	printf("Error, driver is in wrong state\n");
+    if(!hbridge_configureSensors())
 	return 0;
+
+    printf("sending motor driver actuator configuration\n");
+    int i;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	hbridge_sendActuatorConfiguration(i + RECEIVER_ID_H_BRIDGE_1, hbridge_actuatorConfig + i);
+	hbridge_setPendingAck(i, PACKET_ID_SET_ACTUATOR_CONFIG);
+	hbridge_setStatePending(i);
+    }
+
+    //wait for state change
+    while(!hbridge_checkGotStates())
+    {
+	//process incomming packages
+	hbridge_process();
+	
+	if(hbridge_checkTimeout(hbridge_configureTimeout, "configure actuators"))
+	    return 0;
+
+	if(hbridge_checkStateTimeout("SENSORS_CONFIGURED"))
+	{
+	    return 0;
+	}
     }
     
     if(!hbridge_checkAllInState(STATE_ACTUATOR_CONFIGURED))
     {
-	printf("Error, motor driver is in wrong state\n");
+	printf("Error, motor drivers in unexpected state\n");
 	return 0;
     }
     
-    //TODO SEND CORRECT CONTROLLER DATA
-    
+    return 1;
+}
+
+uint8_t hbridge_configureControllers()
+{
     int i;
     for(i = 0; i < hbridge_nrHbridges;i++)
     {
-	hbridge_sendControllerConfiguration(i + RECEIVER_ID_H_BRIDGE_1, hbridge_controllerConfig + i);
-	hbridge_setPendingAck(i, PACKET_ID_SET_ACTIVE_CONTROLLER);
+	if(!hbridge_controllerData[i].hasData)
+	{
+	    printf("Error, controller data was not set\n");
+	    return 0;
+	}
+    }	    
+    
+    if(!hbridge_configureActuators())
+	return 0;
+
+    struct hbridge_controllerData *cData;
+    for(i = 0; i < hbridge_nrHbridges;i++)
+    {
+	cData = hbridge_controllerData + i;
+	if(cData->dataSize)
+	{
+	    protocol_sendData(i + RECEIVER_ID_H_BRIDGE_1, cData->packetId, cData->data, cData->dataSize);
+	    hbridge_setPendingAck(i, cData->packetId);
+	}
     }
     
-    while(1)
+    while(!hbridge_checkAllAcked())
     {
+	//process incomming packages
+	hbridge_process();
+
+	if(hbridge_checkTimeout(hbridge_configureTimeout, "controller data"))
+	    return 0;
+    }
+    
+    struct setActiveControllerData setCtrl;
+    for(i = 0; i < hbridge_nrHbridges;i++)
+    {
+	setCtrl.controllerId = hbridge_controllerData[i].controller;
+	hbridge_sendControllerConfiguration(i + RECEIVER_ID_H_BRIDGE_1, &setCtrl);
+	hbridge_setPendingAck(i, PACKET_ID_SET_ACTIVE_CONTROLLER);
+	hbridge_setStatePending(i);
+    }
+    
+    while(!hbridge_checkGotStates())
+    {
+	//process incomming packages
+	hbridge_process();
+
 	if(hbridge_checkTimeout(hbridge_configureTimeout, "setting controller"))
 	    return 0;
-	
-	if(hbridge_checkAllInState(STATE_CONTROLLER_CONFIGURED))
+    }
+    
+    if(!hbridge_checkAllInState(STATE_CONTROLLER_CONFIGURED))
+    {
+	printf("Error, motor driver was in unexptected state\n");
+	return 0;
+    }
+    return 1;
+}
+
+void hbridge_process()
+{
+    while(protocol_processPackage())
+	;
+}
+
+uint8_t hbridge_hasSensorError()
+{
+    int i = 0;
+    for(i = 0; i < hbridge_nrHbridges; i++)
+    {
+	if(hbridge_states[i].state == STATE_SENSOR_ERROR)
 	    return 1;
     }
     return 0;
 }
 
-void hbrige_processSingle(int hbId)
+uint8_t hbridge_hasActuatorError()
 {
-    struct hbridgeState *state = hbridge_states + hbId;
-    switch(state->driverState)
-    {
-	case NONE:
-	    break;
-	case COM_ERROR:
-	    break;
-	case REQUESTING_STATE:
-	    if(time_getTimeInMs() - state->sendTime > hbridge_stateReplyTimeout)
-	    {
-		printf("Error, motor driver %i did not reply to state request\n", hbId);
-		state->driverState = COM_ERROR;
-	    }
-	    break;
-	case GOT_STATE:
-	    //do noting 
-	    break;
-	case CONFIGURING_SENSORS:
-	    if(state->state == STATE_UNCONFIGURED)
-	    {
-		printf("configuring motor driver sensors\n");
-		hbridge_sendSensorConfiguration(hbId + RECEIVER_ID_H_BRIDGE_1, hbridge_sensorConfig + hbId);
-		hbridge_setPendingAck(hbId, hbridge_configureTimeout);
-		
-		state->driverState = CONFIGURING_SENSORS_SENT;
-	    }
-	    break;
-	case CONFIGURING_SENSORS_SENT:
-	    if(state->state == STATE_SENSORS_CONFIGURED)
-	    {
-		printf("motor driver sensors configured\n");
-		state->driverState = CONFIGURING_SENSORS_DONE;
-	    }
-	    break;
-	case CONFIGURING_SENSORS_DONE:
-	    break;
-	case CONFIGURING_ACTUATORS:
-	    if(state->state == STATE_SENSORS_CONFIGURED)
-	    {
-		printf("sending motor driver actuator configuration\n");
-		hbridge_sendActuatorConfiguration(hbId + RECEIVER_ID_H_BRIDGE_1, hbridge_actuatorConfig + hbId);
-		hbridge_setPendingAck(hbId, hbridge_configureTimeout);
-		state->driverState = CONFIGURING_ACTUATORS_SENT;
-	    }
-	    break;
-	case CONFIGURING_ACTUATORS_SENT:	    
-	    if(state->state == STATE_ACTUATOR_CONFIGURED)
-	    {
-		printf("motor driver actuators configured\n");
-		state->driverState = CONFIGURING_ACTUATORS_DONE;
-	    }
-	    break;
-	case CONFIGURING_ACTUATORS_DONE:
-	    break;
-	case CONFIGURING_CONTROLLERS:
-	    if(state->state == STATE_CONTROLLER_CONFIGURED)
-	    {
-		printf("motor driver controller configured\n");
-		state->driverState = CONFIGURING_CONTROLLERS_DONE;
-	    }
-	    break;
-	case CONFIGURING_CONTROLLERS_DONE:
-	    break;
-    }
-}
-
-void hbridge_process()
-{
-    protocol_processPackage();
-    int i;
+    int i = 0;
     for(i = 0; i < hbridge_nrHbridges; i++)
     {
-	hbrige_processSingle(i);
+	if(hbridge_states[i].state == STATE_SENSOR_ERROR ||
+	    hbridge_states[i].state == STATE_ACTUATOR_ERROR)
+	    return 1;
     }
+    return 0;
 }
 

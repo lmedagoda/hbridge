@@ -4,9 +4,20 @@
 #include <stdint.h>
 #include "../common/packets.h"
 
+
+
 void hbridge_init(uint16_t numHbridges);
 
 uint8_t hbridge_getControlledHbridges();
+
+/**
+ * Sets the used controller and its configuration
+ * data. 
+ * 
+ * In order to set no configuration data
+ * pass a dataSize of Zero.
+ * */
+void hbridge_setControllerWithData(const uint16_t hbridgeId, enum controllerModes controller, const int packetId, const char *data, const uint8_t dataSize);
 
 /**
  * This method assumes that is is called
@@ -27,7 +38,6 @@ enum STATES hbridge_getLowestHBState();
 
 uint8_t hbridge_configureSensors();
 
-void hbridge_triggerSensorConfiguration();
 uint8_t hbridge_sensorsConfigured();
 
 /**
@@ -36,12 +46,27 @@ uint8_t hbridge_sensorsConfigured();
  * */
 struct actuatorConfig *getActuatorConfig(uint16_t hbridgeNr);
 
+/**
+ * Configures the actuators of all controlled 
+ * motor drivers. 
+ * Returns 1 if all motor drivers were configured successfully.
+ * */
 uint8_t hbridge_configureActuators();
 
-void hbridge_triggerActuatorConfiguration();
 uint8_t hbridge_actuatorsConfigured();
+uint8_t hbridge_configureControllers();
 
-uint8_t hbridge_configureError();
+/**
+ * Returns true if one of the controlled 
+ * hbridges is in an actuator error state.
+ * */
+uint8_t hbridge_hasActuatorError();
+
+/**
+ * Returns true if one of the controlled 
+ * hbridges is in a sensor error state.
+ * */
+uint8_t hbridge_hasSensorError();
 
 void hbridge_resetActuators();
 void hbridge_resetSensors();
