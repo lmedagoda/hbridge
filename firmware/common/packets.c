@@ -4,10 +4,12 @@ const char *getPacketName(uint16_t packetId)
 {
     switch(packetId)
     {
+	case PACKET_ID_EMERGENCY_STOP:
+	    return "PACKET_ID_EMERGENCY_STOP";
+	    break;
 	case PACKET_ID_SET_ALLOWED_SENDER: 
 	    return "PACKET_ID_SET_ALLOWED_SENDER";
 	    break;
-	
 	case PACKET_ID_ERROR: 
 	    return "PACKET_ID_ERROR";
 	    break;
@@ -42,20 +44,35 @@ const char *getPacketName(uint16_t packetId)
 	case PACKET_ID_SET_SENSOR_CONFIG: 
 	    return "PACKET_ID_SET_SENSOR_CONFIG";
 	    break;
+	
+	case PACKET_ID_CLEAR_SENSOR_ERROR:
+	    return "PACKET_ID_CLEAR_SENSOR_ERROR";
+	    break;
+	
 	case PACKET_ID_SET_ACTUATOR_CONFIG: 
 	    return "PACKET_ID_SET_ACTUATOR_CONFIG";
 	    break;
+	
+	case PACKET_ID_CLEAR_ACTUATOR_ERROR:
+	    return "PACKET_ID_CLEAR_ACTUATOR_ERROR";
+	    break;
+
 	case PACKET_ID_SET_ACTIVE_CONTROLLER: 
 	    return "PACKET_ID_SET_ACTIVE_CONTROLLER";
 	    break;
 	
 	case PACKET_ID_REQUEST_STATE:
-	    return "PACKET_ID_REQUEST_STATE";
+	    return "PACKET_ID_REQUEST_STATE";	    
+	    break;
+	    
+	case PACKET_ID_REQUEST_SENSOR_CONFIG:
+	    return "PACKET_ID_REQUEST_SENSOR_CONFIG";
 	    break;
 	    
 	case PACKED_ID_REQUEST_VERSION: 
 	    return "PACKED_ID_REQUEST_VERSION";
 	    break;
+	    
 	case PACKED_ID_VERSION: 
 	    return "PACKED_ID_VERSION";
 	    break;
@@ -74,10 +91,18 @@ const char *getPacketName(uint16_t packetId)
 	    return "PACKET_ID_SET_POS_CONTROLLER_DATA";
 	    break;
 	
+	case PACKET_ID_SET_UNCONFIGURED:
+	    return "PACKET_ID_SET_UNCONFIGURED";
+	    break;
+	    
+	case PACKET_ID_SET_ACTUATOR_UNCONFIGURED:
+	    return "PACKET_ID_SET_ACTUATOR_UNCONFIGURED";
+	    break;
+	    
 	case PACKET_ID_TOTAL_COUNT: 
 	    return "PACKET_ID_TOTAL_COUNT";
 	    break;
     }
     
-    return "";
+    return "UNKNOWN ID";
 }
