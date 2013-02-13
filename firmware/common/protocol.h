@@ -95,7 +95,11 @@ void protocol_setOwnHostId(enum hostIDs id);
 
 void protocol_ackPacket(int id, int receiverId);
 
-void protocol_processPackage();
+/**
+ * Receives packages and provesses them
+ * @return 0 if no packet was processed else 1
+ * */
+uint8_t protocol_processPackage();
 
 
 

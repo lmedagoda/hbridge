@@ -117,7 +117,7 @@ void protocol_checkCallHandler(int senderId, int receiverId, int id, unsigned ch
 }
 
 
-void protocol_processPackage()
+uint8_t protocol_processPackage()
 {
     const uint8_t bufferSize = maxPacketSize;
     uint8_t buffer[bufferSize];
@@ -128,7 +128,9 @@ void protocol_processPackage()
     if(bytes)
     {
 	protocol_checkCallHandler(senderId, receiverId, packetId, buffer, bytes);
+	return 1;
     }
+    return 0;
 }
 
 void protocol_ackPacket(int id, int receiverId)
