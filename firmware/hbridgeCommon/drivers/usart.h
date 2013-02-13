@@ -46,6 +46,21 @@ signed int USART1_SendData(const unsigned char *data, const unsigned int size);
  **/
 signed int USART1_GetData (unsigned char *buffer, const unsigned int buffer_length);
 
+/**
+ * This function get a copy of the data that is currently available in 
+ * the receive buffer. This data will not be removed from the receive
+ * buffer.
+ * 
+ * Note this function will only work if the driver uses the 
+ * interrupt mode.
+ *
+ * Returns the amount of received bytes. Or -1 in case that
+ * the internal receive buffer overrun. 
+ * */
+signed int USART1_SeekData (unsigned char *buffer, const unsigned int buffer_length);
+
+
+
 void USART3_Init(enum USART_MODE mode);
 void USART3_DeInit(void);
 signed int USART3_SendData(const unsigned char *data, const unsigned int size);

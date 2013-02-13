@@ -25,6 +25,7 @@ struct USART_Data {
 };
 
 signed int USARTx_SendData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data,const uint8_t *data, const unsigned int size);
+signed int USARTx_SeekData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, uint8_t *data, const unsigned int size);
 signed int USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, uint8_t *buffer, const unsigned int buffer_length);
 void USART_IRQHandler(USART_TypeDef* USARTx, volatile struct USART_Data *data);
 
@@ -114,6 +115,11 @@ void USART1_DeInit(void )
 
 signed int USART1_SendData(const unsigned char *data, const unsigned int size) {
     return USARTx_SendData(USART1, &USART1_Data, data, size);
+}
+
+signed int USART1_SeekData(unsigned char* buffer, const unsigned int buffer_length)
+{
+    return USARTx_SeekData(USART1, &USART1_Data, buffer, buffer_length);
 }
 
 signed int USART1_GetData (unsigned char *buffer, const unsigned int buffer_length) {
@@ -278,6 +284,29 @@ signed int USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usa
     }
     
     return counter;
+}
+
+signed int USARTx_SeekData(USART_TypeDef* USARTx, volatile struct USART_Data *usart_data, uint8_t *data, const unsigned int size)
+{
+    uint32_t counter = 0;
+    uint16_t tmpReadPointer = usart_data->RxReadPointer;
+    while(counter < size && usart_data->RxWritePointer != tmpReadPointer) {
+	data[counter] = usart_data->RxBuffer[tmpReadPointer];
+	counter++;
+	tmpReadPointer = (tmpReadPointer + 1) % USART_BUFFER_SIZE;
+    }
+    
+    if(usart_data->RxWritePointer == usart_data->RxReadPointer && usart_data->RxBufferFullError)
+    {
+	//clear error
+	usart_data->RxBufferFullError = 0;
+	//reenable receive interrupt
+	USART_ITConfig(USARTx, USART_IT_RXNE, ENABLE);
+	//inform user space that we had an error
+	return -1;
+    }
+    
+    return counter;    
 }
 
 
