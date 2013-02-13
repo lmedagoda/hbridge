@@ -6,7 +6,7 @@
 #include <hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
 #include "mb_types.h"
 
-#define PACKET_MAX_HANDLERS 10
+#define PACKET_MAX_HANDLERS 16
 
 packet_callback_t packet_handlers[PACKET_MAX_HANDLERS];
 
@@ -26,7 +26,11 @@ void packet_setStateHandler(int senderId, int receiverId, int id, unsigned char 
 //     assert(sizeof(enum MAINBOARDSTATE) == size);
     
     enum MAINBOARDSTATE wantedState = (enum MAINBOARDSTATE) *data;
-    if(mbstate_changeState(wantedState))
+    if(wantedState == mbstate_getCurrentState())
+	return;
+    
+    printf("Trying to switch to state %i from state %i \n", wantedState, mbstate_getCurrentState());
+    if(!mbstate_changeState(wantedState))
     {
 	printf("State changed: %i\n", wantedState);
     }
@@ -120,7 +124,7 @@ void packet_init()
 void packet_registerHandler(int id, packet_callback_t callback)
 {
     if (id >= PACKET_MAX_HANDLERS){
-	printf("ERROR, registered handler with to high id\n");
+	printf("Packet: ERROR, registered handler with to high id %i max id is %i\n", id, PACKET_MAX_HANDLERS);
         return;
     }
     packet_handlers[id] = callback;
@@ -129,7 +133,7 @@ void packet_registerHandler(int id, packet_callback_t callback)
 void packet_handlePacket(int senderId, int receiverId, int id, unsigned char* data, short unsigned int size)
 {
     if (id >= PACKET_MAX_HANDLERS){
-	printf("ERROR, tried to handle packet with to high id\n");
+	printf("Packet: ERROR, tried to handle packet with to high id\n");
         return;
     }
     packet_handlers[id](senderId, receiverId, id, data, size);
