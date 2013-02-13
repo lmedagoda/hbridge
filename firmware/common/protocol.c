@@ -150,6 +150,7 @@ uint8_t protocol_sendData(int receiverId, int id, const unsigned char* data, sho
 	if(size > maxPacketSize)
 	{
 	    printf("Error, packet to big for high priority transmission");
+	    return 0;
 	}
 	return sendPacket(ownHostId, receiverId, id, data, size);
     }
