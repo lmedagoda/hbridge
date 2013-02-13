@@ -1,5 +1,5 @@
-#ifndef ASSERT_H
-#define ASSERT_H
+#ifndef CST_ASSERT_H
+#define CST_ASSERT_H
 
 #include "inc/stm32f10x_gpio.h"
 

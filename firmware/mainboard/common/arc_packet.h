@@ -2,6 +2,7 @@
 #define ARC_PACKET_H
 
 #include <inttypes.h>
+#include "mb_types.h"
 
 // definitions for the packet protocol used in the cesar project
 // the packet is defined as
@@ -27,22 +28,7 @@
 #define ARC_MIN_FRAME_LENGTH 4 
 #define ARC_MAX_FRAME_LENGTH (ARC_MAX_DATA_LENGTH + ARC_MIN_FRAME_LENGTH)
 
-// typedef for the different command headers
-// packet ids can only be 5 bits wide
-typedef enum {
-    PING = 0x01,        // ping packet
-    SET_STATE = 0x02,   // set runtime state of the system
-    CONTROL = 0x04, 
-    STATUS = 0x08,      // status information from asguard
-    DGPS = 0x0a,        // DGPS correction data
-    ID_CAN = 0x0b,        // CAN passthrough
-    MODE_CHANGE = 0x0c,      // mode changed on asguard
-    ID_CAN_ACKED = 0x0d,    // CAN passthrough, with ack response
-    ID_CAN_ACK = 0x0d,    // CAN passthrough ack
-    GIVE_TOKEN = 0x0e,    //Packet contains only an token to handle ansync communications, needed for ppp tunnel to make the conn more robus, this token should ONLY create internal of driver (arc_driver) 
-    GIVE_BACK = 0x0f,
-    REGISTER = 0x03
-} ARC_PACKET_ID;
+
 
 typedef enum {
     REQUESTED = 0,
@@ -80,6 +66,8 @@ typedef enum {
     MASTER = 0,
     SLAVE = 1,
 } ARC_ORIGINATOR_FLAG;
+
+typedef MB_PACKET_ID ARC_PACKET_ID;
 
 /**
  * Control Packet with PWM Values for all engines on the ASV
