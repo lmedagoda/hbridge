@@ -227,7 +227,7 @@ void state_setActuatorUnconfiguredHandler(int senderId, int receiverId, int id, 
     printf("Got actuator unconfigure \n");
     protocol_ackPacket(id, senderId);
     
-    state_switchState(STATE_SENSORS_CONFIGURED);    
+    state_switchToState(STATE_SENSORS_CONFIGURED);    
     printf("Cleared actuator-config and switsching state to unconfigured");
 }
 
