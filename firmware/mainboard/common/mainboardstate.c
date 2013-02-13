@@ -25,15 +25,19 @@ void mbstate_defaultHandler()
 
 uint8_t mbstate_toOffHandler()
 {
+    printf("Switching to Off\n");
+    
     enum STATES lowestState = hbridge_getLowestHBState();
     
     if(lowestState >= STATE_SENSORS_CONFIGURED)
     {
 	hbridge_resetActuators();
+	printf("ACT OFF\n");
     }
     else
     {
 	hbridge_resetSensors();
+	printf("ALL OFF\n");
     }
     
     hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_ALL, 0);
@@ -43,20 +47,12 @@ uint8_t mbstate_toOffHandler()
 
 uint8_t mbstate_toRunningHandler()
 {
+    printf("Switching to Running\n");
+    
     //be shure the pc can not interrupt
     hbridge_sendAllowedSenderConfiguration(RECEIVER_ID_ALL, 0);
-    
-    enum STATES lowestState = hbridge_getLowestHBState();
-    
-    if(lowestState < STATE_SENSORS_CONFIGURED)
-    {
-	if(!hbridge_configureSensors())
-	{
-	    return 1;
-	}
-    }
 
-    if(!hbridge_configureActuators())
+    if(!hbridge_configureControllers())
     {
 	return 1;
     }
@@ -119,8 +115,15 @@ uint8_t mbstate_changeState(enum MAINBOARDSTATE newState)
 	    printf("Warning state switch failed");
 	    return 1;
 	}
+	
+	currentState = newState;
     }
     return 0;
+}
+
+enum MAINBOARDSTATE mbstate_getCurrentState()
+{
+    return currentState;
 }
 
 struct MainboardState* mbstate_getState(enum MAINBOARDSTATE state)

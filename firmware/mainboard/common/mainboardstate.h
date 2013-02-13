@@ -38,6 +38,11 @@ void mbstate_init();
 uint8_t mbstate_changeState(enum MAINBOARDSTATE newState);
 
 /**
+ * Returns the current state
+ * */
+enum MAINBOARDSTATE mbstate_getCurrentState();
+
+/**
  * Calls the handler for the current state
  * */
 void mbstate_processState();
