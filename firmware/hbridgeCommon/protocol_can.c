@@ -67,6 +67,8 @@ signed int can_sendPacket(uint16_t senderId, uint16_t receiverId, uint16_t packe
 	assert_failed((uint8_t *)__FILE__, __LINE__);
     }
     
+    msg.StdId = 0;
+    
     struct packetLayout *pl = (struct packetLayout *) &(msg.StdId);
     if((senderId == SENDER_ID_PC) || (senderId == SENDER_ID_MAINBOARD))
     {
