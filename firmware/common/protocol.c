@@ -105,7 +105,7 @@ void protocol_checkCallHandler(int senderId, int receiverId, int id, unsigned ch
 	    && id != PACKET_ID_REQUEST_STATE
 	    //request sensor config ist also allowed
 	    //as the reader tasks needs it
-	    && id != PACKET_ID_REQUEST_SENDOR_CONFIG
+	    && id != PACKET_ID_REQUEST_SENSOR_CONFIG
 	)
 	{
 	    printf("DNM");
