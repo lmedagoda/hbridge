@@ -52,12 +52,12 @@ uint8_t protocol_sendLowPrio(uint16_t senderId, uint16_t receiverId, uint16_t id
 	}
 	
 	ret |= protocol_sendData(receiverId, PACKET_LOW_PRIORITY_DATA, sendBuffer, curPayloadSize + sizeof(struct LowPrioPacket));
-    if(!ret)
+	if(!ret)
 	    return ret;
 	sent += curPayloadSize;
     }
     
-    return 0;    
+    return size;    
 }
 
 void protocol_processLowPrio(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
