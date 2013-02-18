@@ -72,50 +72,6 @@ void asguard_runningState(void)
     hbridge_setValue(-left, right, right, -left);
 }
 
-uint32_t read_packet(arc_packet_t * packet) {
-  // function will return 0 if no packet has been found
-  // the number of bytes in the packet otherwise
-  int seek, i;
-  uint8_t packet_buffer[ARC_MAX_FRAME_LENGTH];
-
-  // look for a valid packet as long as enough bytes are left
-  while( (seek = USART1_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= ARC_MIN_FRAME_LENGTH ) {
-
-      //use parsePacket from arc_packet.c
-      int result = parsePacket(packet_buffer, seek, packet);
-
-      // if result is less than 0, this is the number of bytes that can be skipped
-      if (result < 0) {
-	  // debug: print out content of buffer   
-	  if (seek >= ARC_MIN_FRAME_LENGTH) {
-	      printf("bad packet: ");
-	      for (i = 0; i < seek; i++) {
-		  int x = packet_buffer[i];
-		  printf("%d ", x);
-	      }
-	      printf(" skipping:%d \n", -result);
-	  } else {
-	      printf("got bad packet for seek %d. This shouldn't happen.", seek);
-	  }
-	  
-	  if( USART1_GetData(packet_buffer, -result) != -result )
-	      printf("skipping bytes didn't work\n");
-
-      } else if (result == 0) {
-	  // not received enough data
-	  // return and wait for new data
-	  return 0;
-      } else if (result > 0) {
-	  // found a packet, return it and skip the number of bytes from the buffer
-	  USART1_GetData(packet_buffer, result);
-	  return result;
-      }
-  }
-
-  return 0; // no packet found
-}
-
-
 int main()
 {
         //setup assert correctly
@@ -184,7 +140,7 @@ int main()
 	
 	arc_packet_t packet;	
 	
-	while(read_packet(&packet))
+	while(arc_readPacket(&packet))
 	{
 	    //process incomming packet
 	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
