@@ -111,6 +111,7 @@ int main()
     
 //     arc_init(USART1_SendData, USART1_GetData);
     
+    arc_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
     mbstate_init();
     packet_init();
 
