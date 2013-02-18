@@ -14,21 +14,20 @@ int send_bytes = 0;
 
 arc_send_func_t arc_sendFunc;
 arc_recv_func_t arc_recvFunc;
+arc_seek_func_t arc_seekFunc;
 
 //privats
-int arc_newreadPacket(arc_packet_t* packet);
 void arc_receivePackets();
 void arc_sendPendingPackets();
-int arc_readPacket(arc_packet_t* packet); 
 void arc_receivePackets();
 void arc_giveTokenBack();
 
-
 //public
-void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc)
+void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc)
 {
     arc_sendFunc = sendFunc;
     arc_recvFunc = recvFunc;
+    arc_seekFunc = seekFunc;
     initTokenhandling();
 }
 
@@ -47,65 +46,54 @@ void arc_processPackets(){
     arc_sendPendingPackets();
     return;
 }
+/*
+ * This Function is public only for NO token usage.
+ * Do not use this funktion, if you want to use token.
+ */
+uint32_t arc_readPacket(arc_packet_t * packet) {
+  // function will return 0 if no packet has been found
+  // the number of bytes in the packet otherwise
+  int seek, i;
+  uint8_t packet_buffer[ARC_MAX_FRAME_LENGTH];
+
+  // look for a valid packet as long as enough bytes are left
+  while( (seek = arc_seekFunc(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= ARC_MIN_FRAME_LENGTH ) {
+
+      //use parsePacket from arc_packet.c
+      int result = parsePacket(packet_buffer, seek, packet);
+
+      // if result is less than 0, this is the number of bytes that can be skipped
+      if (result < 0) {
+	  // debug: print out content of buffer   
+	  if (seek >= ARC_MIN_FRAME_LENGTH) {
+	      printf("bad packet: ");
+	      for (i = 0; i < seek; i++) {
+		  int x = packet_buffer[i];
+		  printf("%d ", x);
+	      }
+	      printf(" skipping:%d \n", -result);
+	  } else {
+	      printf("got bad packet for seek %d. This shouldn't happen.", seek);
+	  }
+	  
+	  if( arc_recvFunc(packet_buffer, -result) != -result )
+	      printf("skipping bytes didn't work\n");
+
+      } else if (result == 0) {
+	  // not received enough data
+	  // return and wait for new data
+	  return 0;
+      } else if (result > 0) {
+	  // found a packet, return it and skip the number of bytes from the buffer
+	  arc_recvFunc(packet_buffer, result);
+	  return result;
+      }
+  }
+
+  return 0; // no packet found
+}
 
 //privat
-int arc_readPacket(arc_packet_t* packet) {
-    int len, ret;
-    unsigned char packet_buffer[ARC_MAX_FRAME_LENGTH];
-    while((ret = arc_recvFunc(packet_buffer, 1))>0){
-        int idx = 1;
-        if (packet_buffer[0] == SYNC_MARKER){
-            while (idx < ARC_MAX_FRAME_LENGTH){
-                len=arc_recvFunc(packet_buffer+idx, 1);
-                if (len < 0) {return -1;}
-                int ret2 = parsePacket(packet_buffer, idx+1, packet); // ;-) nice variablenames need time
-                if (ret2 > 0){
-                    return ret2;
-                } else if (len < 0){
-                    printf("Wir haben haben zu viel gelesen, so ein mist\n");
-                } else {
-                    //printf("Wir haben noch nicht genug gelesen\n");
-                }
-                idx += len;
-            }
-            printf("A BAD PACKET\n");
-            return -1;
-        }
-    }
-    return 0;
-}
-
-unsigned char packet_buffer[ARC_MAX_FRAME_LENGTH];
-int idx = 0;
-int arc_newreadPacket(arc_packet_t* packet){
-    int ret;
-    while((ret = arc_recvFunc(packet_buffer+idx, 1))>0){
-        if (idx == 0){
-            if (packet_buffer[0] == SYNC_MARKER){
-                idx++;
-            }
-        } else {
-            idx++;
-            ret = parsePacket(packet_buffer, idx ,packet);
-            if (ret > 0) {
-                idx = 0;
-                return ret;
-            } else if (ret == 0){
-                //printf("noch nicht genug gelesen");
-            } else {
-                printf("Wir haben haben zu viel gelesen, so ein mist\n");
-            }
-            if (idx >= ARC_MAX_FRAME_LENGTH){
-                printf("Bad package");
-                idx = 0;
-                packet_buffer[0] = 0x07;
-                return -1;
-            }
-        } 
-    }
-    return 0;
-}
-
 void arc_sendPendingPackets(){
     arc_packet_t* packet;
     int len = 0;
@@ -164,7 +152,7 @@ void arc_receivePackets(){
     //printf("RECEIVE PACKETS\n");
     arc_packet_t packet;
     int32_t result;
-    while ((result = arc_newreadPacket(&packet)) != 0){
+    while ((result = arc_readPacket(&packet)) != 0){
         if (result<0){
             printf("Got an error by reading Packets");
             break;

@@ -72,12 +72,7 @@ typedef MB_PACKET_ID ARC_PACKET_ID;
 /**
  * Control Packet with PWM Values for all engines on the ASV
  */
-typedef struct {
-	uint8_t quer_vorne;
-	uint8_t quer_hinten;
-	uint8_t motor_rechts;
-    uint8_t motor_links;	
-} arc_asv_control_packet_t;
+
 typedef struct {
     ARC_SYSTEM_STATE current_state;
     ARC_SYSTEM_STATE wanted_state;
