@@ -87,6 +87,7 @@ int main()
     
     timeout_init(3000);
     
+    protocol_init(1);
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
     
     CAN_Configuration(CAN_REMAP1);
@@ -108,6 +109,7 @@ int main()
     hbridge_setControllerWithData(1, CONTROLLER_MODE_PWM, 0, NULL, 0);
     hbridge_setControllerWithData(2, CONTROLLER_MODE_PWM, 0, NULL, 0);
     hbridge_setControllerWithData(3, CONTROLLER_MODE_PWM, 0, NULL, 0);
+    
     
 //     arc_init(USART1_SendData, USART1_GetData);
     
