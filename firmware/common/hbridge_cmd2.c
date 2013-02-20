@@ -207,6 +207,14 @@ void hbridge_init(uint16_t numHbridges)
 	*ptr = 0;
 	ptr++;
     }
+    
+    *ptr = (uint8_t *) hbridge_actuatorConfig;
+    for(i = 0; i < sizeof(struct actuatorConfig) * MAX_HBRIDGES; i++)
+    {
+	*ptr = 0;
+	ptr++;
+    }
+
 //     memset(hbridge_sensorConfig, 0, sizeof(struct sensorConfig) * MAX_HBRIDGES);
     
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, hbridge_stateHandler);
