@@ -18,7 +18,7 @@ signed int firmwareSendPacket(uint16_t senderId, uint16_t receiverId, uint16_t p
     msg.broadcastMsg = false;
     msg.data.resize(size);
     
-    for(int i = 0; i < size; i++)
+    for(unsigned int i = 0; i < size; i++)
 	msg.data[i] = data[i];
 
     comMutex.lock();

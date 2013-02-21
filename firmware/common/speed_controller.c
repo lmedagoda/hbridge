@@ -4,8 +4,8 @@
 #include "encoder.h"
 #include "state.h"
 #include <stdlib.h>
-
-extern volatile enum hostIDs ownHostId;
+#include <limits.h>
+#include "printf.h"
 
 struct SpeedControllerConfig {
 };
@@ -68,7 +68,14 @@ void speedControllerSetDebugActive(uint8_t debugActive)
 
 int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    int32_t targetSpeed = *((int32_t *) (targetData->data));
+    if(targetData->dataSize != sizeof(int16_t))
+    {
+	printf("Error, got unexpected ControllerTargetData\n");
+	return 0;
+    }
+    
+    int32_t targetSpeed = *((int16_t *) (targetData->data));
+    //TODO normalize somehow to turnsPerSecond(?)
 
     int32_t pwmValue = 0;
 

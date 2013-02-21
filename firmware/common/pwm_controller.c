@@ -1,6 +1,7 @@
 #include "pwm_controller.h"
 #include <stdlib.h>
 #include "printf.h"
+#include <limits.h>
 
 uint8_t pwmControllerIsConfigured()
 {
