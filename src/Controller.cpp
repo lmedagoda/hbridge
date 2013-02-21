@@ -8,47 +8,85 @@
 namespace hbridge 
 {
 
-Controller::Controller(HbridgeHandle* handle, firmware::controllerModes controllerId):mode(controllerId), handle(handle)
+Controller::Controller(Writer *writer, firmware::controllerModes controllerId):mode(controllerId), writer(writer)
 {
-    handle->registerController(this);
+    writer->registerController(this);
 }
 
 void Controller::sendPacket(const hbridge::Packet& msg, bool isAcked)
 {
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, isAcked, boost::bind(&Controller::packetSendError, this, _1));
+    writer->protocol->sendPacket(writer->boardId, msg, isAcked, boost::bind(&Controller::packetSendError, this, _1));
 }
 
 void Controller::packetSendError(const hbridge::Packet& msg)
 {
     printSendError(msg.packetId);
-    handle->getWriter()->callbacks->configurationError();
+    writer->callbacks->configurationError();
 }
 
+void Controller::sendCommandData()
+{
+    if(hasCommand)
+	return;
+    
+    if(commandData.size() == 2)
+    {
+	int packetId = firmware::PACKET_ID_SET_VALUE14;
+	if(writer->boardId > 3)
+	    packetId = firmware::PACKET_ID_SET_VALUE58;
+
+	Packet &sharedMsg(writer->protocol->getSharedMsg(packetId));
+	sharedMsg.data.resize(sizeof(firmware::setValueData));
+	
+	firmware::setValueData *data =
+	    reinterpret_cast<firmware::setValueData *>(sharedMsg.data.data());
+	
+	
+	switch(writer->boardId)
+	{
+	    case 0:
+	    case 4:
+		data->board1Value = *((uint16_t *) commandData.data());
+		break;
+	    case 1:
+	    case 5:
+		data->board2Value = *((uint16_t *) commandData.data());
+		break;
+	    case 2:
+	    case 6:
+		data->board3Value = *((uint16_t *) commandData.data());
+		break;
+	    case 3:
+	    case 7:
+		data->board4Value = *((uint16_t *) commandData.data());
+		break;
+	};
+	
+    }
+    else
+    {
+	Packet msg;
+	msg.packetId = firmware::PACKET_ID_SET_VALUE;
+	msg.broadcastMsg = false;
+	msg.data = commandData;
+	sendPacket(msg, false);
+    }
+}
 
 void Controller::registerForPacketId(int canId)
 {
-    handle->registerForMsg(this, canId);
+    writer->registerForMsg(this, canId);
 }
 
-
-unsigned short Controller::getTargetValue(double value)
-{
-    return 0;
-}
-
-void Controller::setTargetValue(double value)
-{
-
-}
-
-SpeedPIDController::SpeedPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_SPEED)
+SpeedPIDController::SpeedPIDController(Writer *writer):Controller(writer, firmware::CONTROLLER_MODE_SPEED)
 {
     registerForPacketId(firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG);
 }
 
-unsigned short SpeedPIDController::getTargetValue(double value)
+void SpeedPIDController::setTargetValue(double value)
 {
-    return value * std::numeric_limits<uint16_t>::max();
+    uint16_t transmitValue = value * std::numeric_limits<uint16_t>::max();
+    sendCommand(transmitValue);
 }
 
 void SpeedPIDController::processMsg(const hbridge::Packet& msg)
@@ -108,7 +146,7 @@ void SpeedPIDController::sendControllerConfig()
     sendPacket(msg, true);
 }
 
-PosPIDController::PosPIDController(HbridgeHandle* handle):Controller(handle, firmware::CONTROLLER_MODE_POSITION)
+PosPIDController::PosPIDController(Writer *writer):Controller(writer, firmware::CONTROLLER_MODE_POSITION)
 {
     registerForPacketId(firmware::PACKET_ID_POS_CONTROLLER_DEBUG);
 }
@@ -175,28 +213,26 @@ void PosPIDController::sendControllerConfig()
     sendPacket(msg, true);
 }
 
-
-short unsigned int PosPIDController::getTargetValue(double value)
+void PosPIDController::setTargetValue(double value)
 {
-    //BUG does not work
-    //fails in case of uneven number of ticks per turn
+    assert(value >= -M_PI && value <= M_PI);
     
     //value is in radian
-    //we scale it to 2 to the power of 16
-    return (value / M_PI) * (1<<16) - 1;
+    //we scale it to int16_t
+    uint16_t transmitValue = (value / M_PI) * std::numeric_limits< int16_t >::max();
+    sendCommand(transmitValue);
 }
 
-PWMController::PWMController(HbridgeHandle* handle): Controller(handle, firmware::CONTROLLER_MODE_PWM)
+PWMController::PWMController(Writer *writer): Controller(writer, firmware::CONTROLLER_MODE_PWM)
 {
 
 }
 
-
-short unsigned int PWMController::getTargetValue(double value)
+void PWMController::setTargetValue(double value)
 {
-    return value * 1800;
+    assert(value >= -1.0 && value <= 1.0);
+    uint16_t transmitValue = value * std::numeric_limits< int16_t >::max();
+    sendCommand(transmitValue);
 }
-
-
 
 }

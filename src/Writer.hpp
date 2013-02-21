@@ -10,11 +10,10 @@ namespace hbridge
 
 class Protocol;
 class Controller;
-class HbridgeHandle;
 
 class WriterState;
 
-class Writer:public PacketReveiver
+class Writer:public PacketReceiver
 {
     friend class Controller;
 public:
@@ -43,23 +42,33 @@ public:
     
 private:
     WriterState *state;
-    friend class HbridgeHandle;
     Controller *curController;
-    bool configuring;
+    std::vector<Controller *> controllers;
+    std::vector<PacketReceiver *> msgHandlers;
+    
     bool driverError;
     
     friend class Protocol;
-    Writer(HbridgeHandle *handle);
-    HbridgeHandle *handle;
+    uint32_t boardId;
+    Protocol *protocol;
 
     ActuatorConfiguration actuatorConfig;
     CallbackInterface *callbacks;
     void sendActuatorConfig();
     void sendController();
     void sendControllerConfig();
+    void controllersConfiguredCallback();
+    void controllerSetCallback();
     
     void configurationError(const Packet &msg);
+    void registerController(hbridge::Controller *ctrl);
+    
+    void registerForMsg(PacketReceiver *reveiver, int packetId);
+
+    void processStateAnnounce(const Packet& msg);
 public:
+    Writer(uint32_t boardId, Protocol *protocol);
+    
     void startConfigure();
     
     ActuatorConfiguration &getActuatorConfig()
@@ -89,10 +98,16 @@ public:
     
     /**
      * Set the active controller inside the firmware.
-     * Note this function MUST be called prior to 
-     * startConfigure
+     * Note this function MUST be called after the  
+     * device was configured
      * */
     void setActiveController(Controller *ctrl);
+    
+    /**
+     * Returns weather the firmware received the
+     * command to the a controller. 
+     * */
+    bool isControllerSet();
     
     /**
      * Deprecated

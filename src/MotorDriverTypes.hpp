@@ -19,20 +19,6 @@ namespace hbridge
         EXTERNAL = 2
     };
     
-    struct SensorConfiguration
-    {
-	SensorConfiguration() : externalTempSensor(0), statusFrequency(10)
-	{
-	}
-        unsigned char externalTempSensor;
-	/**
-	 * The frequency in hz in which the firmware should
-	 * report the sensor status. Not, only 'round
-	 * /integer' frequencies are allowed.
-	 * */
-	int statusFrequency;
-    };
-    
     struct ActuatorConfiguration
     {
 	unsigned short maxPWM;
@@ -120,6 +106,23 @@ namespace hbridge
 	    this->ticksPerTurnDivided = ticksPerTurnMotorDriver / tickDivider;
 	}
     };    
+    
+    struct SensorConfiguration
+    {
+	SensorConfiguration() : externalTempSensor(0), statusFrequency(10)
+	{
+	}
+        unsigned char externalTempSensor;
+	/**
+	 * The frequency in hz in which the firmware should
+	 * report the sensor status. Not, only 'round
+	 * /integer' frequencies are allowed.
+	 * */
+	int statusFrequency;
+	
+	EncoderConfiguration encoder_config_intern;
+	EncoderConfiguration encoder_config_extern;
+    };
     
     struct ErrorState {
 	bool motorOverheated;
@@ -255,11 +258,6 @@ namespace hbridge
     struct MotorConfiguration {
 	SensorConfiguration sensorConfig;
 	ActuatorConfiguration actuatorConfig;
-	EncoderConfiguration encoder_config_intern;
-	EncoderConfiguration encoder_config_extern;
-        base::actuators::DRIVE_MODE    mode;
-        base::actuators::PIDValues     pid_position;
-        base::actuators::PIDValues     pid_speed;
     };
 }
 

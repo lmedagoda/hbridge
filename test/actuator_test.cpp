@@ -15,8 +15,8 @@ class CanDriver: public CanBusInterface{
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        driver(canbus::openCanDevice(dev)),
-        CanBusInterface(driver)
+        CanBusInterface(driver),
+        driver(canbus::openCanDevice(dev))
     {
     };
 };
@@ -80,13 +80,11 @@ int main(int argc, char *argv[]) {
 
     proto->setSendTimeout(base::Time::fromMilliseconds(150));
     
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(hbridge_id);
+    Writer *writer = new Writer(hbridge_id, proto);
     
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
-    
-    Writer *writer = handle->getWriter();
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
 
     ActuatorConfiguration &accConf(writer->getActuatorConfig());
     accConf.maxPWM = 200;

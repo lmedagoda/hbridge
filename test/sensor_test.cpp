@@ -17,8 +17,8 @@ class CanDriver: public CanBusInterface
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        driver(canbus::openCanDevice(dev)),
-        CanBusInterface(driver)
+        CanBusInterface(driver),
+        driver(canbus::openCanDevice(dev))
     {
     };
 };
@@ -62,13 +62,12 @@ int main(int argc, char *argv[]) {
 
     proto->setSendTimeout(base::Time::fromMilliseconds(150));
     
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(hbridge_id);
+    Reader *reader = new Reader(hbridge_id, proto);
     
     MotorConfiguration conf;
     
-    Reader *reader = handle->getReader();
     reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
+    reader->setConfiguration(conf.sensorConfig);
     reset = false;
     reader->resetDevice();
     while(!reset)

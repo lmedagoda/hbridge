@@ -146,21 +146,18 @@ int main(int argc, char **argv)
     
     hbridge::Protocol *proto = new Protocol(new CanbusDummy());
 
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
-    
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
-    
     MotorConfiguration conf;
     
-    Reader *reader = handle->getReader();
-    Writer *writer = handle->getWriter();
+    Reader *reader = new Reader(boardId, proto);
+    Writer *writer = new Writer(boardId, proto);
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
     
     configured = false;
     
     reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
+    reader->setConfiguration(conf.sensorConfig);
     reader->startConfigure();
     
     int cnt = 0;

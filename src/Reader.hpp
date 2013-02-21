@@ -10,12 +10,10 @@
 namespace hbridge {
 class Protocol;
 class Controller;
-class HbridgeHandle;
 
-class Reader
+class Reader: public PacketReceiver
 {
 friend class Protocol;
-friend class HbridgeHandle;
 public:
     class CallbackInterface
     {
@@ -44,39 +42,45 @@ public:
 	* This callback will be called whenever the hardware
 	* sends out a new status package.
 	* */
-	virtual void gotStatus(const BoardState &status) {};
+	virtual void gotStatus(unsigned int boardId, const BoardState &status) {};
 	
 	/**
 	* This callback will be called if the hardware enters an error state.
 	* */
-	virtual void gotErrorStatus(const ErrorState &error) {};
+	virtual void gotErrorStatus(unsigned int boardId, const ErrorState &error) {};
 	
 	/**
 	 * This function will be called every time when the
 	 * device announces its internal state on the bus.
 	 * */
-	virtual void gotInternalState(const enum firmware::STATES state) {};
+	virtual void gotInternalState(unsigned int boardId, const enum firmware::STATES state) {};
     };
 
 
 private:
-    Reader(HbridgeHandle *handle);
-    virtual ~Reader() {};
     
-    HbridgeHandle *handle;
+    uint32_t boardId;
+    Protocol *protocol;
     CallbackInterface *callbacks;
-    std::vector<Controller *> packetHandlers;    
     bool configured;
+    bool error;
+    enum DriverState
+    {
+	READER_OFF,
+	READER_REQUEST_STATE,
+	READER_CONFIG_SENT,
+	READER_RUNNING,
+    };
     
-    MotorConfiguration configuration;
+    enum DriverState dstate;
+    
+    SensorConfiguration configuration;
     
     BoardState state;
     enum firmware::STATES internal_state;
     
     Encoder encoderIntern;
     Encoder encoderExtern;
-    
-    int getCurrentTickDivider() const;
     
     void sendConfigureMsg();
     
@@ -87,7 +91,13 @@ private:
     void configurationError(const Packet &msg);
     
     void gotError(const ErrorState &error);
+    
+    void processStateMsg(const Packet &msg);
+    
 public:
+    Reader(uint32_t boardId, Protocol *protocol);
+    virtual ~Reader() {};
+
     const Encoder &getInternalEncoder();
     const Encoder &getExternalEncoder();
     
@@ -114,12 +124,22 @@ public:
     * Sets the configuration for the hardware. 
     * Must be called prior to startConfigure().
     * */
-    void setConfiguration(const MotorConfiguration &config);
+    void setConfiguration(const SensorConfiguration &config);
     
     /**
     * Send out the configuration messages.
     * */
     void startConfigure();
+    
+    /**
+     * Returns true if the device is configured.
+     * */
+    bool isConfigured();
+    
+    /**
+     * Returns true if device reported an sensor error.
+     * */
+    bool hasError();
     
     /**
     * Shuts down the device and moves it into an 
