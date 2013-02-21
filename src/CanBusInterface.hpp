@@ -11,6 +11,10 @@ namespace hbridge {
 
         public:
             CanBusInterface(canbus::Interface *interface);
+	    virtual ~CanBusInterface() 
+	    {
+		delete interface;
+	    };
             virtual uint16_t getMaxPacketSize();
             virtual bool readPacket(Packet& packet);
             virtual bool sendPacket(const hbridge::Packet& packet);
