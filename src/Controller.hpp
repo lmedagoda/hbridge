@@ -4,7 +4,7 @@
 #include <canmessage.hh>
 #include <vector>
 #include <base/actuators/commands.h>
-#include "Types.hpp"
+#include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge 

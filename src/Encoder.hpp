@@ -1,7 +1,7 @@
 #ifndef ENCODER_HPP
 #define ENCODER_HPP
 
-#include "Types.hpp"
+#include "MotorDriverTypes.hpp"
 
 namespace hbridge {
 
