@@ -115,6 +115,7 @@ int main()
     }
     
     arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
+    arctoken_setOwnSystemID(ASV);
     mbstate_init();
     packet_init();
 

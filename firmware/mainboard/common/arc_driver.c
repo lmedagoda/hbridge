@@ -22,10 +22,7 @@ void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_
     arc_seekFunc = seekFunc;
 }
 
-/*
- * This Function is public only for NO token usage.
- * Do not use this funktion, if you want to use token.
- */
+
 uint32_t arc_readPacket(arc_packet_t * packet) {
     // function will return 0 if no packet has been found
     // the number of bytes in the packet otherwise

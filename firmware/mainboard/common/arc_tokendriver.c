@@ -2,7 +2,6 @@
 #include "tokenhandling.h"
 #include "arc_ringbuffer.h"
 #include "printf.h"
-#define MY_SYSTEM_ID 2
 #define MAX_BYTES 30
 
 
@@ -16,11 +15,20 @@ int send_bytes = 0;
 void arctoken_giveTokenBack();
 void arctoken_receivePackets();
 void arctoken_sendPendingPackets();
+ARC_SYSTEM_ID arc_system_id = 0;
 //public
 void arctoken_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
     //Init arc from here, because the user should not mix arc and arctoken
     arc_init(sendFunc, recvFunc, seekFunc);
     initTokenhandling();
+}
+
+void arctoken_setOwnSystemID(ARC_SYSTEM_ID sys_id){
+    arc_system_id = sys_id;
+}
+
+ARC_SYSTEM_ID arctoken_getOwnSystemID(){
+    return arc_system_id;
 }
 
 int arctoken_readPacket(arc_packet_t* packet){
@@ -39,7 +47,7 @@ void arctoken_processPackets(){
 void arctoken_sendProtocolPacket(ARC_PACKET_ID id){
     arc_packet_t packet;
     packet.originator = SLAVE;
-    packet.system_id = (ARC_SYSTEM_ID) MY_SYSTEM_ID; 
+    packet.system_id = arctoken_getOwnSystemID(); 
     packet.packet_id = id; 
     packet.length = 0;
     int ret = arc_sendPacket(&packet);
@@ -64,7 +72,7 @@ void arctoken_receivePackets(){
         } else if (!handleTokenPacket(&packet)){
             //for a hot fix not token packets can handled here
             //packet for me?
-                if (packet.system_id == (ARC_SYSTEM_ID) MY_SYSTEM_ID){
+                if (packet.system_id == arctoken_getOwnSystemID()){
                     if (!push_back(packet, &read_buffer)){
                         printf("receive buffer overflowed some pakets may not received\n");
                     }
