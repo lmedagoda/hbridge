@@ -46,6 +46,8 @@ Packet& Protocol::getSharedMsg(unsigned int packetId)
     }
 
     Packet &pkg(sharedMessages[packetId]);
+    pkg.senderId = SENDER_ID_PC;
+    pkg.receiverId = RECEIVER_ID_ALL;
     pkg.packetId = packetId;
     //shared message is allways a broadcast message
     pkg.broadcastMsg = true;
