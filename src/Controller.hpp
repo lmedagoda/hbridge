@@ -38,6 +38,8 @@ protected:
 	A *ptr = reinterpret_cast<A *>(commandData.data()); 
 	*ptr = command;
 	hasCommand = true;
+	
+	sendCommandData();
     }
     
     /**

@@ -26,7 +26,7 @@ void Controller::packetSendError(const hbridge::Packet& msg)
 
 void Controller::sendCommandData()
 {
-    if(hasCommand)
+    if(!hasCommand)
 	return;
     
     if(commandData.size() == 2)
