@@ -92,7 +92,7 @@ public:
      * */
     void resetActuator();
     
-    
+    void setConfiguration(const ActuatorConfiguration &actuatorConfig);
     
     virtual void processMsg(const Packet& msg);
     
@@ -102,12 +102,30 @@ public:
      * device was configured
      * */
     void setActiveController(Controller *ctrl);
+
+    /**
+     * Set the active controller using one
+     * of the previous registered Controllers
+     * with the correct id.
+     * */
+    void setActiveController(DRIVE_MODE id);
     
     /**
-     * Returns weather the firmware received the
+     * Return the active controller
+     * */
+    Controller *getActiveController();
+
+    /**
+     * Returns wheather the firmware received the
      * command to the a controller. 
      * */
     bool isControllerSet();    
+    
+    /**
+     * Returns wheather the driver is trying to
+     * set the controller in the motor driver
+     * */
+    bool isControllerConfiguring();    
 };
 
 }

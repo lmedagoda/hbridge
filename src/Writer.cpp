@@ -32,6 +32,12 @@ Writer::Writer(uint32_t boardId, hbridge::Protocol* protocol): state(new WriterS
     msgHandlers.resize(PACKET_ID_TOTAL_COUNT, NULL);
 }
 
+void Writer::setConfiguration(const hbridge::ActuatorConfiguration& actuatorConfig)
+{
+    this->actuatorConfig = actuatorConfig;
+}
+
+
 void Writer::requestDeviceState()
 {
     Packet msg;
@@ -182,6 +188,10 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
 		    break;
 	    }
 	    break;
+	case WRITER_CONTORLLERS_CONFIGURING:
+	    if(stateData->curState == STATE_CONTROLLER_CONFIGURED)
+		state->driverState = WRITER_CONTORLLERS_CONFIGURED;
+	    //NO break use default handling
 	default:
 	    switch(stateData->curState)
 	    {
@@ -235,6 +245,37 @@ void Writer::registerForMsg(PacketReceiver* receiver, int packetId)
     msgHandlers[packetId] = receiver;
 }
 
+void Writer::setActiveController(DRIVE_MODE id)
+{	
+    firmware::controllerModes modeIntern;
+
+    switch(id)
+    {
+	case base::actuators::DM_PWM:
+	    modeIntern = firmware::CONTROLLER_MODE_PWM;
+	    break;
+	case base::actuators::DM_SPEED:
+	    modeIntern = firmware::CONTROLLER_MODE_SPEED;
+	    break;
+	case base::actuators::DM_POSITION:
+	    modeIntern = firmware::CONTROLLER_MODE_POSITION;
+	    break;
+	default:
+	    throw std::runtime_error("Given controller mode is not mapped to firmware controller");
+	    break;
+    }
+
+    if(controllers.size() < modeIntern || !controllers[modeIntern])
+	throw std::runtime_error("Error: no controller for drive mode registered");
+
+    setActiveController(controllers[modeIntern]);
+}
+
+Controller* Writer::getActiveController()
+{
+    return curController;
+}
+
 void Writer::setActiveController(Controller* ctrl)
 {
     if(state->firmwareState != STATE_ACTUATOR_CONFIGURED)
@@ -255,6 +296,13 @@ void Writer::setActiveController(Controller* ctrl)
     cfg->controllerId = curController->getControllerId();
 
     protocol->sendPacket(boardId, msg, true, boost::bind(&Writer::configurationError, this, _1));
+    
+    state->driverState = WRITER_CONTORLLERS_CONFIGURING;
+}
+
+bool Writer::isControllerConfiguring()
+{
+    return state->driverState == WRITER_CONTORLLERS_CONFIGURING;
 }
 
 bool Writer::isControllerSet()
