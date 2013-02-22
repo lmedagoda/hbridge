@@ -3,7 +3,7 @@
 #include "../common/arc_packet.h"
 #include "../common/time.h"
 #include "../common/timeout.h"
-#include "../common/arc_driver.h"
+#include "../common/arc_tokendriver.h"
 #include "../../common/hbridge_cmd2.h"
 #include "../../common/hbridge_cmd.h"
 #include "../../common/protocol.h"
@@ -36,7 +36,7 @@ void sendStatusPacket(){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
     //printf("send status packet\n");
-    arc_sendPacket(&packet);
+    arctoken_sendPacket(&packet);
 }
 
 
@@ -50,20 +50,24 @@ void asv_controlHandler(int senderId, int receiverId, int id, unsigned char *dat
 }
 
 void asv_runningState(void){
-    /*if(timeout_hasTimeout())
+    if(timeout_hasTimeout())
     {
 	printf("Timout, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
-    }*/
+    }
     
     //check actuators
     if(hbridge_hasActuatorError())
     {
 	printf("Actuator error, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
+        return;
     }
+
     if (!cmdValid)
         return;
+    hbridge_setValue((curCmd.motor_links-127)*4, (curCmd.motor_rechts-127)*4, (curCmd.quer_hinten-127)*4, (curCmd.quer_vorne-127)*4);
+
 }
 
 int main()
@@ -78,7 +82,7 @@ int main()
     
     printf("The Maiboard is up with the version: ");
     
-    timeout_init(300000);
+    timeout_init(3000);
 
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
     
@@ -93,14 +97,24 @@ int main()
     //wait till rest got up
     while(time_getTimeInMs() - lastStateTime < 30)
         ;
+    protocol_init(1);
     hbridge_init(4);
+    int i;
+    struct actuatorConfig *ac;
+    struct sensorConfig *sc;
+    for (i=0; i<4; i++){
+        hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
+        ac = getActuatorConfig(i);
+        ac->maxCurrent = 1000;
+        ac->maxCurrentCount = 200;
+        ac->pwmStepPerMs = 2;
+        sc = getSensorConfig(i);
+        sc->statusEveryMs = 100;
+        hbridge_configureSensors();
+
+    }
     
-    hbridge_setControllerWithData(0, CONTROLLER_MODE_PWM, 0, NULL, 0);
-    hbridge_setControllerWithData(1, CONTROLLER_MODE_PWM, 0, NULL, 0);
-    hbridge_setControllerWithData(2, CONTROLLER_MODE_PWM, 0, NULL, 0);
-    hbridge_setControllerWithData(3, CONTROLLER_MODE_PWM, 0, NULL, 0);
-   
-    arc_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
+    arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
     mbstate_init();
     packet_init();
 
@@ -123,14 +137,14 @@ int main()
 // 	    printf(".");
 	}
 	arc_packet_t packet;	
-        while(arc_getPacket(&packet))
+        while(arctoken_readPacket(&packet))
 	{
 	    //process incomming packet
             printf("incoming packet");
 	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
 	}
         hbridge_process();
-        arc_processPackets();
+        arctoken_processPackets();
     //Sending a Status packet
     if (status_loops >= STATUS_PACKET_PERIOD){
          sendStatusPacket();

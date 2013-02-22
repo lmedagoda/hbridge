@@ -114,6 +114,7 @@ add_executable(main
     ${MB_COMMON_DIR}/tokenhandling.c
     ${MB_COMMON_DIR}/packethandling.c
     ${MB_COMMON_DIR}/mainboardstate.c
+    ${MB_COMMON_DIR}/arc_tokendriver.c
 )
 
 target_link_libraries(main)

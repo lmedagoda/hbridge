@@ -48,9 +48,6 @@ void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiv
 /**
  * Sends a value to the 4 HBridges used in setValueData (see HBridge documentation)
  * values are interpretated as documented in HBridge-documentation, but this method sends them as they are
- * TODO!!!! get this out of this!
- * value1/2 * 9
- * value3/4 * 4
  * @param value1 
  * @param value2
  * @param value3

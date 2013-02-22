@@ -1,6 +1,7 @@
-#include "arc_driver.h"
+#include "arc_tokendriver.h"
 #include "tokenhandling.h"
 #include "printf.h"
+#define MY_SYSTEM_ID 2
 //How many Tokens wasn't my Token since my last Token
 int given_tokens;
 int random_register = 0;
@@ -55,7 +56,7 @@ uint8_t giveTokenHandler(arc_packet_t* packet){
         if (amber_state == AMBER_UNREGISTERED){
             if (packet->system_id == REGISTER_CHANCE){
                 if (random_register == 0){
-                    arc_sendProtocolPacket(MB_REGISTER);
+                    arctoken_sendProtocolPacket(MB_REGISTER);
                     printf("Tried register with ID %i\n", MY_SYSTEM_ID); 
                     //TODO random_register zufaellig setzen
                 } else {
