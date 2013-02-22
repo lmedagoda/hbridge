@@ -50,7 +50,7 @@ class DummyCallback : public Reader::CallbackInterface
 int main(int argc, char *argv[]) {
 
 
-    timeval start, tick;
+    timeval start;
     gettimeofday(&start, 0);
 
     double pwm = 0;

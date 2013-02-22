@@ -6,7 +6,7 @@
 
 using namespace hbridge;
 
-int boardId = 0;
+unsigned int boardId = 0;
 int error = 0;
 
 class HighLevelDummy: public hbridge::BusInterface

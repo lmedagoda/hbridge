@@ -2,7 +2,7 @@
 #define CAN_STUB_HPP
 
 #include <boost/circular_buffer.hpp>
-#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <canmessage.hh>
 
 extern boost::circular_buffer<canbus::Message> canToHB;

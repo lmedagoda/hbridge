@@ -2,8 +2,9 @@ extern "C" {
 #include "../hbridgeCommon/drivers/can.h"
 #include "../hbridgeCommon/protocol_can.h"
 }
+#include "can_stub.hpp"
 #include <boost/circular_buffer.hpp>
-#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
 #include <canmessage.hh>
 #include <iostream>
 boost::circular_buffer<canbus::Message> canToHB(200);

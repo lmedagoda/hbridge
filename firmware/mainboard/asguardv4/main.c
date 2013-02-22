@@ -1,6 +1,6 @@
 #include "../common/mainboardstate.h"
 #include "../common/packethandling.h"
-#include "../common/arc_packet.h"
+#include "../common/arc_driver.h"
 #include "../common/time.h"
 #include "../common/timeout.h"
 #include "../../common/hbridge_cmd2.h"
