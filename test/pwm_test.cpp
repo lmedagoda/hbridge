@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
 
 	if(writer->isActuatorConfigured())
 	{
-	    writer->setTargetValue(pwm);
+// 	    writer->setTargetValue(pwm);
 // 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();

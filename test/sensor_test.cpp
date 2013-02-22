@@ -60,27 +60,25 @@ int main(int argc, char *argv[]) {
     CanBusInterface *interface = new CanBusInterface(driver);
     hbridge::Protocol *proto = new Protocol(interface);
 
-    proto->setSendTimeout(base::Time::fromMilliseconds(150));
+    proto->setSendTimeout(base::Time::fromMilliseconds(350));
+    
+    proto->setDriverAsBusMaster();
     
     Reader *reader = new Reader(hbridge_id, proto);
     
     MotorConfiguration conf;
     
-    reader->setCallbacks(new DummyCallback());
     reader->setConfiguration(conf.sensorConfig);
-    reset = false;
-    reader->resetDevice();
-    while(!reset)
-    {
-	proto->processIncommingPackages();
-	proto->processSendQueues();	
-    }
-    
     reader->startConfigure();
     
     int cnt = 0;
-    while(!configured)
+    while(!reader->isConfigured())
     {
+	if(reader->hasError())
+	{
+	    std::cout << "Reader reported error " << std::endl;
+	    exit(EXIT_FAILURE);
+	}
 	proto->processIncommingPackages();
 	proto->processSendQueues();
 	if(cnt == 500)

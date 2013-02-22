@@ -183,7 +183,7 @@ int main(int argc, char **argv)
 	if(writer->isActuatorConfigured())
 	{
 	    writer->setActiveController(&speedCtrl);
-	    writer->setTargetValue(10.0);
+// 	    writer->setTargetValue(10.0);
 // 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();

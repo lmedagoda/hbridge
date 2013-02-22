@@ -102,35 +102,54 @@ int main(int argc, char *argv[]) {
     configured = false;
     error = 0;
 
-    writer->setActiveController(&pwmCtrl);
-
     writer->startConfigure();
     
     while(!writer->isActuatorConfigured())
     {
+	if(writer->hasError())
+	{
+	    std::cout << "Writer reported Error \n" << std::endl;
+	    exit(EXIT_FAILURE);
+	}
+
 	proto->processIncommingPackages();
 	proto->processSendQueues();
 	usleep(10000);
     }
     
-    if(writer->hasError())
-	exit(EXIT_FAILURE);
     
     std::cout << "Actuator Configured "<< std::endl;
+    
+    writer->setActiveController(&pwmCtrl);
+
+    while(!writer->isControllerSet())
+    {
+	if(writer->hasError())
+	{
+	    std::cout << "Writer reported Error \n" << std::endl;
+	    exit(EXIT_FAILURE);
+	}
+
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	usleep(10000);
+    }
+	
+    std::cout << "Controller Set "<< std::endl;
     
     while(!writer->hasError())
     {    
 	proto->processIncommingPackages();
 // 	std::cout << "SQ" << std::endl;
-	proto->processSendQueues();	
 
-	if(writer->isActuatorConfigured())
-	{
-	    writer->setTargetValue(pwm);
+	pwmCtrl.setTargetValue(pwm);
 // 	    std::cout << "SM" << std::endl;
-	}
+	proto->processSendQueues();	
 	proto->sendSharedMessages();
-	
+	usleep(10000);	
     }    
+    
+    std::cout << "Writer reported Error \n" << std::endl;
+    return EXIT_FAILURE;
 }
 
