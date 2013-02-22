@@ -1,9 +1,27 @@
 #ifndef ARC_DRIVER_H
 #define ARC_DRIVER_H
 #include "arc_packet.h"
-void arc_init();
+/**
+ * Initialise the arc driver with functionpointer for receiving, sending and seeking.
+ **/
+void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc);
+/**
+ * Reads every Packet, which can read with the receive function.
+ * The function returns 0 if no packet or a bad packet found.
+ * Otherwise the number of bytes in the packet.
+ */
 uint32_t arc_readPacket(arc_packet_t * packet); 
+
+/**
+ * Sends a arc_packet with the send function.
+ * Returns 0 if the packet was send, a negative value otherwise.
+ */
 int arc_sendPacket(arc_packet_t *packet);
+
+/**
+ * Sends any byte buffer with the send function.
+ * This is normally not necessary.
+ */ 
 int arc_send(uint8_t *tmp_send_buffer, int size);
 
 typedef signed int (*arc_send_func_t)(const unsigned char *data, const unsigned int size);
