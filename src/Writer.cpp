@@ -14,7 +14,6 @@ enum DriverState
     WRITER_CONFIGURING,
     WRITER_CONTORLLERS_CONFIGURING,
     WRITER_CONTORLLERS_CONFIGURED,
-    WRITER_RUNNING,
 };
     
 class WriterState 
@@ -106,12 +105,14 @@ void Writer::startConfigure()
 
 bool Writer::isActuatorConfigured()
 {
-    return state->firmwareState >= STATE_ACTUATOR_CONFIGURED && state->driverState == WRITER_CONTORLLERS_CONFIGURED;
+    return (state->firmwareState >= STATE_ACTUATOR_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED);
 }
 
 bool Writer::hasError()
 {
-    return driverError || state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR;
+    return driverError || 
+    (state->driverState == WRITER_CONTORLLERS_CONFIGURED && 
+     (state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR));
 }
 
 void Writer::configurationError(const hbridge::Packet& msg)
@@ -258,63 +259,8 @@ void Writer::setActiveController(Controller* ctrl)
 
 bool Writer::isControllerSet()
 {
-    return !driverError && state->firmwareState == STATE_CONTROLLER_CONFIGURED && state->driverState == WRITER_CONTORLLERS_CONFIGURED;
+    return !driverError && (state->firmwareState == STATE_CONTROLLER_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED);
 }
-
-void Writer::setTargetValue(double value)
-{
-    if(state->firmwareState < STATE_CONTROLLER_CONFIGURED)
-	throw std::runtime_error("Writer : Error: Tried to write on unconfigured hbridge");
-
-    if(!curController)
-	throw std::runtime_error("Writer : Error: No Controller selected");
-
-    const std::vector<uint8_t> * cmdData = curController->getCommandData();
-    if(!cmdData)
-	return;
-
-    if(cmdData->size() == 2)
-    {
-	int packetId = firmware::PACKET_ID_SET_VALUE14;
-	if(boardId > 3)
-	    packetId = firmware::PACKET_ID_SET_VALUE58;
-
-	Packet &sharedMsg(protocol->getSharedMsg(packetId));
-	sharedMsg.data.resize(sizeof(firmware::setValueData));
-	
-	firmware::setValueData *data =
-	    reinterpret_cast<firmware::setValueData *>(sharedMsg.data.data());
-	
-	
-	switch(boardId)
-	{
-	    case 0:
-	    case 4:
-		data->board1Value = *((uint16_t *) cmdData->data());
-		break;
-	    case 1:
-	    case 5:
-		data->board2Value = *((uint16_t *) cmdData->data());
-		break;
-	    case 2:
-	    case 6:
-		data->board3Value = *((uint16_t *) cmdData->data());
-		break;
-	    case 3:
-	    case 7:
-		data->board4Value = *((uint16_t *) cmdData->data());
-		break;
-	};
-	
-    }
-    else
-    {
-    }
-    
-}
-
-    
-    
     
     
 }

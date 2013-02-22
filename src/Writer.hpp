@@ -107,12 +107,7 @@ public:
      * Returns weather the firmware received the
      * command to the a controller. 
      * */
-    bool isControllerSet();
-    
-    /**
-     * Deprecated
-     * */
-    void setTargetValue(double value);
+    bool isControllerSet();    
 };
 
 }
