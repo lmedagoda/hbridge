@@ -228,6 +228,9 @@ void Reader::configurationError(const Packet &msg)
     std::cout << "Reason:" << std::endl;
     switch(msg.packetId)
     {
+	case PACKET_ID_REQUEST_STATE:
+	    std::cout << "Motor driver did not ack state request packet." << std::endl;
+	    break;	    	    
 	case PACKET_ID_CLEAR_SENSOR_ERROR:
 	    std::cout << "Clear sensor config message was not acked" << std::endl;
 	    break;	    
@@ -236,7 +239,7 @@ void Reader::configurationError(const Packet &msg)
 	    break;
 	default:
 	    std::cout << "Driver error: This means there is a bug in the driver" << std::endl;
-	    std::cout << "Driver error: Got send error for unknown package with id " << msg.packetId << std::endl;
+	    std::cout << "Driver error: Got send error for unknown package with id " << msg.packetId << " packet name " << getPacketName(msg.packetId) << std::endl;
 	    break;
     };
     
