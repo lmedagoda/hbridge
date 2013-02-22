@@ -177,15 +177,13 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 		    dstate = READER_CONFIG_SENT;
 		    break;
 		case firmware::STATE_SENSORS_CONFIGURED:
-		    if(callbacks)
-			callbacks->configureDone();
+		    configureDone();
 		    break;    
 		case firmware::STATE_SENSOR_ERROR:
 		    resetDevice();
 		    break;    
 		default:
-		    if(callbacks)
-			callbacks->configureDone();
+		    configureDone();
 		    break;
 	    }
 	    break;
@@ -194,11 +192,10 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 	    switch(stateData->curState)
 	    {
 		case firmware::STATE_SENSORS_CONFIGURED:
-		    dstate = READER_RUNNING;
-		    if(callbacks)
-			callbacks->configureDone();
+		    configureDone();
 		    break;    
 		default:
+		    error = true;
 		    if(callbacks)
 			callbacks->configurationError();
 		    break;    
@@ -209,6 +206,7 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 	    {
 		case firmware::STATE_UNCONFIGURED:
 		case firmware::STATE_SENSOR_ERROR:
+		    error = true;
 		    if(callbacks)
 			callbacks->configurationError();
 		    break;    
@@ -257,6 +255,7 @@ bool Reader::hasError()
 
 void Reader::configureDone()
 {
+    dstate = READER_RUNNING;
     configured = true;
 
     if(callbacks)
