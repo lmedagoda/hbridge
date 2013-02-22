@@ -69,7 +69,7 @@ bool CanBusInterface::sendPacket(const hbridge::Packet& packet)
     
     cil->receiver = RECEIVER_ID_H_BRIDGE_1 + packet.receiverId;
     cil->packetId = packet.packetId;
-    cil->sender = SENDER_ID_PC;
+    cil->sender = packet.senderId;
     
     if(packet.broadcastMsg)
 	cil->receiver = RECEIVER_ID_ALL;
