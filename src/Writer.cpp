@@ -32,6 +32,17 @@ Writer::Writer(uint32_t boardId, hbridge::Protocol* protocol): state(new WriterS
     msgHandlers.resize(PACKET_ID_TOTAL_COUNT, NULL);
 }
 
+Writer::~Writer()
+{
+    for(std::vector<Controller *>::iterator it = controllers.begin(); it != controllers.end(); it++)
+    {
+	if(*it)
+	    delete *it;
+    }
+    controllers.clear();
+}
+
+
 void Writer::setConfiguration(const hbridge::ActuatorConfiguration& actuatorConfig)
 {
     this->actuatorConfig = actuatorConfig;

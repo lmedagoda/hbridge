@@ -69,6 +69,8 @@ private:
 public:
     Writer(uint32_t boardId, Protocol *protocol);
     
+    virtual ~Writer();
+    
     void startConfigure();
     
     ActuatorConfiguration &getActuatorConfig()
