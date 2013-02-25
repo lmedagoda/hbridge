@@ -318,7 +318,9 @@ bool Writer::isControllerConfiguring()
 
 bool Writer::isControllerSet()
 {
-    return !driverError && (state->firmwareState == STATE_CONTROLLER_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED);
+    return !driverError && (
+	((state->firmwareState == STATE_CONTROLLER_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED))
+	|| (state->firmwareState == STATE_RUNNING));
 }
     
     
