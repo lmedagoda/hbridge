@@ -138,7 +138,6 @@ void protocol_ackPacket(int id, int receiverId)
     struct ackData data;
     data.packetId = id;
 
-    printf("acking %i id %i\n", id, id + ownHostId);
     sendPacket(ownHostId, receiverId, PACKET_ID_ACK, (uint8_t *) &data, sizeof(struct ackData));
 }
 
