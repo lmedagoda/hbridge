@@ -10,6 +10,7 @@ namespace hbridge
 
 enum DriverState
 {
+    WRITER_NOT_ACTIVE,
     WRITER_STATE_REQUEST,
     WRITER_CONFIGURING,
     WRITER_CONTORLLERS_CONFIGURING,
@@ -19,7 +20,7 @@ enum DriverState
 class WriterState 
 {
 public:
-    WriterState() : firmwareState(STATE_UNCONFIGURED) 
+    WriterState() : firmwareState(STATE_UNCONFIGURED) , driverState(WRITER_NOT_ACTIVE)
     {}
     enum STATES firmwareState;
     enum DriverState driverState;
@@ -152,6 +153,8 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
 
     switch(state->driverState)
     {
+	case WRITER_NOT_ACTIVE:
+	    return;
 	case WRITER_STATE_REQUEST:
 	    switch(stateData->curState)
 	    {
