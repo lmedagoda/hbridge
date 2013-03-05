@@ -7,9 +7,6 @@
 #include <limits.h>
 #include "printf.h"
 
-struct SpeedControllerConfig {
-};
-
 struct ControllerData speedControllerData;
 
 void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsigned char *idata, unsigned short size)
@@ -18,10 +15,10 @@ void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsign
     {
         case PACKET_ID_SET_SPEED_CONTROLLER_DATA: {
 	    struct setPidData *data = (struct setPidData *) idata;
-	    setKp((struct pid_data *) &(speedControllerData.pidData), data->kp);
-	    setKi((struct pid_data *) &(speedControllerData.pidData), data->ki);
-	    setKd((struct pid_data *) &(speedControllerData.pidData), data->kd);
-	    setMinMaxCommandVal((struct pid_data *) &(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
+	    setKp(&(speedControllerData.pidData), data->kp);
+	    setKi(&(speedControllerData.pidData), data->ki);
+	    setKd(&(speedControllerData.pidData), data->kd);
+	    setMinMaxCommandVal(&(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
 	    speedControllerData.isConfigured = 1;
 	    break;
 	}
@@ -74,7 +71,8 @@ int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t whe
 	return 0;
     }
     
-    int32_t targetSpeed = *((int16_t *) (targetData->data));
+    int16_t *speed_p = (int16_t *) (targetData->data);
+    int32_t targetSpeed = *speed_p;
     //TODO normalize somehow to turnsPerSecond(?)
 
     int32_t pwmValue = 0;

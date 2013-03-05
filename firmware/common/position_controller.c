@@ -96,7 +96,8 @@ void positionControllerReset(int32_t wheelPos)
 
 int32_t positionControllerStep(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    int32_t targetPos = *((int32_t *) (targetData->data));
+    int16_t *pos_p = (int16_t *) (targetData->data);
+    int32_t targetPos = *pos_p;
     int32_t pwmValue = 0;
     int32_t curVal = wheelPos;
 
@@ -167,7 +168,7 @@ int32_t positionControllerStep(struct ControllerTargetData *targetData, int32_t 
 }
 
 int32_t cascadedPositionController(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn) {
-    int32_t targetPos = *((int32_t *) (targetData->data));
+//     int32_t targetPos = *((int32_t *) (targetData->data));
 //     int32_t pwmValue = controllers[CONTROLLER_MODE_POSITION].step(targetPos, wheelPos, ticksPerTurn);
 //     pwmValue = controllers[CONTROLLER_MODE_SPEED].step(pwmValue / 10, wheelPos, ticksPerTurn);
    
