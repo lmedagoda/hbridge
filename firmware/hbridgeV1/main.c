@@ -10,6 +10,12 @@
 #include "assert.h"
 #include "i2c.h"
 #include "lm73cimk.h"
+#include "protocol_can.h"
+#include "encoder.h"
+#include "encoder_ichaus.h"
+#include "encoder_adc.h"
+#include "encoder_quadrature.h"
+#include "encoder_quadrature_exti.h"
 
 void GPIO_Configuration(void);
 
@@ -74,12 +80,12 @@ int main(void)
 
     GPIO_Configuration();
     
-    baseNvicInit();
+    USART1_Init(USART_POLL);
 
-    USART1_Init(ENABLE);
-
+    printf_setSendFunction(USART1_SendData);
+    
     //note, this mesage can only be send AFTER usart configuration
-    print("Entered main loop\n");
+    printf("Entered main loop\n");
 
     //turn of red led
     GPIO_SetBits(GPIOA, GPIO_Pin_8);
@@ -88,83 +94,58 @@ int main(void)
     //read address, turn on peripherals etc.
     baseInit();
 
-    //setup I2C bus for lm73cimk
-    setupI2Cx(0xA0, 100000, I2C1, ENABLE);
+//     //setup I2C bus for lm73cimk
+//     setupI2Cx(0xA0, 100000, I2C1, ENABLE);
+//     
+//     //init temperature sensor
+//     lm73cimk_init(I2C1);
+// 
+//     //address of LM73_SENSOR_1 is 156 // 1001110 + r/w bit
+//     lm73cimk_setup_sensor(LM73_SENSOR1, 156);
+//     lm73cimk_setup_sensor(LM73_SENSOR2, 148);
     
-    //init temperature sensor
-    lm73cimk_init(I2C1);
+    printf("Peripheral configuration finished\n");
 
-    //address of LM73_SENSOR_1 is 156 // 1001110 + r/w bit
-    lm73cimk_setup_sensor(LM73_SENSOR1, 156);
-    lm73cimk_setup_sensor(LM73_SENSOR2, 148);
+    enum hostIDs id = getOwnHostId();
+    protocol_setOwnHostId(id);
     
-    //wait until 5V rail get's stable
-    volatile uint32_t delay = 20000000;
-    while(delay)
-	delay--;
-    
-    measureACS712BaseVoltage(); 
-    
-    print("Peripheral configuration finished\n");
-
     CAN_Configuration(CAN_NO_REMAP);
-    CAN_ConfigureFilters(ownHostId);
-
-    //activate systick interrupt
-    //note base init has to be called before 
-    SysTick_Configuration();
-
- 
-  /** DEBUG**/
-/*
-  uint16_t lastTime = 0;
-  uint16_t time;
-  uint16_t counter = 0;  
-*/
-
-  uint16_t cnt = 0;
+    CAN_ConfigureFilters(id);
     
-//   uint32_t temp = 0;
-//   uint32_t gotTmpCnt = 0;
-//   uint8_t lmk72addr = (0x4E<<1);
+    
+    can_protocolInit();
 
-  /** END DEBUG **/
- 
-  while(1) {
+    struct EncoderInterface encoder;
+    encoder_defaultStructInit(&encoder);
 
-    /** START DEBUG **/
-    /*if(!getTemperature(lmk72addr, &temp)) {
-	gotTmpCnt++;
-	    //printf("got temp %lu\n", temp);
-    }
+    encoder.encoderInit = encoderInitQuadrature;
+    encoder.getTicks = getTicksQuadrature;
+    encoder.setTicksPerTurn = setTicksPerTurnQuadrature;
+    encoder_setImplementation(QUADRATURE, encoder);
 
-    printfI2CDbg();
-    if(counter > 10000) {
-      printf("cur temp is %lu got tmp %lu times\n", temp, gotTmpCnt);
-      gotTmpCnt = 0;
-      counter = 0;
-      print(".");
-      uint32_t eet = getTicksExtern();
-      uint32_t iet = getTicks();
-      printf("externalEncoderTicks are %lu internalTicks %lu \n", eet, iet);
-      //printf("Error is %h \n", error);
-      //print("ActiveCstate: ");
-      //printStateDebug(activeCState);
-      //print("LastActiveCstate: ");
-      //printStateDebug(lastActiveCState);
-    }
+    encoder.encoderInit = encoderInitQuadratureWithZero;
+    encoder.getTicks = getTicksQuadratureWithZero;
+    encoder.setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
+    encoder_setImplementation(QUADRATURE_WITH_ZERO, encoder);
 
-    time = TIM_GetCounter(TIM1);
-    if(lastTime > time) {
-      counter++;
-    }
-    lastTime = time;
-*/
+    encoder.encoderInit = encoderInitIcHaus;
+    encoder.getTicks = getTicksIcHaus;
+    encoder.setTicksPerTurn = setTicksPerTurnIcHaus;
+    encoder_setImplementation(IC_HOUSE_MH_Y, encoder);
+    
+    encoder.encoderInit = encoderInitADC;
+    encoder.encoderDeInit = encoderDeInitADC;
+    encoder.getTicks = getTicksADC;
+    encoder.setTicksPerTurn = setTicksPerTurnADC;
+    encoder_setImplementation(ANALOG_VOLTAGE, encoder);
 
-    /* END DEBUG */
+    platformInit();
+    
+    run();
+    
+    while(1)
+	;
 
-    pollCanMessages();
-  }
 }
 
 /*******************************************************************************

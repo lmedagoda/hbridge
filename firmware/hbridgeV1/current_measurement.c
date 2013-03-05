@@ -11,6 +11,7 @@
 #define AVERAGE_THRESHOLD 10
 #define SLOPE_1 1388
 #define SLOPE_2 1275
+#define USED_REGULAR_ADC_CHANNELS 12
 
 volatile uint16_t adc_values[USED_REGULAR_ADC_CHANNELS];
 
@@ -42,16 +43,6 @@ volatile uint8_t oldDirection;
 // hall sensor values
 volatile uint32_t h1[USED_REGULAR_ADC_CHANNELS/2];
 volatile uint32_t h2[USED_REGULAR_ADC_CHANNELS/2];
-
-void requestNewADCValues() {
-    switchAdcValues = 1;
-};
-
-void waitForNewADCValues() {
-    while(switchAdcValues) {
-	;
-    }
-};
 
 void measureACS712BaseVoltage()
 {
@@ -106,8 +97,13 @@ void measureACS712BaseVoltage()
   TIM_CtrlPWMOutputs(TIM1, ENABLE);
 }
 
+uint32_t currentMeasurement_getValue()
+{
+    switchAdcValues = 1;
 
-uint32_t calculateCurrent() {
+    while(switchAdcValues) {
+	;
+    }
 
     /*
 	PWM period: 25000 ns
@@ -353,5 +349,37 @@ void DMA1_Channel1_IRQHandler(void) {
     DMA1->IFCR = DMA1_FLAG_TC1;
   }
 }
+
+void currentMeasurement_init()
+{
+    activeAdcValues = &avs1;
+    inActiveAdcValues = &avs2;
+    
+    int i;
+    //set all values to zero
+    for(i = 0; i < USED_REGULAR_ADC_CHANNELS; ++i) {
+	activeAdcValues->currentValues[i] = 0;
+	inActiveAdcValues->currentValues[i] = 0;
+    }
+
+    // reset value count
+    activeAdcValues->currentValueCount = 0; 
+    inActiveAdcValues->currentValueCount = 0; 
+
+
+    //wait until 5V rail get's stable
+    volatile uint32_t delay = 20000000;
+    while(delay)
+	delay--;
+
+    currentMeasurementInit();
+
+    measureACS712BaseVoltage(); 
+    
+}
+
+
+    
+
 
 
