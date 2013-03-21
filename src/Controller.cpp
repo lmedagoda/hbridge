@@ -85,6 +85,9 @@ SpeedPIDController::SpeedPIDController(Writer *writer):Controller(writer, firmwa
 
 void SpeedPIDController::setTargetValue(double value)
 {
+    if(value >= -1.0 && value <= 1.0)
+	throw std::runtime_error("SpeedPIDController:Error, got target value which is out of range -1 +1");
+    
     uint16_t transmitValue = value * std::numeric_limits<uint16_t>::max();
     sendCommand(transmitValue);
 }
@@ -215,7 +218,8 @@ void PosPIDController::sendControllerConfig()
 
 void PosPIDController::setTargetValue(double value)
 {
-    assert(value >= -M_PI && value <= M_PI);
+    if(value >= -M_PI && value <= M_PI)
+	throw std::runtime_error("PosPIDController::Error, got target value which is out of range -M_PI +M_PI");
     
     //value is in radian
     //we scale it to int16_t
@@ -230,7 +234,9 @@ PWMController::PWMController(Writer *writer): Controller(writer, firmware::CONTR
 
 void PWMController::setTargetValue(double value)
 {
-    assert(value >= -1.0 && value <= 1.0);
+    if(value >= -1.0 && value <= 1.0)
+	throw std::runtime_error("PWMController::Error, got target value which is out of range -1 +1");
+
     uint16_t transmitValue = value * std::numeric_limits< int16_t >::max();
     sendCommand(transmitValue);
 }
