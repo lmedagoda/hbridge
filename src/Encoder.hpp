@@ -22,9 +22,6 @@ public:
     //returns all motor turns acumulated since configuration
     double getAbsoluteTurns() const;
     
-    //computes the motor tick value for a given absolute turn value
-    Ticks getMotorTicksFromAbsoluteTurn(double targetValue) const;
-    
     const EncoderConfiguration &getEncoderConfig() const;
 };
 

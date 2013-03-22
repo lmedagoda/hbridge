@@ -51,7 +51,7 @@ void Encoder::setRawEncoderValue(uint value)
 	
 	// We assume that a motor rotates less than half a turn per [ms]
 	// (a status packet is sent every [ms])
-	if ((uint) abs(diff) > encoderConfig.ticksPerTurnMotorDriver / 2)
+	if ((uint) abs(diff) > encoderConfig.ticksPerTurn / 2)
 	{
 	    turns += (diff < 0 ? 1 : -1);
 	}
@@ -63,27 +63,9 @@ double Encoder::getAbsoluteTurns() const
     if(!gotValidReading)
 	return base::unknown<double>();
     
-    Ticks allMotorTicks = turns* ((int64_t)encoderConfig.ticksPerTurnMotorDriver) + ((int)lastPositionInTurn) - zeroPosition;
-    double turns = allMotorTicks / encoderConfig.ticksPerTurn;
-    return turns;
+    double ret = turns + ((double)lastPositionInTurn) / encoderConfig.ticksPerTurn;
+    return ret - zeroPosition;
 }
-
-
-Ticks Encoder::getMotorTicksFromAbsoluteTurn(double targetValue) const
-{
-    double curPos = getAbsoluteTurns();
-    if(fabs(curPos - targetValue) > 1)
-	throw std::runtime_error("Target value is more than one turn apart");
-    
-    if(base::isUnknown<double>(curPos))
-	throw std::runtime_error("Tried to access encoder while it is unknown (did not pass zero mark yet)");
-    
-    int64_t target_ticks = targetValue * encoderConfig.ticksPerTurn + zeroPosition;
-    int64_t targetInTurn_ticks = target_ticks % encoderConfig.ticksPerTurnMotorDriver;
-    
-    return targetInTurn_ticks;
-}
-
 
 const EncoderConfiguration& Encoder::getEncoderConfig() const
 {

@@ -53,18 +53,17 @@ namespace hbridge
 
     struct EncoderConfiguration
     {
-	//real amount of ticks per turn
-	double ticksPerTurn;
+	///real amount of ticks per turn
+	uint32_t ticksPerTurn;
+	
 	/**
-	* the value that is passed to the motor driver 
-	* as ticks for one full evolution, as the motor 
-	* driver can only process integers. 
-	* Note that this values needs to be >= ticksPerTurn
-	* and % tickDivider == 0
-	* If these constrains are not met, the encoder will 
-	* loose ticks and drift.
-	**/ 
-	unsigned int ticksPerTurnMotorDriver;
+	 * If this value is != 0 every
+	 * leapTickValue encoder ticks,
+	 * the encoder value will be increased/decreased
+	 * by one. This is usefull if your gear/encoder ratio
+	 * is not even.
+	 * */
+	uint32_t leapTickValue;
 	unsigned char tickDivider;
 	unsigned int ticksPerTurnDivided;
 	double zeroPosition;
@@ -77,8 +76,8 @@ namespace hbridge
             ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
-        EncoderConfiguration(double ticksPerTurn, ENCODER_TYPE type) :
-	    ticksPerTurn(ticksPerTurn), tickDivider(1), zeroPosition(0), type(type)
+        EncoderConfiguration(uint32_t ticksPerTurn, uint32_t leapTickValue, ENCODER_TYPE type) :
+	    ticksPerTurn(ticksPerTurn), leapTickValue(leapTickValue), tickDivider(1), zeroPosition(0), type(type)
 	{
 	    validate();
 	}
@@ -93,17 +92,7 @@ namespace hbridge
 	    if(tickDivider == 0)
 		throw std::out_of_range("Invalid tick divider given");
 	    
-	    //we calculate a value >= cfg.ticksPerTurn were
-	    //value % cfg.ticksPerTurnDivided = 0;    
-	    int value = ((int)(ticksPerTurn / tickDivider)) * tickDivider;
-	    if(value < ticksPerTurn)
-	    {
-		value = (((int)(ticksPerTurn / tickDivider)) + 1) * tickDivider;
-	    }
-	    
-	    ticksPerTurnMotorDriver = value;
-	    
-	    this->ticksPerTurnDivided = ticksPerTurnMotorDriver / tickDivider;
+	    this->ticksPerTurnDivided = ticksPerTurn / tickDivider;
 	}
     };    
     

@@ -120,6 +120,10 @@ struct setAllowedSenderData {
 struct encoderConfiguration {
     enum encoderTypes encoderType:8;
     uint32_t ticksPerTurn;
+    //after every 'leapTickCounter' ticks one 
+    //additional tick will be entered.
+    uint32_t leapTickCounter;
+    int32_t zeroOffset;
     uint8_t tickDivider;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
