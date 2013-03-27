@@ -223,7 +223,7 @@ void hbridgeGPIOConfig() {
     GPIO_Init(GPIOA, &GPIO_InitStructure);  
 }
 
-void hbridgeInit() {
+void hbridge_init() {
     // re-route timer1 output to pins not included in chip package (non-existing pins)
     // needed for timer chaining
     GPIO_PinRemapConfig(GPIO_FullRemap_TIM1, ENABLE);
@@ -235,11 +235,11 @@ void hbridgeInit() {
     initHbridgeTimers();
 
     //set pwm to zero
-    setNewPWM(0, 0);
+    hbridge_setNewPWM(0, 0);
     
 }
 
-void setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
+void hbridge_setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
     
   int16_t value = value2;
 

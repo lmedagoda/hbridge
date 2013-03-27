@@ -15,8 +15,8 @@ class CanDriver: public CanBusInterface{
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        driver(canbus::openCanDevice(dev)),
-        CanBusInterface(driver)
+	CanBusInterface(driver),
+        driver(canbus::openCanDevice(dev))
     {
     };
     
@@ -51,7 +51,7 @@ class DummyCallback : public Reader::CallbackInterface
 int main(int argc, char *argv[]) {
 
 
-    timeval start, tick;
+    timeval start;
     gettimeofday(&start, 0);
 
     double pwm = 0;
@@ -77,17 +77,14 @@ int main(int argc, char *argv[]) {
 
     proto->setSendTimeout(base::Time::fromMilliseconds(150));
     
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(hbridge_id);
-    
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
+    Reader *reader = new Reader(hbridge_id, proto);
+    Writer *writer = new Writer(hbridge_id, proto);
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
     
     MotorConfiguration conf;
     
-    Reader *reader = handle->getReader();
-    Writer *writer = handle->getWriter();
-
     ActuatorConfiguration &accConf(writer->getActuatorConfig());
     accConf.maxPWM = 200;
     accConf.pwmStepPerMs = 200;
@@ -105,7 +102,7 @@ int main(int argc, char *argv[]) {
     error = 0;
     
     reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
+    reader->setConfiguration(conf.sensorConfig);
     
     reset = false;
     reader->resetDevice();
@@ -155,7 +152,7 @@ int main(int argc, char *argv[]) {
 
 	if(writer->isActuatorConfigured())
 	{
-	    writer->setTargetValue(pwm);
+// 	    writer->setTargetValue(pwm);
 // 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();

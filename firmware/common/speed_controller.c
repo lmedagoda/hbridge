@@ -4,11 +4,8 @@
 #include "encoder.h"
 #include "state.h"
 #include <stdlib.h>
-
-extern volatile enum hostIDs ownHostId;
-
-struct SpeedControllerConfig {
-};
+#include <limits.h>
+#include "printf.h"
 
 struct ControllerData speedControllerData;
 
@@ -18,10 +15,10 @@ void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsign
     {
         case PACKET_ID_SET_SPEED_CONTROLLER_DATA: {
 	    struct setPidData *data = (struct setPidData *) idata;
-	    setKp((struct pid_data *) &(speedControllerData.pidData), data->kp);
-	    setKi((struct pid_data *) &(speedControllerData.pidData), data->ki);
-	    setKd((struct pid_data *) &(speedControllerData.pidData), data->kd);
-	    setMinMaxCommandVal((struct pid_data *) &(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
+	    setKp(&(speedControllerData.pidData), data->kp);
+	    setKi(&(speedControllerData.pidData), data->ki);
+	    setKd(&(speedControllerData.pidData), data->kd);
+	    setMinMaxCommandVal(&(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
 	    speedControllerData.isConfigured = 1;
 	    break;
 	}
@@ -68,7 +65,15 @@ void speedControllerSetDebugActive(uint8_t debugActive)
 
 int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    int32_t targetSpeed = *((int32_t *) (targetData->data));
+    if(targetData->dataSize != sizeof(int16_t))
+    {
+	printf("Error, got unexpected ControllerTargetData\n");
+	return 0;
+    }
+    
+    int16_t *speed_p = (int16_t *) (targetData->data);
+    int32_t targetSpeed = *speed_p;
+    //TODO normalize somehow to turnsPerSecond(?)
 
     int32_t pwmValue = 0;
 

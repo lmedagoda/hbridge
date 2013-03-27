@@ -276,6 +276,9 @@ void systick_readSensors()
     }
     
     currentValue = currentMeasurement_getValue();
+    
+    encoder_sampleTicks(activeCState->sensorConfig.internalEncoder);
+    encoder_sampleTicks(activeCState->sensorConfig.externalEncoder);
 }
 
 void systick_step()

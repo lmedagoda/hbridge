@@ -28,9 +28,9 @@ public:
     Packet(): senderId(-1), receiverId(-1), packetId(-1), broadcastMsg(false) 
     {
     };
-    int senderId;
-    int receiverId;
-    int packetId;
+    unsigned int senderId;
+    unsigned int receiverId;
+    unsigned int packetId;
     bool broadcastMsg;
     std::vector<uint8_t> data;
 };
@@ -57,9 +57,13 @@ public:
     };
     
     std::queue<Entry> queue;
+    
+    boost::function<void (void)> emptyCallback;
+    
+    void processAck(const Packet &msg);
 };
 
-class PacketReveiver
+class PacketReceiver
 {
 public:
     /**
@@ -84,64 +88,6 @@ public:
     void sendPackage(const Packet &msg);    
 };
 
-class HbridgeHandle
-{
-    friend class Protocol;
-    friend class Writer;
-    friend class Reader;
-    friend class Controller;
-private:
-    HbridgeHandle(int id, Protocol *protocol);
-    int boardId;
-    SendQueue queue;
-    Reader * reader;
-    Writer * writer;
-    Protocol *protocol;
-    LowPriorityProtocol *lowPrioProtocol;
-    
-    std::vector<PacketReveiver *> msgHandlers;    
-    std::vector<Controller *> controllers;
-    std::vector<Controller *> &getControllers()
-    {
-	return controllers;
-    };
-    
-    void registerForMsg(PacketReveiver *reveiver, int packetId);
-    void unregisterForMsg(PacketReveiver *reveiver);
-
-    /**
-    * 
-    * */
-    void registerController(hbridge::Controller *ctrl);
-public:
-
-    LowPriorityProtocol *getLowPriorityProtocol()
-    {
-	return lowPrioProtocol;
-    };
-
-    int getBoardId()
-    {
-	return boardId;
-    }
-    
-    Reader *getReader()
-    {
-	return reader;
-    };
-    
-    Writer *getWriter()
-    {
-	return writer;
-    };
-    
-    Protocol *getProtocol() 
-    {
-	return protocol;
-    }
-
-};
-
 class Protocol
 {
     friend class Controller;
@@ -149,11 +95,24 @@ class Protocol
     friend class Writer;
     friend class LowPriorityProtocol;
 private:
+
+    class Handle
+    {
+    public:
+	Handle(unsigned int id, hbridge::Protocol* proto);
+	unsigned int senderId;
+	SendQueue queue;
+	LowPriorityProtocol lowPrioProtocol;
+
+	std::vector<PacketReceiver *> msgHandlers;
+	
+	void processMsg(const Packet &msg);
+    };
     
     int retryCount;
     base::Time sendTimout;
 
-    std::vector<HbridgeHandle *> handles;
+    std::vector<Handle *> handles;
     std::vector<Packet> sharedMessages;
     std::map<unsigned int, bool> markedForSending;
     BusInterface *bus;
@@ -162,7 +121,8 @@ private:
 
     void sendPacket(int boardId, const Packet &msg, bool isAcked, boost::function<void (const Packet &msg)> errorCallback, boost::function<void (void)> ackedCallback = NULL);
     Packet &getSharedMsg(unsigned int packetId);
-    void registerHbridge(int id);
+    void registerReceiver(hbridge::PacketReceiver* recv, unsigned int senderId);
+    void setQueueEmptyCallback(boost::function<void (void)> emptyCallback, int senderId);
         
 public:
     Protocol(BusInterface *bus);
@@ -178,13 +138,6 @@ public:
      * hbridge driver.
      * */
     void setBusInterface(BusInterface *bus);
-    
-    /**
-     * This function creates and returns a handle
-     * to a hbridge. With this handle the hbridge
-     * can be accessed.
-     * */
-    HbridgeHandle *getHbridgeHandle(int id);
 
     /**
      * Sends out the messages that are shared between multiple

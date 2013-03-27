@@ -1,14 +1,13 @@
 #include "Reader.hpp"
-#include "Controller.hpp"
 #include "Protocol.hpp"
 
 using namespace firmware;
 
 namespace hbridge {
 
-Reader::Reader(HbridgeHandle *handle): handle(handle), callbacks(NULL), configured(false)
+Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), dstate(READER_OFF)
 {
-    packetHandlers.resize(firmware::PACKET_ID_TOTAL_COUNT);
+    protocol->registerReceiver(this, boardId);
 }
 
 void Reader::setCallbacks(Reader::CallbackInterface* cbs)
@@ -18,15 +17,10 @@ void Reader::setCallbacks(Reader::CallbackInterface* cbs)
 
 void Reader::startConfigure()
 {
-//     //configure all controllers
-//     for(std::vector<Controller *>::iterator it = handle->getControllers().begin(); 
-// 	it != handle->getControllers().end(); it++)
-//     {
-// 	if(*it)
-// 	    (*it)->sendControllerConfig();
-//     }
-    
-    sendConfigureMsg();
+    configured = false;
+    error = false;
+    requestDeviceState();
+    dstate = READER_REQUEST_STATE;
 }
 
 void Reader::resetDevice()
@@ -34,7 +28,7 @@ void Reader::resetDevice()
     Packet msg;
     msg.packetId = PACKET_ID_CLEAR_SENSOR_ERROR;
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 void Reader::requestDeviceState()
@@ -42,11 +36,11 @@ void Reader::requestDeviceState()
     Packet msg;
     msg.packetId = PACKET_ID_REQUEST_STATE;
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 
-void Reader::setConfiguration(const hbridge::MotorConfiguration& config)
+void Reader::setConfiguration(const hbridge::SensorConfiguration& config)
 {
     configuration = config;
 
@@ -67,7 +61,7 @@ void Reader::setConfiguration(const hbridge::MotorConfiguration& config)
 
 void Reader::sendConfigureMsg()
 {
-    SensorConfiguration &cfg(configuration.sensorConfig);
+    SensorConfiguration &cfg(configuration);
     Packet msg;
     msg.packetId = firmware::PACKET_ID_SET_SENSOR_CONFIG;
     msg.data.resize(sizeof(firmware::sensorConfig));
@@ -83,41 +77,7 @@ void Reader::sendConfigureMsg()
     cfg1->encoder2Config.ticksPerTurn = configuration.encoder_config_extern.ticksPerTurnDivided;
     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
 
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Reader::configurationError, this, _1));
-}
-
-int Reader::getCurrentTickDivider() const
-{
-    int tickDivider = 1;
-    switch(configuration.actuatorConfig.controllerInputEncoder)
-    {
-	case INTERNAL:
-	    tickDivider = encoderIntern.getEncoderConfig().tickDivider;
-	    break;
-	case EXTERNAL:
-	    tickDivider = encoderExtern.getEncoderConfig().tickDivider;
-	    break;
-    }
-    return tickDivider;
-}
-
-void Reader::registerControllerForPacketId(Controller* ctrl, int packetId)
-{
-    int size = packetHandlers.size();
-    if(packetId < 0 || packetId > size)
-	throw std::runtime_error("Reader::registerControllerForPacketId: Error tried to register controller for base protocol id");
-	
-    packetHandlers[packetId] = ctrl;
-
-}
-
-void Reader::unregisterController(Controller* ctrl)
-{
-    for(std::vector<Controller *>::iterator it = packetHandlers.begin(); it != packetHandlers.end(); it++)
-    {
-	if(*it == ctrl)
-	    *it = NULL;
-    }
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
 void Reader::processMsg(const Packet &msg)
@@ -149,7 +109,7 @@ void Reader::processMsg(const Packet &msg)
 		this->state.positionExtern = encoderExtern.getAbsoluteTurns();
 		
 		if(callbacks)
-		    callbacks->gotErrorStatus(state.error);
+		    callbacks->gotErrorStatus(boardId, state.error);
 
 	    }
 	    break;
@@ -171,7 +131,7 @@ void Reader::processMsg(const Packet &msg)
 		bzero(&(this->state.error), sizeof(struct ErrorState));
 		
 		if(callbacks)
-		    callbacks->gotStatus(state);
+		    callbacks->gotStatus(boardId, state);
 		break;
 	    }
 	    case firmware::PACKET_ID_EXTENDED_STATUS:
@@ -182,34 +142,12 @@ void Reader::processMsg(const Packet &msg)
 		this->state.temperature = esdata->temperature;
 		this->state.motorTemperature = esdata->motorTemperature;
 		if(callbacks)
-		    callbacks->gotStatus(state);
+		    callbacks->gotStatus(boardId, state);
 		break;
 	    }
 	    case firmware::PACKET_ID_ANNOUNCE_STATE:
 	    {
-		const firmware::announceStateData *stateData = 
-		    reinterpret_cast<const firmware::announceStateData *>(msg.data.data());
-		
-		    switch(stateData->curState)
-		    {
-			case firmware::STATE_UNCONFIGURED:
-			    if(callbacks)
-				callbacks->deviceReseted();
-			    break;
-			case firmware::STATE_SENSORS_CONFIGURED:
-			    if(callbacks)
-				callbacks->configureDone();
-			    break;    
-			case firmware::STATE_SENSOR_ERROR:
-			    if(callbacks)
-				callbacks->configurationError();
-			    break;    
-			default:
-			    break;
-		    }
-                this->internal_state = stateData->curState;
-                if (callbacks)
-                    callbacks->gotInternalState(stateData->curState);    
+		processStateMsg(msg);
 		break;
 	    }
 
@@ -218,26 +156,81 @@ void Reader::processMsg(const Packet &msg)
 		break;
 	}
     }
-    else
-    {	
-	unsigned int lowHandlerId = msg.packetId - firmware::PACKET_ID_LOWIDS_START;
-	if(packetHandlers[lowHandlerId])
+}
+
+
+void Reader::processStateMsg(const hbridge::Packet& msg)
+{
+    const firmware::announceStateData *stateData = 
+	reinterpret_cast<const firmware::announceStateData *>(msg.data.data());
+
+    switch(dstate)
+    {
+	case READER_OFF:
+	    break;
+	case READER_REQUEST_STATE:
 	{
-	    packetHandlers[lowHandlerId]->processMsg(msg);
+	    switch(stateData->curState)
+	    {
+		case firmware::STATE_UNCONFIGURED:
+		    sendConfigureMsg();
+		    dstate = READER_CONFIG_SENT;
+		    break;
+		case firmware::STATE_SENSORS_CONFIGURED:
+		    configureDone();
+		    break;    
+		case firmware::STATE_SENSOR_ERROR:
+		    resetDevice();
+		    break;    
+		default:
+		    configureDone();
+		    break;
+	    }
+	    break;
 	}
-	else
-	{
-	    std::cout << "Got unknow extension message with id " << msg.packetId << std::endl;
-	}
-    }
+	case READER_CONFIG_SENT:
+	    switch(stateData->curState)
+	    {
+		case firmware::STATE_SENSORS_CONFIGURED:
+		    configureDone();
+		    break;    
+		default:
+		    error = true;
+		    if(callbacks)
+			callbacks->configurationError();
+		    break;    
+	    }
+	    break;
+	case READER_RUNNING:
+	    switch(stateData->curState)
+	    {
+		case firmware::STATE_UNCONFIGURED:
+		case firmware::STATE_SENSOR_ERROR:
+		    error = true;
+		    if(callbacks)
+			callbacks->configurationError();
+		    break;    
+		default:
+		    break;
+	    }
+	    break;
+    };
+	
+    this->internal_state = stateData->curState;
+    if (callbacks)
+	callbacks->gotInternalState(boardId, stateData->curState);    
+
 }
 
 void Reader::configurationError(const Packet &msg)
 {
-    std::cout << "Error: Configure failed for hbridge " << handle->getBoardId() << std::endl;
+    std::cout << "Error: Configure failed for hbridge " << boardId << std::endl;
     std::cout << "Reason:" << std::endl;
     switch(msg.packetId)
     {
+	case PACKET_ID_REQUEST_STATE:
+	    std::cout << "Motor driver did not ack state request packet." << std::endl;
+	    break;	    	    
 	case PACKET_ID_CLEAR_SENSOR_ERROR:
 	    std::cout << "Clear sensor config message was not acked" << std::endl;
 	    break;	    
@@ -246,28 +239,43 @@ void Reader::configurationError(const Packet &msg)
 	    break;
 	default:
 	    std::cout << "Driver error: This means there is a bug in the driver" << std::endl;
-	    std::cout << "Driver error: Got send error for unknown package with id " << msg.packetId << std::endl;
+	    std::cout << "Driver error: Got send error for unknown package with id " << msg.packetId << " packet name " << getPacketName(msg.packetId) << std::endl;
 	    break;
     };
+    
+    error = true;
     
     if(callbacks)
 	callbacks->configurationError();
 
 }
 
+bool Reader::hasError()
+{
+    return error;
+}
+
+
 void Reader::configureDone()
 {
+    dstate = READER_RUNNING;
     configured = true;
 
     if(callbacks)
 	callbacks->configureDone();
 }
 
-void Reader::gotError(const hbridge::ErrorState& error)
+bool Reader::isConfigured()
 {
+    return (dstate == READER_RUNNING) && (internal_state >= firmware::STATE_SENSORS_CONFIGURED);
+}
+
+void Reader::gotError(const hbridge::ErrorState& errorState)
+{
+    error = true;
     configured = false;
     if(callbacks)
-	callbacks->gotErrorStatus(error);
+	callbacks->gotErrorStatus(boardId, errorState);
 }
 
 

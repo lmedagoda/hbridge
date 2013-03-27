@@ -4,36 +4,24 @@
 #include <canmessage.hh>
 #include <vector>
 #include <base/actuators/commands.h>
-#include "Types.hpp"
+#include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge 
 {
 
-class Reader;
+class Writer;
     
-class Controller: public PacketReveiver
+class Controller: public PacketReceiver
 {
 private:
     firmware::controllerModes mode;
-    HbridgeHandle *handle;
-    const static int maxCommandSize = 8;
+    Writer *writer;
+    const static unsigned int maxCommandSize = 8;
     std::vector<uint8_t> commandData;
     bool hasCommand;
-public:
-    Controller(HbridgeHandle *handle, firmware::controllerModes controllerId);
-    virtual void sendControllerConfig() {};
+protected:
     virtual void printSendError(int packetId) {};
-    
-    virtual unsigned short getTargetValue(double value) = 0;
-    
-    const std::vector<uint8_t> *getCommandData()
-    {
-	if(!hasCommand)
-	    return NULL;
-	
-	return &commandData;
-    }
     
     void clearCommand()
     {
@@ -50,7 +38,15 @@ public:
 	A *ptr = reinterpret_cast<A *>(commandData.data()); 
 	*ptr = command;
 	hasCommand = true;
+	
+	sendCommandData();
     }
+    
+    /**
+     * This function checks if there is valid command data
+     * if this is the case, it will send it out.
+     * */
+    void sendCommandData();
     
     /**
      * Registeres the controller for the given packet Id.
@@ -65,27 +61,36 @@ public:
      * */
     void packetSendError(const Packet &msg);
     
-    /**
-     * Switched the hbrige to this controller by using 
-     * the set mode message;
-     * */
-    void activateController();
-    
-    /**
-     * Transmittes the given value to the hbridge
-     * */
-    void setTargetValue(double value);
-    
-    firmware::controllerModes getControllerId() const
-    {
-	return mode;
-    };
     
     /**
      * Convenience send method. Sends out the given message.
      * The receiver, sender will be filled in automatically
      * */
     void sendPacket(const Packet &msg, bool isAcked);
+    
+public:
+    Controller(Writer *writer, firmware::controllerModes controllerId);
+    virtual void sendControllerConfig() {};
+
+    const std::vector<uint8_t> *getCommandData()
+    {
+	if(!hasCommand)
+	    return NULL;
+	
+	return &commandData;
+    }
+    
+    /**
+     * Switched the hbrige to this controller by using 
+     * the set mode message;
+     * */
+    void activateController();
+    
+    firmware::controllerModes getControllerId() const
+    {
+	return mode;
+    };
+
 };
 
 
@@ -97,10 +102,10 @@ public:
 class PWMController : public Controller
 {
 public:
-    PWMController(HbridgeHandle* handle);
+    PWMController(Writer *writer);
+    void setTargetValue(double value);
     virtual void processMsg(const hbridge::Packet& msg) {};
 private:
-    virtual short unsigned int getTargetValue(double value);
 };
 
 
@@ -113,9 +118,10 @@ public:
     public:
 	base::actuators::PIDValues pidValues;
     };
-    SpeedPIDController(hbridge::HbridgeHandle* handle);
+    SpeedPIDController(hbridge::Writer *writer);
     void setConfig(const Config &config);
-    virtual short unsigned int getTargetValue(double value);
+    void setTargetValue(double);
+
     virtual void processMsg(const hbridge::Packet& msg);
     virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
@@ -133,9 +139,11 @@ public:
 	base::actuators::PIDValues pidValues;
 	PositionControllerConfiguration posCtrlConfig;
     };
-    PosPIDController(hbridge::HbridgeHandle* handle);
+    PosPIDController(hbridge::Writer *writer);
     void setConfig(const Config &config);
-    virtual short unsigned int getTargetValue(double value);
+    
+    void setTargetValue(double value);
+    
     virtual void processMsg(const hbridge::Packet& msg);
     virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();

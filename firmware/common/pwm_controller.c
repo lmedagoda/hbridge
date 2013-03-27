@@ -1,6 +1,7 @@
 #include "pwm_controller.h"
 #include <stdlib.h>
 #include "printf.h"
+#include <limits.h>
 
 uint8_t pwmControllerIsConfigured()
 {
@@ -22,6 +23,7 @@ void pwmControllerReset(int32_t wheelPos)
 
 int32_t pwmControllerStep(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    int32_t pwmValue = *((int16_t *) targetData->data);
-    return pwmValue;
+    int16_t *pwmValue = (int16_t *) targetData->data;
+    printf("Setting pwm value %hi\n", *pwmValue);
+    return *pwmValue;
 }

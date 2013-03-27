@@ -1,7 +1,7 @@
 #ifndef ENCODER_HPP
 #define ENCODER_HPP
 
-#include "Types.hpp"
+#include "MotorDriverTypes.hpp"
 
 namespace hbridge {
 
@@ -21,9 +21,6 @@ public:
     void setRawEncoderValue(unsigned int value);
     //returns all motor turns acumulated since configuration
     double getAbsoluteTurns() const;
-    
-    //computes the motor tick value for a given absolute turn value
-    Ticks getMotorTicksFromAbsoluteTurn(double targetValue) const;
     
     const EncoderConfiguration &getEncoderConfig() const;
 };

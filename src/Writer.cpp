@@ -8,25 +8,54 @@ using namespace firmware;
 namespace hbridge
 {
 
+enum DriverState
+{
+    WRITER_NOT_ACTIVE,
+    WRITER_STATE_REQUEST,
+    WRITER_CONFIGURING,
+    WRITER_CONTORLLERS_CONFIGURING,
+    WRITER_CONTORLLERS_CONFIGURED,
+};
+    
 class WriterState 
 {
 public:
-    WriterState() : firmwareState(STATE_UNCONFIGURED) 
+    WriterState() : firmwareState(STATE_UNCONFIGURED) , driverState(WRITER_NOT_ACTIVE)
     {}
     enum STATES firmwareState;
+    enum DriverState driverState;
 };
     
-Writer::Writer(hbridge::HbridgeHandle* handle): state(new WriterState), curController(0), configuring(false), driverError(false), handle(handle), callbacks(0)
+Writer::Writer(uint32_t boardId, hbridge::Protocol* protocol): state(new WriterState), curController(0), driverError(false), boardId(boardId), protocol(protocol), callbacks(0)
 {
-
+    protocol->registerReceiver(this, boardId);
+    controllers.resize(firmware::NUM_CONTROLLERS, NULL);
+    msgHandlers.resize(PACKET_ID_TOTAL_COUNT, NULL);
 }
+
+Writer::~Writer()
+{
+    for(std::vector<Controller *>::iterator it = controllers.begin(); it != controllers.end(); it++)
+    {
+	if(*it)
+	    delete *it;
+    }
+    controllers.clear();
+}
+
+
+void Writer::setConfiguration(const hbridge::ActuatorConfiguration& actuatorConfig)
+{
+    this->actuatorConfig = actuatorConfig;
+}
+
 
 void Writer::requestDeviceState()
 {
     Packet msg;
     msg.packetId = PACKET_ID_REQUEST_STATE;
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Writer::configurationError, this, _1));
 }
 
 void Writer::resetActuator()
@@ -34,7 +63,7 @@ void Writer::resetActuator()
     Packet msg;
     msg.packetId = PACKET_ID_CLEAR_ACTUATOR_ERROR;
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Writer::configurationError, this, _1));
 }
 
 void Writer::sendActuatorConfig()
@@ -64,38 +93,44 @@ void Writer::sendActuatorConfig()
     cfg->maxCurrentCount = actuatorConfig.maxCurrentCount;
     cfg->pwmStepPerMs = actuatorConfig.pwmStepPerMs;
     
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1), boost::bind(&Writer::sendController, this));
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Writer::configurationError, this, _1));
 }
 
-void Writer::sendController()
+void Writer::sendControllerConfig()
 {
-    std::cout << "Sending controller " << std::endl; 
-    Packet msg;
-    msg.packetId = PACKET_ID_SET_ACTIVE_CONTROLLER;
-    msg.data.resize(sizeof(setActiveControllerData));
+    for(std::vector<Controller *>::iterator it = controllers.begin(); it != controllers.end(); it++)
+    {
+	if(*it)
+	    (*it)->sendControllerConfig();
+    }
     
-    setActiveControllerData *cfg = reinterpret_cast<setActiveControllerData *>(msg.data.data());
+    protocol->setQueueEmptyCallback(boost::bind(&Writer::controllersConfiguredCallback, this), boardId);
+}
 
-    cfg->controllerId = curController->getControllerId();
-
-    handle->getProtocol()->sendPacket(handle->getBoardId(), msg, true, boost::bind(&Writer::configurationError, this, _1));
+void Writer::controllersConfiguredCallback()
+{
+    state->driverState = WRITER_CONTORLLERS_CONFIGURED;
+    //remove callback
+    protocol->setQueueEmptyCallback(boost::function<void (void)>(), boardId);
 }
 
 void Writer::startConfigure()
 {
     driverError = false;
-    configuring = true;
+    state->driverState = WRITER_STATE_REQUEST;
     requestDeviceState();    
 }
 
 bool Writer::isActuatorConfigured()
 {
-    return state->firmwareState >= STATE_CONTROLLER_CONFIGURED;
+    return (state->firmwareState >= STATE_ACTUATOR_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED);
 }
 
 bool Writer::hasError()
 {
-    return driverError || state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR;
+    return driverError || 
+    (state->driverState == WRITER_CONTORLLERS_CONFIGURED && 
+     (state->firmwareState == STATE_ACTUATOR_ERROR || state->firmwareState == STATE_SENSOR_ERROR));
 }
 
 void Writer::configurationError(const hbridge::Packet& msg)
@@ -105,134 +140,191 @@ void Writer::configurationError(const hbridge::Packet& msg)
 	callbacks->configurationError();
 }
 
+void Writer::processStateAnnounce(const hbridge::Packet& msg)
+{
+    assert(msg.packetId == PACKET_ID_ANNOUNCE_STATE);
+    
+    const announceStateData *stateData = 
+	reinterpret_cast<const announceStateData *>(msg.data.data());
+    
+    state->firmwareState = stateData->curState;
+
+    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState <<  std::endl;
+
+    switch(state->driverState)
+    {
+	case WRITER_NOT_ACTIVE:
+	    return;
+	case WRITER_STATE_REQUEST:
+	    switch(stateData->curState)
+	    {
+		case STATE_UNCONFIGURED:
+		case STATE_SENSOR_ERROR:
+		    {
+			std::cout << "Error, Sensors not configured " << std::endl;
+			driverError = true;
+			if(callbacks)
+			    callbacks->configurationError();
+		    }
+		    break;    
+		case STATE_SENSORS_CONFIGURED:
+		    std::cout << "WRITING ACC CONFIG" << std::endl;
+		    sendActuatorConfig();
+		    state->driverState = WRITER_CONFIGURING;
+		    break;
+		case STATE_ACTUATOR_CONFIGURED:
+		case STATE_CONTROLLER_CONFIGURED:
+		case STATE_RUNNING:
+		case STATE_ACTUATOR_ERROR:
+		    resetActuator();
+		    break;
+	    }
+	    break;
+	    
+	case WRITER_CONFIGURING:
+	    switch(stateData->curState)
+	    {
+		case STATE_UNCONFIGURED:
+		case STATE_SENSORS_CONFIGURED:
+		case STATE_SENSOR_ERROR:
+		    driverError = true;
+		    if(callbacks)
+			callbacks->actuatorError();
+		    break;    
+		case STATE_ACTUATOR_CONFIGURED:
+		    sendControllerConfig();
+		    break;
+		default:
+		    driverError = true;
+		    if(callbacks)
+			callbacks->actuatorError();
+		    break;
+		    break;
+	    }
+	    break;
+	case WRITER_CONTORLLERS_CONFIGURING:
+	    if(stateData->curState == STATE_CONTROLLER_CONFIGURED)
+		state->driverState = WRITER_CONTORLLERS_CONFIGURED;
+	    //NO break use default handling
+	default:
+	    switch(stateData->curState)
+	    {
+		case STATE_UNCONFIGURED:
+		case STATE_SENSORS_CONFIGURED:
+		case STATE_SENSOR_ERROR:
+		    driverError = true;
+		    if(callbacks)
+			callbacks->actuatorError();
+		case STATE_ACTUATOR_ERROR:
+		    driverError = true;
+		    if(callbacks)
+			callbacks->actuatorError();
+		    break;    
+		default:
+		    break;
+	    }	    
+	    break;
+    }
+}
+
+
 void Writer::processMsg(const Packet& msg)
 {
+    if(msgHandlers[msg.packetId])
+	msgHandlers[msg.packetId]->processMsg(msg);
+    
     switch(msg.packetId)
     {
 	case PACKET_ID_ANNOUNCE_STATE:
 	{
-	    const announceStateData *stateData = 
-		reinterpret_cast<const announceStateData *>(msg.data.data());
-	    
-	    state->firmwareState = stateData->curState;
-
-	    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState << " " <<  configuring << std::endl;
-	    
-	    if(configuring)
-	    {
-		switch(stateData->curState)
-		{
-		    case STATE_UNCONFIGURED:
-		    case STATE_SENSOR_ERROR:
-			{
-			    std::cout << "Error, Sensors not configured " << std::endl;
-			    configuring = false;
-			    driverError = true;
-			    if(callbacks)
-				callbacks->configurationError();
-			}
-			break;    
-		    case STATE_SENSORS_CONFIGURED:
-			sendActuatorConfig();
-			configuring = false;
-			break;
-		    case STATE_ACTUATOR_CONFIGURED:
-			resetActuator();
-			break;
-		    case STATE_CONTROLLER_CONFIGURED:
-			resetActuator();
-			break;
-		    case STATE_ACTUATOR_ERROR:
-			resetActuator();
-			break;
-		    default:
-			break;
-		}
-
-	    }
-	    else
-	    {
-		switch(stateData->curState)
-		{
-		    case STATE_UNCONFIGURED:
-		    case STATE_SENSORS_CONFIGURED:
-		    case STATE_SENSOR_ERROR:
-			break;    
-		    case STATE_ACTUATOR_CONFIGURED:
-			break;
-		    case STATE_CONTROLLER_CONFIGURED:
-			if(callbacks)
-			    callbacks->configureDone();
-			break;
-		    case STATE_ACTUATOR_ERROR:
-			driverError = true;
-			if(callbacks)
-			    callbacks->actuatorError();
-			break;
-		    default:
-			break;
-		}
-	    }
+	    processStateAnnounce(msg);
 	    break;
 	}
     }
 }
 
+void Writer::registerController(Controller* ctrl)
+{
+    if(controllers[ctrl->getControllerId()])
+	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
+    
+    controllers[ctrl->getControllerId()] = ctrl;
+}
+
+void Writer::registerForMsg(PacketReceiver* receiver, int packetId)
+{
+    if(packetId < 0 || packetId > PACKET_ID_TOTAL_COUNT)
+	throw std::out_of_range("HbridgeHandle: Error tried to register receiver for invalid id " + packetId);
+    
+    msgHandlers[packetId] = receiver;
+}
+
+void Writer::setActiveController(DRIVE_MODE id)
+{	
+    firmware::controllerModes modeIntern;
+
+    switch(id)
+    {
+	case base::actuators::DM_PWM:
+	    modeIntern = firmware::CONTROLLER_MODE_PWM;
+	    break;
+	case base::actuators::DM_SPEED:
+	    modeIntern = firmware::CONTROLLER_MODE_SPEED;
+	    break;
+	case base::actuators::DM_POSITION:
+	    modeIntern = firmware::CONTROLLER_MODE_POSITION;
+	    break;
+	default:
+	    throw std::runtime_error("Given controller mode is not mapped to firmware controller");
+	    break;
+    }
+
+    if(controllers.size() < modeIntern || !controllers[modeIntern])
+	throw std::runtime_error("Error: no controller for drive mode registered");
+
+    setActiveController(controllers[modeIntern]);
+}
+
+Controller* Writer::getActiveController()
+{
+    return curController;
+}
 
 void Writer::setActiveController(Controller* ctrl)
 {
-    if(state->firmwareState >= STATE_ACTUATOR_CONFIGURED)
-	throw std::runtime_error("Error: Tried to set Controller while actuator is active");
+    if(state->firmwareState != STATE_ACTUATOR_CONFIGURED)
+	throw std::runtime_error("Error: Tried to set Controller while actuator was not configured");
 
-    if(handle->getControllers()[ctrl->getControllerId()] != ctrl)
+    if(controllers[ctrl->getControllerId()] != ctrl)
 	throw std::runtime_error("Error: given controller is not registered at handle");
     
     curController = ctrl;
+    
+    std::cout << "Sending controller " << std::endl; 
+    Packet msg;
+    msg.packetId = PACKET_ID_SET_ACTIVE_CONTROLLER;
+    msg.data.resize(sizeof(setActiveControllerData));
+    
+    setActiveControllerData *cfg = reinterpret_cast<setActiveControllerData *>(msg.data.data());
+
+    cfg->controllerId = curController->getControllerId();
+
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Writer::configurationError, this, _1));
+    
+    state->driverState = WRITER_CONTORLLERS_CONFIGURING;
 }
 
-void Writer::setTargetValue(double value)
+bool Writer::isControllerConfiguring()
 {
-    if(state->firmwareState < STATE_CONTROLLER_CONFIGURED)
-	throw std::runtime_error("Writer : Error: Tried to write on unconfigured hbridge");
-
-    if(!curController)
-	throw std::runtime_error("Writer : Error: No Controller selected");
-    
-    int packetId = firmware::PACKET_ID_SET_VALUE14;
-    if(handle->getBoardId() > 3)
-	packetId = firmware::PACKET_ID_SET_VALUE58;
-
-    Packet &sharedMsg(handle->getProtocol()->getSharedMsg(packetId));
-    sharedMsg.data.resize(sizeof(firmware::setValueData));
-    
-    firmware::setValueData *data =
-	reinterpret_cast<firmware::setValueData *>(sharedMsg.data.data());
-    
-    unsigned short transportValue = curController->getTargetValue(value);
-    
-    switch(handle->getBoardId())
-    {
-	case 0:
-	case 4:
-	    data->board1Value = transportValue;
-	    break;
-	case 1:
-	case 5:
-	    data->board2Value = transportValue;
-	    break;
-	case 2:
-	case 6:
-	    data->board3Value = transportValue;
-	    break;
-	case 3:
-	case 7:
-	    data->board4Value = transportValue;
-	    break;
-    };
+    return state->driverState == WRITER_CONTORLLERS_CONFIGURING;
 }
 
-    
-    
+bool Writer::isControllerSet()
+{
+    return !driverError && (
+	((state->firmwareState == STATE_CONTROLLER_CONFIGURED) && (state->driverState == WRITER_CONTORLLERS_CONFIGURED))
+	|| (state->firmwareState == STATE_RUNNING));
+}
     
     
 }

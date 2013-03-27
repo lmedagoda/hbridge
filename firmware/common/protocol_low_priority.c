@@ -102,10 +102,8 @@ void protocol_processLowPrio(int senderId, int receiverId, int id, unsigned char
 	    }
 	    
 	    lpd->received+=toCopy;
-	    printf("LOW PRIO received %i \n", lpd->received);
 	    if(lpd->received >= lpd->curHeader->size)
 	    {
-		printf("LOW PRIO GOT PACKET %i %i %i\n", lpd->curHeader->id, lpd->curHeader->size, lpd->received);
 		//TODO calculate CRC
 		
 		//packet complete, call handler

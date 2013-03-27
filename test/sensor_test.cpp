@@ -17,8 +17,8 @@ class CanDriver: public CanBusInterface
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        driver(canbus::openCanDevice(dev)),
-        CanBusInterface(driver)
+        CanBusInterface(driver),
+        driver(canbus::openCanDevice(dev))
     {
     };
 };
@@ -60,28 +60,25 @@ int main(int argc, char *argv[]) {
     CanBusInterface *interface = new CanBusInterface(driver);
     hbridge::Protocol *proto = new Protocol(interface);
 
-    proto->setSendTimeout(base::Time::fromMilliseconds(150));
+    proto->setSendTimeout(base::Time::fromMilliseconds(350));
     
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(hbridge_id);
+    proto->setDriverAsBusMaster();
+    
+    Reader *reader = new Reader(hbridge_id, proto);
     
     MotorConfiguration conf;
     
-    Reader *reader = handle->getReader();
-    reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
-    reset = false;
-    reader->resetDevice();
-    while(!reset)
-    {
-	proto->processIncommingPackages();
-	proto->processSendQueues();	
-    }
-    
+    reader->setConfiguration(conf.sensorConfig);
     reader->startConfigure();
     
     int cnt = 0;
-    while(!configured)
+    while(!reader->isConfigured())
     {
+	if(reader->hasError())
+	{
+	    std::cout << "Reader reported error " << std::endl;
+	    exit(EXIT_FAILURE);
+	}
 	proto->processIncommingPackages();
 	proto->processSendQueues();
 	if(cnt == 500)

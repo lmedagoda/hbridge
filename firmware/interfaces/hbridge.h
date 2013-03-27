@@ -9,7 +9,7 @@
 void hbridge_init();
 
 /**
- * Applies the giben PWM (in the range from -1800 to 1800) to
+ * Applies the giben PWM (in the range from -SHRT_MAX to SHRT_MAX) to
  * the motor PWM generator.
  *
  * The second parameter determines if (in the case of a 2 phase 

@@ -71,7 +71,7 @@ void state_setEncoder(volatile enum encoderTypes *curEncoder, const struct encod
     {
 	encoder_deinitEncoder(*curEncoder);
 	encoder_initEncoder(newConfig->encoderType);
-	encoder_setTicksPerTurn(newConfig->encoderType, newConfig->ticksPerTurn, newConfig->tickDivider);
+	encoder_setTicksPerTurn(newConfig->encoderType, newConfig->ticksPerTurn, newConfig->tickDivider, newConfig->leapTickCounter);
 	*curEncoder = newConfig->encoderType;
     }
 }

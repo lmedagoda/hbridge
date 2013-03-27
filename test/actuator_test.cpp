@@ -15,8 +15,8 @@ class CanDriver: public CanBusInterface{
     canbus::Driver *driver;
 public:
     CanDriver(const std::string &dev):
-        driver(canbus::openCanDevice(dev)),
-        CanBusInterface(driver)
+        CanBusInterface(driver),
+        driver(canbus::openCanDevice(dev))
     {
     };
 };
@@ -50,7 +50,7 @@ class DummyCallback : public Reader::CallbackInterface
 int main(int argc, char *argv[]) {
 
 
-    timeval start, tick;
+    timeval start;
     gettimeofday(&start, 0);
 
     double pwm = 0;
@@ -80,13 +80,11 @@ int main(int argc, char *argv[]) {
 
     proto->setSendTimeout(base::Time::fromMilliseconds(150));
     
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(hbridge_id);
+    Writer *writer = new Writer(hbridge_id, proto);
     
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
-    
-    Writer *writer = handle->getWriter();
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
 
     ActuatorConfiguration &accConf(writer->getActuatorConfig());
     accConf.maxPWM = 200;
@@ -104,35 +102,54 @@ int main(int argc, char *argv[]) {
     configured = false;
     error = 0;
 
-    writer->setActiveController(&pwmCtrl);
-
     writer->startConfigure();
     
     while(!writer->isActuatorConfigured())
     {
+	if(writer->hasError())
+	{
+	    std::cout << "Writer reported Error \n" << std::endl;
+	    exit(EXIT_FAILURE);
+	}
+
 	proto->processIncommingPackages();
 	proto->processSendQueues();
 	usleep(10000);
     }
     
-    if(writer->hasError())
-	exit(EXIT_FAILURE);
     
     std::cout << "Actuator Configured "<< std::endl;
+    
+    writer->setActiveController(&pwmCtrl);
+
+    while(!writer->isControllerSet())
+    {
+	if(writer->hasError())
+	{
+	    std::cout << "Writer reported Error \n" << std::endl;
+	    exit(EXIT_FAILURE);
+	}
+
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	usleep(10000);
+    }
+	
+    std::cout << "Controller Set "<< std::endl;
     
     while(!writer->hasError())
     {    
 	proto->processIncommingPackages();
 // 	std::cout << "SQ" << std::endl;
-	proto->processSendQueues();	
 
-	if(writer->isActuatorConfigured())
-	{
-	    writer->setTargetValue(pwm);
+	pwmCtrl.setTargetValue(pwm);
 // 	    std::cout << "SM" << std::endl;
-	}
+	proto->processSendQueues();	
 	proto->sendSharedMessages();
-	
+	usleep(10000);	
     }    
+    
+    std::cout << "Writer reported Error \n" << std::endl;
+    return EXIT_FAILURE;
 }
 

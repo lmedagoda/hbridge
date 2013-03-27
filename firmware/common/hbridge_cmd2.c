@@ -208,7 +208,7 @@ void hbridge_init(uint16_t numHbridges)
 	ptr++;
     }
     
-    *ptr = (uint8_t *) hbridge_actuatorConfig;
+    ptr = (uint8_t *) hbridge_actuatorConfig;
     for(i = 0; i < sizeof(struct actuatorConfig) * MAX_HBRIDGES; i++)
     {
 	*ptr = 0;

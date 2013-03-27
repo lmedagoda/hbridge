@@ -77,29 +77,32 @@ int main(int argc, char **argv)
     boost::thread fwThread(fw_main);
     hbridge::Protocol *proto = new hbridge::Protocol(busInterface);
 
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
-    
     proto->setSendTimeout(base::Time::fromMilliseconds(500));
     
     proto->setDriverAsBusMaster();
     
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
-    
+    Reader *reader = new Reader(boardId, proto);
+    Writer *writer = new Writer(boardId, proto);
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
+
     MotorConfiguration conf;
     
     configured = false;
     
-    Reader *reader = handle->getReader();
-    Writer *writer = handle->getWriter();
     reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
+    reader->setConfiguration(conf.sensorConfig);
     reader->startConfigure();
     
     int cnt = 0;
-    while(!configured)
+    while(!reader->isConfigured())
     {
+	if(reader->hasError())
+	{
+	    std::cout << "Got error " << std::endl;
+	    exit(EXIT_FAILURE);
+	}
 	proto->processIncommingPackages();
 	proto->processSendQueues();
 	if(cnt == 500)
@@ -115,8 +118,6 @@ int main(int argc, char **argv)
     
     std::cout << "Sensors Configured "<< std::endl;
     
-    writer->setActiveController(&speedCtrl);
-
     writer->startConfigure();
     
     while(!writer->isActuatorConfigured())
@@ -126,15 +127,24 @@ int main(int argc, char **argv)
 	usleep(10000);
     }
     std::cout << "Actuator Configured "<< std::endl;
-    
+
+    //set controller
+    writer->setActiveController(&speedCtrl);
+    while(!writer->isControllerSet())
+    {
+	proto->processIncommingPackages();
+	proto->processSendQueues();
+	usleep(10000);
+    }
+
     while(!error)
     {    
 	proto->processIncommingPackages();
-// 	std::cout << "SQ" << std::endl;
-	proto->processSendQueues();	
-
 	if(!writer->hasError())
-	    writer->setTargetValue(0.20);
+	{
+	    speedCtrl.setTargetValue(0.20);
+	}
+	proto->processSendQueues();	
 	proto->sendSharedMessages();
 	usleep(10000 * 100);
 	cnt++;

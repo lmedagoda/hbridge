@@ -48,7 +48,7 @@ enum hostIDs getOwnHostId() {
 
     //get correct host id from gpio pins
     id += gpioData;
-    printf("Configured as H_BRIDGE_%hu\n", id);
+    printf("Configured as H_BRIDGE_%hu\n", gpioData);
 
     if(id > 8)
     {

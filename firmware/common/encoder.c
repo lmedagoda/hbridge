@@ -12,9 +12,14 @@ void defaultEncoderDeInit(void) {}
 
 void encoder_defaultStructInit(struct EncoderInterface *encoder)
 {
-    encoder->encoderConfig.configured = 0;
-    encoder->encoderConfig.tickDivider = 1;
     encoder->encoderConfig.ticksPerTurn = 0;
+    encoder->encoderConfig.leapTickValue = 0;
+    encoder->encoderConfig.curTickValue = 0;
+    encoder->encoderConfig.lastRawValue = 0;
+    encoder->encoderConfig.leapTickCounter = 0;
+    encoder->encoderConfig.tickDivider = 1;
+    encoder->encoderConfig.configured = 0;
+    
     encoder->encoderInit = defaultEncoderInit;
     encoder->getTicks = defaultGetTicks;
     encoder->setTicksPerTurn = defaultSetTicksPerTurn;
@@ -39,9 +44,65 @@ void encoder_init()
 }
 
 
+void encoder_sampleTicks(enum encoderTypes type)
+{
+    //get value from sensor
+    uint32_t curValue = encoders[type].getTicks();
+    const int32_t leapTickValue = encoders[type].encoderConfig.leapTickValue;
+    
+    if(!leapTickValue)
+    {
+	encoders[type].encoderConfig.curTickValue = curValue;
+	return;
+    }
+
+    const uint32_t oldValue = encoders[type].encoderConfig.lastRawValue;
+    encoders[type].encoderConfig.lastRawValue = curValue;
+    
+    const uint32_t ticksPerTurn = encoders[type].encoderConfig.ticksPerTurn;
+    
+    //compute diff between values
+    int32_t diff = oldValue - curValue;
+    if(abs(diff) > ticksPerTurn / 2.0)
+    {
+	if(oldValue < curValue)
+	{
+	    //forward
+	    diff += ticksPerTurn;
+	}
+	else
+	{
+	    //backwards
+	    diff -= ticksPerTurn;
+	}
+    }
+    
+    int32_t leapTickCounter = encoders[type].encoderConfig.leapTickCounter;
+    leapTickCounter += diff;
+    
+    //compute output tick value
+    int32_t tickValue = encoders[type].encoderConfig.curTickValue;    
+    if(leapTickCounter < -leapTickValue)
+    {
+	leapTickCounter += leapTickValue;
+	tickValue -= 1;
+    }
+	
+    if( leapTickCounter > leapTickCounter)
+    {
+	leapTickCounter -= leapTickValue;
+	tickValue += 1;
+    }    
+    tickValue += diff;
+
+    
+    encoders[type].encoderConfig.leapTickCounter = leapTickCounter;
+    encoders[type].encoderConfig.curTickValue = tickValue;
+}
+
 uint32_t getTicks(enum encoderTypes type)
 {
-    return encoders[type].getTicks();
+    return encoders[type].encoderConfig.curTickValue;
 }
 
 uint16_t getDividedTicks(enum encoderTypes type)
@@ -52,7 +113,7 @@ uint16_t getDividedTicks(enum encoderTypes type)
         return 0;
 }
 
-void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tickDivider)
+void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tickDivider, uint32_t leapTicks)
 {
     encoders[type].encoderConfig.configured = 1;
 
@@ -60,6 +121,7 @@ void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tic
     if((encoders[type].encoderConfig.ticksPerTurn == ticks * tickDivider) && (encoders[type].encoderConfig.tickDivider == tickDivider))
         return;
  
+    encoders[type].encoderConfig.leapTickValue = leapTicks;
     encoders[type].encoderConfig.tickDivider = tickDivider;
     encoders[type].encoderConfig.ticksPerTurn = ticks * tickDivider;
     encoders[type].setTicksPerTurn(ticks * tickDivider, tickDivider);

@@ -2,7 +2,7 @@
 #define WRITER_HPP
 #include <canmessage.hh>
 #include <vector>
-#include "Types.hpp"
+#include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge
@@ -10,11 +10,10 @@ namespace hbridge
 
 class Protocol;
 class Controller;
-class HbridgeHandle;
 
 class WriterState;
 
-class Writer:public PacketReveiver
+class Writer:public PacketReceiver
 {
     friend class Controller;
 public:
@@ -43,23 +42,35 @@ public:
     
 private:
     WriterState *state;
-    friend class HbridgeHandle;
     Controller *curController;
-    bool configuring;
+    std::vector<Controller *> controllers;
+    std::vector<PacketReceiver *> msgHandlers;
+    
     bool driverError;
     
     friend class Protocol;
-    Writer(HbridgeHandle *handle);
-    HbridgeHandle *handle;
+    uint32_t boardId;
+    Protocol *protocol;
 
     ActuatorConfiguration actuatorConfig;
     CallbackInterface *callbacks;
     void sendActuatorConfig();
     void sendController();
     void sendControllerConfig();
+    void controllersConfiguredCallback();
+    void controllerSetCallback();
     
     void configurationError(const Packet &msg);
+    void registerController(hbridge::Controller *ctrl);
+    
+    void registerForMsg(PacketReceiver *reveiver, int packetId);
+
+    void processStateAnnounce(const Packet& msg);
 public:
+    Writer(uint32_t boardId, Protocol *protocol);
+    
+    virtual ~Writer();
+    
     void startConfigure();
     
     ActuatorConfiguration &getActuatorConfig()
@@ -83,21 +94,40 @@ public:
      * */
     void resetActuator();
     
-    
+    void setConfiguration(const ActuatorConfiguration &actuatorConfig);
     
     virtual void processMsg(const Packet& msg);
     
     /**
      * Set the active controller inside the firmware.
-     * Note this function MUST be called prior to 
-     * startConfigure
+     * Note this function MUST be called after the  
+     * device was configured
      * */
     void setActiveController(Controller *ctrl);
+
+    /**
+     * Set the active controller using one
+     * of the previous registered Controllers
+     * with the correct id.
+     * */
+    void setActiveController(DRIVE_MODE id);
     
     /**
-     * Deprecated
+     * Return the active controller
      * */
-    void setTargetValue(double value);
+    Controller *getActiveController();
+
+    /**
+     * Returns wheather the firmware received the
+     * command to the a controller. 
+     * */
+    bool isControllerSet();    
+    
+    /**
+     * Returns wheather the driver is trying to
+     * set the controller in the motor driver
+     * */
+    bool isControllerConfiguring();    
 };
 
 }

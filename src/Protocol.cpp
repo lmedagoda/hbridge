@@ -9,19 +9,14 @@ using namespace firmware;
 
 namespace hbridge {
 
-HbridgeHandle::HbridgeHandle(int id, Protocol* protocol):boardId(id), protocol(protocol)
+Protocol::Handle::Handle(unsigned int id, hbridge::Protocol* proto): senderId(id), lowPrioProtocol(proto)
 {
-    controllers.resize(firmware::NUM_CONTROLLERS, NULL);
-    reader = new Reader(this);
-    writer = new Writer(this);
-    lowPrioProtocol = new LowPriorityProtocol(protocol);
-    msgHandlers.resize(PACKET_ID_TOTAL_COUNT, NULL);
+
 }
+
 
 Protocol::Protocol(BusInterface *bus) : bus(bus)
 {
-    handles.resize(BOARD_COUNT);
-    
     retryCount = 3;
     sendTimout = base::Time::fromMilliseconds(30);
 }
@@ -31,32 +26,15 @@ void Protocol::setBusInterface(BusInterface* bus)
     this->bus = bus;
 }
 
-HbridgeHandle* Protocol::getHbridgeHandle(int id)
+void Protocol::registerReceiver(PacketReceiver* recv, unsigned int senderId)
 {
-    if(id < 0 || id > BOARD_COUNT)
-	throw std::out_of_range("Protocol: Error tried to get hbridge handle with invalid hbridge id");
-
-    if(!handles[id])
-	handles[id] = new HbridgeHandle(id, this);
-	
-    return handles[id];
-}
-
-void HbridgeHandle::registerForMsg(PacketReveiver* receiver, int packetId)
-{
-    if(packetId < 0 || packetId > PACKET_ID_TOTAL_COUNT)
-	throw std::out_of_range("HbridgeHandle: Error tried to register receiver for invalid id " + packetId);
+    if(handles.size() <= senderId)
+	handles.resize(senderId + 1, NULL);
     
-    msgHandlers[packetId] = receiver;
-}
-
-
-void HbridgeHandle::registerController(hbridge::Controller* ctrl)
-{
-    if(controllers[ctrl->getControllerId()])
-	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
+    if(!handles[senderId])
+	handles[senderId] = new Handle(senderId, this);
     
-    controllers[ctrl->getControllerId()] = ctrl;
+    handles[senderId]->msgHandlers.push_back(recv);
 }
 
 Packet& Protocol::getSharedMsg(unsigned int packetId)
@@ -68,6 +46,8 @@ Packet& Protocol::getSharedMsg(unsigned int packetId)
     }
 
     Packet &pkg(sharedMessages[packetId]);
+    pkg.senderId = SENDER_ID_PC;
+    pkg.receiverId = RECEIVER_ID_ALL;
     pkg.packetId = packetId;
     //shared message is allways a broadcast message
     pkg.broadcastMsg = true;
@@ -91,6 +71,53 @@ bool Protocol::isInProtocol(const Packet& msg) const
     return true;
 }
 
+void SendQueue::processAck(const hbridge::Packet& msg)
+{
+    const firmware::ackData *adata =
+	    reinterpret_cast<const firmware::ackData *>(msg.data.data());
+
+    if(queue.empty())
+    {
+	std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << std::endl;
+	return;
+    }
+    
+    
+    SendQueue::Entry &entry(queue.front());
+    if(adata->packetId == entry.msg.packetId)
+    {
+	if(entry.ackedCallback)
+	    entry.ackedCallback();
+	
+	queue.pop();
+    } else
+    {
+	std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << " exprected " << firmware::getPacketName(entry.msg.packetId) << std::endl;
+    }
+
+}
+
+
+void Protocol::Handle::processMsg(const hbridge::Packet& msg)
+{    
+    assert(senderId == msg.senderId);
+    
+    //automatic ack handling
+    if(msg.packetId == firmware::PACKET_ID_ACK)
+    {
+	queue.processAck(msg);
+    }
+    else
+    {
+	for(std::vector<PacketReceiver *>::iterator handler = msgHandlers.begin(); handler != msgHandlers.end(); handler++)
+	{
+	    (*handler)->processMsg(msg);
+	}
+    }
+
+}
+
+
 void Protocol::processIncommingPackages()
 {
     Packet msg;
@@ -106,59 +133,21 @@ void Protocol::processIncommingPackages()
 	    continue;
         }
 	
-	if(msg.packetId != PACKET_ID_STATUS)
-	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << std::endl;
+	if(msg.packetId != PACKET_ID_STATUS && msg.packetId != PACKET_ID_EXTENDED_STATUS)
+	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << " from " << msg.senderId << std::endl;
 
 	//check if message is a broadcast
 	if(msg.broadcastMsg) {
 	    //broadcast, inform all readers
-	    for(std::vector<HbridgeHandle *>::iterator it = handles.begin(); it != handles.end(); it++)
+	    for(std::vector<Handle *>::iterator it = handles.begin(); it != handles.end(); it++)
 	    {
-		if(*it)
-		{
-		    (*it)->writer->processMsg(msg);
-		    (*it)->reader->processMsg(msg);
-		}
+		(*it)->processMsg(msg);
 	    }
-	} else {
-	    //automatic ack handling
-	    if(msg.packetId == firmware::PACKET_ID_ACK)
-	    {
-		const firmware::ackData *adata =
-			reinterpret_cast<const firmware::ackData *>(msg.data.data());
-
-		if(handles.size() < msg.senderId)
-		    throw std::runtime_error("Error got message for hbridge with no handle");
-			
-		SendQueue &queues(handles[msg.senderId]->queue);
-			
-		if(queues.queue.empty())
-		{
-		    std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << std::endl;
-		    continue;
-		}
-		
-		
-		SendQueue::Entry &entry(queues.queue.front());
-		if(adata->packetId == entry.msg.packetId)
-		{
-		    if(entry.ackedCallback)
-			entry.ackedCallback();
-		    
-		    queues.queue.pop();
-		} else
-		{
-		    std::cout << "Protocol: Warning got orphaned ack for id " << firmware::getPacketName(adata->packetId) << " exprected " << firmware::getPacketName(entry.msg.packetId) << std::endl;
-		}
-		continue;
-	    }
-	    
-	    handles[msg.senderId]->reader->processMsg(msg);
-	    handles[msg.senderId]->writer->processMsg(msg);
-	    if(handles[msg.senderId]->msgHandlers[msg.packetId])
-	    {
-		handles[msg.senderId]->msgHandlers[msg.packetId]->processMsg(msg);
-	    }
+	}
+	else
+	{
+	    //only process by the correct handler
+	    handles[msg.senderId]->processMsg(msg);
 	}
     }
 }
@@ -177,29 +166,35 @@ void Protocol::sendPacket(int boardId, const hbridge::Packet& msg, bool isAcked,
 
 }
 
+void Protocol::setQueueEmptyCallback(boost::function<void (void)> emptyCallback, int senderId)
+{
+    handles[senderId]->queue.emptyCallback = emptyCallback;
+}
+
 void Protocol::processSendQueues()
 {
     base::Time curTime = base::Time::now();
-    for(std::vector<HbridgeHandle *>::iterator it =  handles.begin(); it != handles.end(); it++)
+    for(std::vector<Handle *>::iterator it =  handles.begin(); it != handles.end(); it++)
     {
-	if(*it == NULL || (*it)->queue.queue.empty())
+	if(*it == NULL)
 	    continue;
 	
-	SendQueue::Entry &curEntry((*it)->queue.queue.front());
-	if(curEntry.sendTime == base::Time())
+	if((*it)->queue.queue.empty())   
 	{
-	    if(curEntry.msg.packetId < firmware::PACKET_ID_LOWIDS_START)
-		bus->sendPacket(curEntry.msg);
-	    else
-	    {
-		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
-	    }
+	    if((*it)->queue.emptyCallback)
+		(*it)->queue.emptyCallback();
 	    
-	    curEntry.sendTime = curTime;
 	    continue;
 	}
 	
-	if(curTime - curEntry.sendTime > sendTimout)
+	SendQueue::Entry &curEntry((*it)->queue.queue.front());
+	bool doSend = false;
+	if(curEntry.sendTime == base::Time())
+	{
+	    doSend = true;
+	}
+	
+	if(!doSend && (curTime - curEntry.sendTime > sendTimout))
 	{
 	    if(curEntry.retryCnt <= 0)
 	    {
@@ -211,14 +206,19 @@ void Protocol::processSendQueues()
 	    }
 	    curEntry.retryCnt--;
 	    std::cout << "Timeout, resending " << getPacketName(curEntry.msg.packetId) << " retry " << retryCount - curEntry.retryCnt << std::endl;
-
+	    doSend = true;
+	}
+	
+	if(doSend)
+	{
 	    if(curEntry.msg.packetId < firmware::PACKET_ID_LOWIDS_START)
 		bus->sendPacket(curEntry.msg);
 	    else
 	    {
-		(*it)->getLowPriorityProtocol()->sendPackage(curEntry.msg);
+		(*it)->lowPrioProtocol.sendPackage(curEntry.msg);
 	    }
-	    curEntry.sendTime = curTime;	    
+	    
+	    curEntry.sendTime = curTime;
 	}
     }
 }

@@ -6,7 +6,7 @@
 
 using namespace hbridge;
 
-int boardId = 0;
+unsigned int boardId = 0;
 int error = 0;
 
 class HighLevelDummy: public hbridge::BusInterface
@@ -146,21 +146,18 @@ int main(int argc, char **argv)
     
     hbridge::Protocol *proto = new Protocol(new CanbusDummy());
 
-    hbridge::HbridgeHandle *handle = proto->getHbridgeHandle(boardId);
-    
-    PWMController pwmCtrl(handle);
-    SpeedPIDController speedCtrl(handle);
-    PosPIDController posCtrl(handle);
-    
     MotorConfiguration conf;
     
-    Reader *reader = handle->getReader();
-    Writer *writer = handle->getWriter();
+    Reader *reader = new Reader(boardId, proto);
+    Writer *writer = new Writer(boardId, proto);
+    PWMController pwmCtrl(writer);
+    SpeedPIDController speedCtrl(writer);
+    PosPIDController posCtrl(writer);
     
     configured = false;
     
     reader->setCallbacks(new DummyCallback());
-    reader->setConfiguration(conf);
+    reader->setConfiguration(conf.sensorConfig);
     reader->startConfigure();
     
     int cnt = 0;
@@ -186,7 +183,7 @@ int main(int argc, char **argv)
 	if(writer->isActuatorConfigured())
 	{
 	    writer->setActiveController(&speedCtrl);
-	    writer->setTargetValue(10.0);
+// 	    writer->setTargetValue(10.0);
 // 	    std::cout << "SM" << std::endl;
 	}
 	proto->sendSharedMessages();
