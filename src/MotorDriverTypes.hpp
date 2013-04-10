@@ -73,7 +73,7 @@ namespace hbridge
          * Initialise with sane values
          */
         EncoderConfiguration() :
-            ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
+            ticksPerTurn(0), leapTickValue(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
         EncoderConfiguration(uint32_t ticksPerTurn, uint32_t leapTickValue, ENCODER_TYPE type) :
