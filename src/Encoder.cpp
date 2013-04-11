@@ -15,9 +15,6 @@ Encoder::Encoder()
 
 void Encoder::setConfiguration(EncoderConfiguration& cfg)
 {
-    if(encoderConfig.ticksPerTurn == cfg.ticksPerTurn)
-        return;
-    
     encoderConfig = cfg;
     
     //we go sane and reset the encoder if wrap value changes
@@ -33,28 +30,19 @@ void Encoder::setZeroPosition(Ticks zeroPos)
 
 void Encoder::setRawEncoderValue(uint value)
 {
+    gotValidReading = true;
+    
     //reverse scale down for transmission
     value *= encoderConfig.tickDivider;
     
-    if(!gotValidReading)
+    int diff = value - lastPositionInTurn;
+    lastPositionInTurn = value;
+    
+    // We assume that a motor rotates less than half a turn per [ms]
+    // (a status packet is sent every [ms])
+    if ((uint) abs(diff) > encoderConfig.ticksPerTurn / 2)
     {
-	if(value > 0)
-	{
-	    gotValidReading = true;
-	    lastPositionInTurn = value;
-	}
-    }
-    else 
-    {
-	int diff = value - lastPositionInTurn;
-	lastPositionInTurn = value;
-	
-	// We assume that a motor rotates less than half a turn per [ms]
-	// (a status packet is sent every [ms])
-	if ((uint) abs(diff) > encoderConfig.ticksPerTurn / 2)
-	{
-	    turns += (diff < 0 ? 1 : -1);
-	}
+	turns += (diff < 0 ? 1 : -1);
     }
 }
 

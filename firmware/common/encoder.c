@@ -117,9 +117,6 @@ void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tic
 {
     encoders[type].encoderConfig.configured = 1;
 
-    //do not bother encoder code with anything if the config didn't change
-    if((encoders[type].encoderConfig.ticksPerTurn == ticks * tickDivider) && (encoders[type].encoderConfig.tickDivider == tickDivider))
-        return;
  
     encoders[type].encoderConfig.leapTickValue = leapTicks;
     encoders[type].encoderConfig.tickDivider = tickDivider;
