@@ -125,6 +125,11 @@ void SpeedPIDController::printSendError(const hbridge::Packet& msg)
     }
 }
 
+void SpeedPIDController::setConfig(const SpeedPIDController::Config& config)
+{
+    this->config = config;
+}
+
 void SpeedPIDController::sendControllerConfig()
 {
     Packet msg;
@@ -187,6 +192,11 @@ void PosPIDController::printSendError(const hbridge::Packet& msg)
 	    std::cout << "PosPIDController:: Set controller data message was not acked" << std::endl;
 	    break;
     }
+}
+
+void PosPIDController::setConfig(const PosPIDController::Config& config)
+{
+    this->config = config;
 }
 
 void PosPIDController::sendControllerConfig()
