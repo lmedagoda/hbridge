@@ -2,7 +2,7 @@
 #include "printf.h"
 #include "packets.h"
 
-#define MAX_PACKET_SIZE 30
+#define MAX_PACKET_SIZE 35
 #define NUM_SENDERS 5
 
 struct LowPrioData {
@@ -82,6 +82,12 @@ void protocol_processLowPrio(int senderId, int receiverId, int id, unsigned char
 	    
 	    lpd->curHeader = &(lpd->protocolHeaderBuffer);
 	    lpd->received = 0;
+	    
+	    if(lpd->curHeader->size > MAX_PACKET_SIZE)
+	    {
+		printf("ERROR: Packet is too big, discarding packet");
+		lpd->curHeader = 0;
+	    }
 	    break;
 	}
 	case TYPE_DATA:

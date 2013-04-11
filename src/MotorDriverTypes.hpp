@@ -48,7 +48,8 @@ namespace hbridge
         ENCODER_QUADRATURE_WITH_ZERO = 2,
         ENCODER_IC_HOUSE_MH_Y = 3,
         ENCODER_BMMV30_SSI = 4,
-        ENCODER_ANALOG_VOLTAGE = 5
+        ENCODER_ANALOG_VOLTAGE = 5,
+        ENCODER_END_SWITCH = 6,
     };
 
     struct EncoderConfiguration
@@ -73,7 +74,7 @@ namespace hbridge
          * Initialise with sane values
          */
         EncoderConfiguration() :
-            ticksPerTurn(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
+            ticksPerTurn(0), leapTickValue(0), tickDivider(1), ticksPerTurnDivided(0), zeroPosition(0), type(ENCODER_NONE)
         {}
         
         EncoderConfiguration(uint32_t ticksPerTurn, uint32_t leapTickValue, ENCODER_TYPE type) :

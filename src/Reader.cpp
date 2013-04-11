@@ -5,7 +5,7 @@ using namespace firmware;
 
 namespace hbridge {
 
-Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), dstate(READER_OFF)
+Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), gotBoardState(false), dstate(READER_OFF)
 {
     protocol->registerReceiver(this, boardId);
 }
@@ -19,6 +19,7 @@ void Reader::startConfigure()
 {
     configured = false;
     error = false;
+    gotBoardState = false;
     requestDeviceState();
     dstate = READER_REQUEST_STATE;
 }
@@ -73,9 +74,12 @@ void Reader::sendConfigureMsg()
     cfg1->encoder1Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type);
     cfg1->encoder1Config.ticksPerTurn = configuration.encoder_config_intern.ticksPerTurnDivided;
     cfg1->encoder1Config.tickDivider = configuration.encoder_config_intern.tickDivider;
+    cfg1->encoder1Config.leapTickCounter = configuration.encoder_config_intern.leapTickValue;
+
     cfg1->encoder2Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_extern.type);
     cfg1->encoder2Config.ticksPerTurn = configuration.encoder_config_extern.ticksPerTurnDivided;
     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
+    cfg1->encoder2Config.leapTickCounter = configuration.encoder_config_extern.leapTickValue;
 
     protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
@@ -129,6 +133,8 @@ void Reader::processMsg(const Packet &msg)
 
 		//getting an status package is an implicit cleaner for all error states
 		bzero(&(this->state.error), sizeof(struct ErrorState));
+
+		gotBoardState = true;
 		
 		if(callbacks)
 		    callbacks->gotStatus(boardId, state);
@@ -194,10 +200,15 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 		case firmware::STATE_SENSORS_CONFIGURED:
 		    configureDone();
 		    break;    
-		default:
+		case firmware::STATE_UNCONFIGURED:
+		case firmware::STATE_SENSOR_ERROR:
+		    std::cout << "Board id " << boardId << " went into error state " << std::endl;
 		    error = true;
 		    if(callbacks)
 			callbacks->configurationError();
+		    break;    
+		default:
+		    std::cout << "Board id " << boardId << " got unexpected packet " << std::endl;
 		    break;    
 	    }
 	    break;

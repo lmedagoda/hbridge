@@ -133,8 +133,7 @@ void Protocol::processIncommingPackages()
 	    continue;
         }
 	
-	if(msg.packetId != PACKET_ID_STATUS && msg.packetId != PACKET_ID_EXTENDED_STATUS)
-	    std::cout << "Protocol : Got incomming packet of type " << getPacketName(msg.packetId) << " Broadcast " << msg.broadcastMsg << " for receiver " << msg.receiverId << " from " << msg.senderId << std::endl;
+// 	if(msg.packetId != PACKET_ID_STATUS && msg.packetId != PACKET_ID_EXTENDED_STATUS)
 
 	//check if message is a broadcast
 	if(msg.broadcastMsg) {

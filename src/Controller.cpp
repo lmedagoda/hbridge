@@ -125,6 +125,11 @@ void SpeedPIDController::printSendError(const hbridge::Packet& msg)
     }
 }
 
+void SpeedPIDController::setConfig(const SpeedPIDController::Config& config)
+{
+    this->config = config;
+}
+
 void SpeedPIDController::sendControllerConfig()
 {
     Packet msg;
@@ -189,6 +194,11 @@ void PosPIDController::printSendError(const hbridge::Packet& msg)
     }
 }
 
+void PosPIDController::setConfig(const PosPIDController::Config& config)
+{
+    this->config = config;
+}
+
 void PosPIDController::sendControllerConfig()
 {
     Packet msg;
@@ -207,11 +217,15 @@ void PosPIDController::sendControllerConfig()
 	config.pidValues.ki * 100 > (1<<16) || config.pidValues.ki * 100 < -(1<<16) ||
 	config.pidValues.kd * 100 > (1<<16) || config.pidValues.kd * 100 < -(1<<16))
 	throw std::runtime_error("Given PID Parameters are out of bound");
+    
+    if(config.pidValues.maxPWM < 0 || config.pidValues.maxPWM > 1.0)
+	throw std::runtime_error("Given PID MAXPwm Parameter is out of bound [0 1]");
+	
     //convert given parameters to fixed point values for transmission
     data->pidData.kp = config.pidValues.kp * 100;
     data->pidData.ki = config.pidValues.ki * 100;
     data->pidData.kd = config.pidValues.kd * 100;
-    data->pidData.minMaxPidOutput = config.pidValues.maxPWM;
+    data->pidData.minMaxPidOutput = config.pidValues.maxPWM * std::numeric_limits<int16_t>::max();
     
     sendPacket(msg, true);
 }
@@ -223,7 +237,7 @@ void PosPIDController::setTargetValue(double value)
     
     //value is in radian
     //we scale it to int16_t
-    uint16_t transmitValue = (value / M_PI) * std::numeric_limits< int16_t >::max();
+    uint16_t transmitValue = ((value +M_PI) / (2*M_PI)) * std::numeric_limits< uint16_t >::max();
     sendCommand(transmitValue);
 }
 

@@ -64,6 +64,7 @@ private:
     CallbackInterface *callbacks;
     bool configured;
     bool error;
+    bool gotBoardState;
     enum DriverState
     {
 	READER_OFF,
@@ -100,6 +101,16 @@ public:
 
     const Encoder &getInternalEncoder();
     const Encoder &getExternalEncoder();
+    
+    bool hasBoardState() 
+    {
+	return gotBoardState;
+    };
+    
+    const BoardState &getBoardState()
+    {
+	return state;
+    };
     
     void setCallbacks(CallbackInterface *cbs);
 

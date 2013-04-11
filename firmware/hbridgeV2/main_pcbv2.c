@@ -14,6 +14,7 @@
 #include "encoder_ichaus.h"
 #include "encoder_adc.h"
 #include "encoder_quadrature.h"
+#include "encoder_endswitch.h"
 #include "protocol_can.h"
 #include <stdlib.h>
 
@@ -124,11 +125,13 @@ int main(void)
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadratureV2;
+    encoder.encoderDeInit = encoderDeInitQuadratureV2;
     encoder.getTicks = getTicksQuadratureV2;
     encoder.setTicksPerTurn = setTicksPerTurnQuadratureV2;
     encoder_setImplementation(QUADRATURE, encoder);
 
     encoder.encoderInit = encoderInitQuadratureWithZeroV2;
+    encoder.encoderDeInit = encoderDeInitQuadratureWithZeroV2;
     encoder.getTicks = getTicksQuadratureWithZeroV2;
     encoder.setTicksPerTurn = setTicksPerTurnQuadratureWithZeroV2;
     encoder_setImplementation(QUADRATURE_WITH_ZERO, encoder);
@@ -143,6 +146,12 @@ int main(void)
     encoder.getTicks = getTicksADC;
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
+
+    encoder.encoderInit = endSwitchEncoder_Init;
+    encoder.encoderDeInit = endSwitchEncoder_encoderDeInit;
+    encoder.getTicks = endSwitchEncoder_getTicks;
+    encoder.setTicksPerTurn = endSwitchEncoder_setTicksPerTurn;
+    encoder_setImplementation(END_SWITCH, encoder);
 
     platformInit();
     
