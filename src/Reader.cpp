@@ -197,10 +197,15 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 		case firmware::STATE_SENSORS_CONFIGURED:
 		    configureDone();
 		    break;    
-		default:
+		case firmware::STATE_UNCONFIGURED:
+		case firmware::STATE_SENSOR_ERROR:
+		    std::cout << "Board id " << boardId << " went into error state " << std::endl;
 		    error = true;
 		    if(callbacks)
 			callbacks->configurationError();
+		    break;    
+		default:
+		    std::cout << "Board id " << boardId << " got unexpected packet " << std::endl;
 		    break;    
 	    }
 	    break;
