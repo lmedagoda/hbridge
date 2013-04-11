@@ -5,7 +5,7 @@ using namespace firmware;
 
 namespace hbridge {
 
-Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), dstate(READER_OFF)
+Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), gotBoardState(false), dstate(READER_OFF)
 {
     protocol->registerReceiver(this, boardId);
 }
@@ -19,6 +19,7 @@ void Reader::startConfigure()
 {
     configured = false;
     error = false;
+    gotBoardState = false;
     requestDeviceState();
     dstate = READER_REQUEST_STATE;
 }
@@ -129,6 +130,8 @@ void Reader::processMsg(const Packet &msg)
 
 		//getting an status package is an implicit cleaner for all error states
 		bzero(&(this->state.error), sizeof(struct ErrorState));
+
+		gotBoardState = true;
 		
 		if(callbacks)
 		    callbacks->gotStatus(boardId, state);
