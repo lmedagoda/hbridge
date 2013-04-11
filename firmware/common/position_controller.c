@@ -96,8 +96,11 @@ void positionControllerReset(int32_t wheelPos)
 
 int32_t positionControllerStep(struct ControllerTargetData *targetData, int32_t wheelPos, uint32_t ticksPerTurn)
 {
-    int16_t *pos_p = (int16_t *) (targetData->data);
-    int32_t targetPos = *pos_p;
+    uint16_t *pos_p = (uint16_t *) (targetData->data);
+    
+    uint32_t posScaled = (((ticksPerTurn * 2000) / USHRT_MAX) * *pos_p) / 2000;
+    
+    int32_t targetPos = posScaled;
     int32_t pwmValue = 0;
     int32_t curVal = wheelPos;
 
