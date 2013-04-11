@@ -74,9 +74,12 @@ void Reader::sendConfigureMsg()
     cfg1->encoder1Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type);
     cfg1->encoder1Config.ticksPerTurn = configuration.encoder_config_intern.ticksPerTurnDivided;
     cfg1->encoder1Config.tickDivider = configuration.encoder_config_intern.tickDivider;
+    cfg1->encoder1Config.leapTickCounter = configuration.encoder_config_intern.leapTickValue;
+
     cfg1->encoder2Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_extern.type);
     cfg1->encoder2Config.ticksPerTurn = configuration.encoder_config_extern.ticksPerTurnDivided;
     cfg1->encoder2Config.tickDivider = configuration.encoder_config_extern.tickDivider;
+    cfg1->encoder2Config.leapTickCounter = configuration.encoder_config_extern.leapTickValue;
 
     protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
