@@ -14,6 +14,7 @@
 #include "encoder_ichaus.h"
 #include "encoder_adc.h"
 #include "encoder_quadrature.h"
+#include "encoder_endswitch.h"
 #include "protocol_can.h"
 #include <stdlib.h>
 
@@ -145,6 +146,12 @@ int main(void)
     encoder.getTicks = getTicksADC;
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
+
+    encoder.encoderInit = endSwitchEncoder_Init;
+    encoder.encoderDeInit = endSwitchEncoder_encoderDeInit;
+    encoder.getTicks = endSwitchEncoder_getTicks;
+    encoder.setTicksPerTurn = endSwitchEncoder_setTicksPerTurn;
+    encoder_setImplementation(END_SWITCH, encoder);
 
     platformInit();
     

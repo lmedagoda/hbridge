@@ -48,7 +48,8 @@ namespace hbridge
         ENCODER_QUADRATURE_WITH_ZERO = 2,
         ENCODER_IC_HOUSE_MH_Y = 3,
         ENCODER_BMMV30_SSI = 4,
-        ENCODER_ANALOG_VOLTAGE = 5
+        ENCODER_ANALOG_VOLTAGE = 5,
+        ENCODER_END_SWITCH = 6,
     };
 
     struct EncoderConfiguration

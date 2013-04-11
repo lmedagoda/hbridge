@@ -77,6 +77,7 @@ enum encoderTypes {
     IC_HOUSE_MH_Y,
     BMMV30_SSI,
     ANALOG_VOLTAGE,
+    END_SWITCH,
     NUM_ENCODERS,
 };
 
