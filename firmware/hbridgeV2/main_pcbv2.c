@@ -124,11 +124,13 @@ int main(void)
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadratureV2;
+    encoder.encoderDeInit = encoderDeInitQuadratureV2;
     encoder.getTicks = getTicksQuadratureV2;
     encoder.setTicksPerTurn = setTicksPerTurnQuadratureV2;
     encoder_setImplementation(QUADRATURE, encoder);
 
     encoder.encoderInit = encoderInitQuadratureWithZeroV2;
+    encoder.encoderDeInit = encoderDeInitQuadratureWithZeroV2;
     encoder.getTicks = getTicksQuadratureWithZeroV2;
     encoder.setTicksPerTurn = setTicksPerTurnQuadratureWithZeroV2;
     encoder_setImplementation(QUADRATURE_WITH_ZERO, encoder);

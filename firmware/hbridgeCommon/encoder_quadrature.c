@@ -55,6 +55,31 @@ void timerQuadratureEncoderEnableZero(TIM_TypeDef *timer, uint8_t irq_channel)
     NVIC_Init(&NVIC_InitStructure);
 }
 
+void timerQuadratureEncoderDisableZero(TIM_TypeDef *timer, uint8_t irq_channel)
+{
+    TIM_ITConfig(timer, TIM_IT_CC3, DISABLE);
+
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitStructure.NVIC_IRQChannel = irq_channel;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_Init(&NVIC_InitStructure);
+
+}
+
+void timerQuadratureEncoderDeInit(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data)
+{
+    //disable first
+    TIM_Cmd(timer, DISABLE);
+    
+    if(data->hasZero)
+	//FIXME only works for Timer 2
+	timerQuadratureEncoderDisableZero(timer, TIM2_IRQn);
+    
+    TIM_DeInit(timer);
+}
+
 void timerQuadratureEncoderInit(TIM_TypeDef *timer, struct TimerQuadratureEncoderData *data, int withZero)
 {
     //default init
@@ -266,6 +291,12 @@ void encoderInitQuadratureV2()
     timerQuadratureEncoderInit(TIM3, &tqeTim3Data, 0);
 }
 
+void encoderDeInitQuadratureV2()
+{
+    timerQuadratureEncoderDeInit(TIM3, &tqeTim3Data);
+}
+
+
 void setTicksPerTurnQuadratureV2(uint32_t ticks, uint8_t tickDivider)
 {
     timerQuadratureEncoderSetTicksPerTurn(TIM3, &tqeTim3Data, ticks, tickDivider);
@@ -279,6 +310,11 @@ uint32_t getTicksQuadratureV2()
 void encoderInitQuadratureWithZeroV2()
 {
     timerQuadratureEncoderInit(TIM2, &tqeTim2Data, 1);
+}
+
+void encoderDeInitQuadratureWithZeroV2()
+{
+    timerQuadratureEncoderDeInit(TIM2, &tqeTim2Data);
 }
 
 void setTicksPerTurnQuadratureWithZeroV2(uint32_t ticks, uint8_t tickDivider)
