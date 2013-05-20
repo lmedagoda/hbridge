@@ -7,6 +7,7 @@
 int arc_getPacket(arc_packet_t* packet);
 int arc_sendPacket(arc_packet_t* packet);
 uint32_t arc_readPacket(arc_packet_t * packet); 
+uint32_t arc_sendPacketDirect(arc_packet_t* packet); 
 void arc_processPackets();
 void arc_init();
 

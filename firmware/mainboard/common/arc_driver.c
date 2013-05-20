@@ -46,6 +46,25 @@ void arc_processPackets(){
     arc_sendPendingPackets();
     return;
 }
+
+uint32_t arc_sendPacketDirect(arc_packet_t* packet) 
+{
+    int len = 0;
+    uint8_t tmp_send_buffer[ARC_MAX_FRAME_LENGTH];
+    len = createPacket(packet, tmp_send_buffer); 
+    int sent = 0;
+    while(sent < len)
+    {
+	int ret = arc_sendFunc(tmp_send_buffer, len);
+	if(ret < 0)
+	{
+	    printf("Got an error by sending Packet");
+	    break;
+	}
+	sent += ret;
+    }
+    return len;
+}
 /*
  * This Function is public only for NO token usage.
  * Do not use this funktion, if you want to use token.
