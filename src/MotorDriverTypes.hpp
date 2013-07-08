@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#include <base/Time.hpp>
+#include <base/time.h>
 #include <base/actuators/commands.h>
 
 namespace hbridge
