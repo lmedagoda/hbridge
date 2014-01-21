@@ -62,9 +62,22 @@ signed int USART1_SeekData (unsigned char *buffer, const unsigned int buffer_len
 
 
 void USART3_Init(enum USART_MODE mode);
-void USART3_DeInit(void);
+//void USART3_DeInit(void); //Not implemented so far
 signed int USART3_SendData(const unsigned char *data, const unsigned int size);
 signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_length);
+signed int USART3_SeekData (unsigned char *buffer, const unsigned int buffer_length);
+
+void USART2_Init(enum USART_MODE mode);
+// void USART2_DeInit(void); //Not implemented so far
+signed int USART2_SendData(const unsigned char *data, const unsigned int size);
+signed int USART2_GetData (unsigned char *buffer, const unsigned int buffer_length);
+signed int USART2_SeekData (unsigned char *buffer, const unsigned int buffer_length);
+
+void UART5_Init(enum USART_MODE mode);
+//void UART5_DeInit(void); //Not implemented so far
+signed int UART5_SendData(const unsigned char *data, const unsigned int size);
+signed int UART5_GetData (unsigned char *buffer, const unsigned int buffer_length);
+signed int UART5_SeekData (unsigned char *buffer, const unsigned int buffer_length);
 
 
 #endif
