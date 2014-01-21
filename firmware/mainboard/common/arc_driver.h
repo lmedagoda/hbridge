@@ -19,6 +19,11 @@ void arc_init();
  * Initialise the arc driver with functionpointer for receiving, sending and seeking.
  **/
 void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc);
+
+
+void arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc);
+
+    
 /**
  * Reads every Packet, which can read with the receive function.
  * The function returns 0 if no packet or a bad packet found.
