@@ -95,6 +95,7 @@ add_executable(main
     ${STM32_COMMON_DIR}/drivers/lm73cimk.c
     ${STM32_COMMON_DIR}/drivers/tmp100.c
     ${STM32_COMMON_DIR}/encoder_adc.c
+    ${STM32_COMMON_DIR}/encoder_endswitch.c
     ${STM32_COMMON_DIR}/encoder_quadrature.c    
     ${STM32_COMMON_DIR}/encoder_ichaus.c    
     ${STM32_COMMON_DIR}/thread.c

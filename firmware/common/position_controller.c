@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include "printf.h"
 #include "protocol.h"
-
+#include <limits.h>
 struct PositionControllerConfig {
     uint16_t minHysteresisDistance;
     uint16_t maxHysteresisDistance;
