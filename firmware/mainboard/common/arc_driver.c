@@ -11,10 +11,10 @@ arc_recv_func_t arc_recvFunc[5];
 arc_seek_func_t arc_seekFunc[5];
 
 //privats
-void arc_receivePackets();
-void arc_sendPendingPackets();
-void arc_receivePackets();
-void arc_giveTokenBack();
+//void arc_receivePackets();
+//void arc_sendPendingPackets();
+//void arc_receivePackets();
+//void arc_giveTokenBack();
 
 void arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
     arc_sendFunc[arc_num_serial_hanlder] = sendFunc;
@@ -35,23 +35,26 @@ void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_
     initTokenhandling();
 }
 
+/*
 int arc_getPacket(arc_packet_t* packet){
     int ret = pop_front(&read_buffer, packet);
     //printf("AN DIESER STEKLLE DIE ID? %i \n", packet->packet_id);
     return ret;
 }
+*/
 
 /* TODO Depricared???????
 int arc_sendPacket(arc_packet_t* packet){
     return push_back(*packet, &send_buffer); 
 }
 */
-
+/*
 void arc_processPackets(){
     arc_receivePackets();
     arc_sendPendingPackets();
     return;
 }
+*/
 
 uint32_t arc_sendPacketDirect(arc_packet_t* packet) 
 {
@@ -121,12 +124,13 @@ uint32_t arc_readPacket(arc_packet_t * packet) {
   return 0; // no packet found
 }
 
+#if 0
 //privat
 void arc_sendPendingPackets(){
     arc_packet_t* packet;
     int len = 0;
     uint8_t tmp_send_buffer[ARC_MAX_FRAME_LENGTH];
-    if (has_token){
+//    if (has_token){
         while ((packet = first(&send_buffer))!=0){
            len = createPacket(packet, tmp_send_buffer); 
            if (MAX_BYTES-send_bytes > len){
@@ -142,19 +146,20 @@ void arc_sendPendingPackets(){
 		    sent += ret;
 	       }
                //sendProtocolPacket(GIVE_BACK);
-           } else {
-               break;
-           }
+//           } else {
+//               break;
+//           }
         }
     }
     return 0; // no packet found
 }
+#endif
 
 int arc_send(uint8_t *tmp_send_buffer, int size){
     int sent = 0;
     while(sent < size)
     {
-	int ret = arc_sendFunc[arc_current_serial_handler](tmp_send_buffer, len);
+	int ret = arc_sendFunc[arc_current_serial_handler](tmp_send_buffer, size);
 	if(ret < 0)
 	{
 	    printf("Got an error by sending Packet");
