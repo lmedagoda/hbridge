@@ -51,15 +51,19 @@ void hbridge_controllerStructInit(struct setActiveControllerData *cd){
 void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiveControllerData *cd){
     protocol_sendData(hbridgeId, PACKET_ID_SET_ACTIVE_CONTROLLER, (unsigned char *) cd, sizeof(struct setActiveControllerData));
 }
+ 
+void hbridge_setValue(int16_t value1, int16_t value2, int16_t value3, int16_t value4){ 
+    hbridge_setValues(value1,value2,value3,value4, PACKET_ID_SET_VALUE14);
+}
 
-void hbridge_setValue(int16_t value1, int16_t value2, int16_t value3, int16_t value4){  
+void hbridge_setValues(int16_t value1, int16_t value2, int16_t value3, int16_t value4, enum HIGH_PRIORITY_IDs hbSet){  
     struct setValueData values;
     values.board1Value = value1;
     values.board2Value = value2;
     values.board3Value = value3;
     values.board4Value = value4;
     
-    protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SET_VALUE14, (unsigned char *) &values, sizeof(struct setValueData));
+    protocol_sendData(RECEIVER_ID_ALL, hbSet, (unsigned char *) &values, sizeof(struct setValueData));
 }
 
 void hbridge_requestState(enum hostIDs hbridgeId){
