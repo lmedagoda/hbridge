@@ -88,15 +88,15 @@ void asv_packet_canHandler(int senderId, int receiverId, int id, unsigned char *
 void asv_runningState(void){
     if(timeout_hasTimeout())
     {
-        printf("Timout, switching to off\n");
-        mbstate_changeState(MAINBOARD_OFF);
+	printf("Timout, switching to off\n");
+	mbstate_changeState(MAINBOARD_OFF);
     }
-
+    
     //check actuators
     if(hbridge_hasActuatorError())
     {
-        printf("Actuator error, switching to off\n");
-        mbstate_changeState(MAINBOARD_OFF);
+	printf("Actuator error, switching to off\n");
+	mbstate_changeState(MAINBOARD_OFF);
         return;
     }
 
@@ -118,7 +118,6 @@ int main()
     USART1_Init(USART_USE_INTERRUPTS);
 
     printf("The Maiboard is up with the version: ");
-
     timeout_init(3000);
 
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
@@ -146,7 +145,6 @@ int main()
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
         ac = getActuatorConfig(i);
         ac->maxCurrent = 1000;
-        //ac->maxPWM = 5000;
         ac->maxCurrentCount = 200;
         ac->pwmStepPerMs = 2;
         sc = getSensorConfig(i);
@@ -154,7 +152,6 @@ int main()
         hbridge_configureSensors();
 
     }
-
     arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
     arctoken_setOwnSystemID(ASV);
     mbstate_init();
@@ -199,4 +196,3 @@ int main()
     }
     return 0;
 }
-

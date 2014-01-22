@@ -24,12 +24,6 @@
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
-//TODO use this definitions if needed (might be moved to ARC code?)
-#define STRAVE_FACTOR 9 
-#define SPEED_FACTOR 13
-#define DIVE_FACTOR 7 
-
-
 //USART2 = AMBER
 //USART3 = Ethernet/Serial
 //USART5 = Underwater Modem
@@ -37,12 +31,13 @@
 //TODO Where co configure motor commands and set them to the motors
 
 
-//TODO Possible wrong here ;)
-struct arc_asv_control_packet{
-    uint8_t quer_vorne;
-    uint8_t quer_hinten;
-    uint8_t motor_rechts;
-    uint8_t motor_links;	
+struct arc_avalon_control_packet{
+    uint8_t dive;
+    uint8_t strave;
+    uint8_t left;
+    uint8_t right;	
+    uint8_t pitch;	
+    uint8_t yaw;	
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 void sendStatusPacket(){
@@ -64,39 +59,53 @@ void sendStatusPacket(){
 
 
 int status_loops = 0;
-struct arc_asv_control_packet curCmd;
+uint8_t surface_sign_counter= 0;
+struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
-void asv_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    struct arc_asv_control_packet *cmd  = (struct arc_asv_control_packet *) data;
+void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    struct arc_avalon_control_packet *cmd  = (struct arc_avalon_control_packet *) data;
     curCmd = *cmd;
     cmdValid = 1;
 }
 
-//Rename and cleanup
-void asv_runningState(void){
-    //TODO Why timeout is removed?
-    //TODO Make FULL_Autonomous timeout configureable from OCU side
-
-    /*if(timeout_hasTimeout())
+void avalon_runningState(void){
+    if(timeout_hasTimeout())
     {
 	printf("Timout, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
-    }*/
+    }
     
     //check actuators
     if(hbridge_hasActuatorError())
     {
 	printf("Actuator error, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
+        return;
     }
+
     if (!cmdValid)
         return;
-}
+
+    //TODO mapping korrigieren
+    hbridge_setValues(
+            (curCmd.strave-127)*4, 
+            (curCmd.dive-127)*4, 
+            (curCmd.left-127)*4, 
+            (curCmd.right-127)*4,
+            PACKET_ID_SET_VALUE14);
+
+    hbridge_setValues(
+            (curCmd.pitch-127)*4, 
+            (curCmd.yaw-127)*4,
+            0,
+            0,
+            PACKET_ID_SET_VALUE58);
+};
 
 
 //TODO Add this function to be executed and adapt it to compile ;)
 //Don't forget to initialize the CANid and the USART
-bool handle_underwater_modem() {
+uint8_t handle_underwater_modem() {
   int seek, i;
   u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
 
@@ -124,9 +133,9 @@ bool handle_underwater_modem() {
 	    inputMessage.Data[i] = packet_buffer[i];
 	    if(packet_buffer[i] == SURFACE_SIGN){ //TODO Extend packed
                 if(++surface_sign_counter == SURFACE_SIGN_COUNT){
-        	    	print("diving up\n");
-        	    	wanted_system_state = SURFACE;
-        		control_timeout = 0;
+        	    	//print("diving up\n");
+                        //TODO IMPORTAND CHANGE STATE TO SURFACE
+        	    	//wanted_system_state = SURFACE;
                         surface_sign_counter=0;
                 }
 	    }else{
@@ -136,6 +145,8 @@ bool handle_underwater_modem() {
 	int counter=0;
 	
 
+        //TODO What's this:?
+        /*
 	while(CAN_Transmit(&inputMessage) == CAN_NO_MB) {
 	    counter++;
 	    if (counter > CAN_SEND_RETRIES) {
@@ -144,6 +155,7 @@ bool handle_underwater_modem() {
 		return 1; //flase
 	   }
 	}
+        */
     }
     UART5_GetData(packet_buffer, seek);
   }
@@ -152,6 +164,7 @@ bool handle_underwater_modem() {
 
 //TODO Adapt this function too for passthrought modem messages to the PC
 //Don't forget to setup the Can message filter for match the needed ID's
+#if 0
 void processCANMsg(CanRXMsg *curMsg){
     if((curMsg = CAN_GetNextData()) != 0) {
     	if((curMsg->StdId) == 0x1E1){ //Modem Messages
@@ -204,17 +217,22 @@ void processCANMsg(CanRXMsg *curMsg){
 
     }
 }
+#endif
 
 
 int main()
 {
-    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
+    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
-    USART3_Init(USART_POLL);
+    USART1_Init(USART_POLL);
+    printf_setSendFunction(USART1_SendData);
 
-    printf_setSendFunction(USART3_SendData);
-    
-    USART1_Init(USART_USE_INTERRUPTS);
+    //ARC's
+    USART2_Init(USART_USE_INTERRUPTS);
+    USART3_Init(USART_USE_INTERRUPTS);
+
+    //Modem
+    USART5_Init(USART_USE_INTERRUPTS);
     
     printf("The Maiboard is up with the version: ");
     
@@ -231,24 +249,25 @@ int main()
     can_protocolInit();
 
     //wait till rest got up
-    while(time_getTimeInMs() - lastStateTime < 30)
-        ;
+    while(time_getTimeInMs() - lastStateTime < 30);
     hbridge_init(NUM_MOTORS);
-    
-    for(unsigned int i = 0;i<NUM_MOTORS; i++){
+    unsigned int i; 
+    for(i = 0;i<NUM_MOTORS; i++){
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
     }
    
-    //TODO Add multiple ARC channels USART 2 and USART 3, don't forget the setup
-    arc_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
+    arc_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    arc_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+
     mbstate_init();
     packet_init();
 
-    packet_registerHandler(MB_CONTROL, asv_controlHandler);
+    packet_registerHandler(MB_CONTROL, avalon_controlHandler);
 
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
-    state->stateHandler=asv_runningState;
+    //TODO Why this is needed here?
+    state->stateHandler=avalon_runningState;
     while(1)
     {
 	unsigned int curTime = time_getTimeInMs();
@@ -263,14 +282,17 @@ int main()
 // 	    printf(".");
 	}
 	arc_packet_t packet;	
+        //TODO use arctoken driver instead of arc driver
+        /*
         while(arc_getPacket(&packet))
 	{
 	    //process incomming packet
             printf("incoming packet");
 	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
 	}
+        arc_processPackets();*/
         hbridge_process();
-        arc_processPackets();
+        handle_underwater_modem();
     //Sending a Status packet
     if (status_loops >= STATUS_PACKET_PERIOD){
          sendStatusPacket();
