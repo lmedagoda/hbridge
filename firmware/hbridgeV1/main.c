@@ -88,7 +88,7 @@ int main(void)
     printf("Entered main loop\n");
 
     //turn of red led
-    GPIO_SetBits(GPIOA, GPIO_Pin_8);
+    //GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
     //init basic functionality
     //read address, turn on peripherals etc.
@@ -115,7 +115,16 @@ int main(void)
     
     can_protocolInit();
 
-    struct EncoderInterface encoder;
+
+    CanTxMsg msg; 
+    msg.StdId = id; 
+    msg.DLC = 3; 
+    int i; 
+    for(i=0; i < 3; i++){ 
+        msg.Data[i] = 0; 
+    } 
+    CAN_SendMessage(&msg);
+/*
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadrature;
@@ -138,13 +147,15 @@ int main(void)
     encoder.getTicks = getTicksADC;
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
+*/
 
     platformInit();
     
     run();
     
     while(1)
-	;
+        ;
+
 
 }
 
