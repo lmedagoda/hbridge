@@ -62,6 +62,8 @@ include_directories(
 
 add_executable(main
     main.c
+    uwmodem.c
+    avalon_can.c
     ${STM32_COMMON_DIR}/system_clock.c
     ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
     ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s

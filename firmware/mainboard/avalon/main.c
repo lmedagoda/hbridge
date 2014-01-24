@@ -1,3 +1,5 @@
+#include "uwmodem.h"
+#include "avalon_can.h"
 #include "../common/mainboardstate.h"
 #include "../common/packethandling.h"
 #include "../common/arc_packet.h"
@@ -162,63 +164,6 @@ uint8_t handle_underwater_modem() {
   return 0; //true
 }
 
-//TODO Adapt this function too for passthrought modem messages to the PC
-//Don't forget to setup the Can message filter for match the needed ID's
-#if 0
-void processCANMsg(CanRXMsg *curMsg){
-    if((curMsg = CAN_GetNextData()) != 0) {
-    	if((curMsg->StdId) == 0x1E1){ //Modem Messages
-		UART5_SendData(curMsg->Data,curMsg->DLC);
-        }else if(curMsg->StdId == DEPTH_READER_ID){ //Depth Reader messages
-                const struct canData *data = (const struct canData *)(curMsg->Data);
-                //See depth_reader task for numeric explanation
-                int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
-                int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
-                int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
-                int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
-                cur_depth = (depth + 6550);
-	}else if(curMsg->StdId == 0x141){ //Can Telnet connection
-	        send_can_telnet_packet(curMsg->DLC,curMsg->Data);
-        }else if(curMsg->StdId == CAN_ID_BATTERY_OUTGOING_DATA){ //????????????????
-            uint8_t *pCombinedData = &combinedDataMessage[0];
-            bool* pGotFirstMessagePart = &gotFirstDataMessagePart;
-            bool* pGotCompleteMessage = &gotCompleteDataMessage;
-            int packetCount = DATA_MEASSAGE_PACKET_COUNT;
-
-            int i=0;
-            for(i=0;i<curMsg->DLC;i++){
-                (&pCombinedData[7*curMsg->Data[0]])[i] = (&curMsg->Data[1])[i];
-            }
-//            memcpy(&pCombinedData[7*curMsg->Data[0]], &curMsg->Data[1], curMsg->DLC);
-            if (curMsg->Data[0] == 0) {
-                *pGotFirstMessagePart = TRUE;
-            }
-            if (curMsg->Data[0] == packetCount-1 && *pGotFirstMessagePart) {
-                *pGotCompleteMessage = TRUE;
-            }
-            if (gotCompleteDataMessage){
-                gotFirstDataMessagePart = FALSE;
-                gotCompleteDataMessage = FALSE;
-                const BatteryMessage_t *batt = (BatteryMessage_t*)combinedDataMessage;
-                taken_battery_capacity = batt->takenCapacity;
-                voltage = batt->overallVoltage; //Does not work cucrently
-                //voltage = batt->cellVoltage1 + batt->cellVoltage2 + batt->cellVoltage3 + batt->cellVoltage4 + batt->cellVoltage5 + batt->cellVoltage6 + batt->cellVoltage7 + batt->cellVoltage8;
-                //voltage = batt->cellVoltage8;
-                //See communication.h from battery for additional information
-
-            }
-
-            
-        }else{
-		printf("Got Unknown ID: %lu\n",curMsg->StdId);
-		//TODO Add message for DEPTH Readings and other status messages
-	}
-    	CAN_MarkNextDataAsRead();
-
-    }
-}
-#endif
-
 
 int main()
 {
@@ -233,6 +178,7 @@ int main()
 
     //Modem
     USART5_Init(USART_USE_INTERRUPTS);
+    uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
     
     printf("The Maiboard is up with the version: ");
     
@@ -250,6 +196,10 @@ int main()
 
     //wait till rest got up
     while(time_getTimeInMs() - lastStateTime < 30);
+    protocol_init(1);
+    protocol_registerHandler(PACKET_ID_STATUS, &hbridgeStatusHandler);
+    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgeExtendedStatusHandler);
+    protocol_setRecvFunc(avaloncan_recvPacket);
     hbridge_init(NUM_MOTORS);
     unsigned int i; 
     for(i = 0;i<NUM_MOTORS; i++){
@@ -266,10 +216,12 @@ int main()
 
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
-    //TODO Why this is needed here?
+    //Functionpointer of the running_state
     state->stateHandler=avalon_runningState;
     while(1)
     {
+      
+	uwmodem_process();
 	unsigned int curTime = time_getTimeInMs();
         //only call state processing every ms
 	if(curTime != lastStateTime)
@@ -282,17 +234,17 @@ int main()
 // 	    printf(".");
 	}
 	arc_packet_t packet;	
-        //TODO use arctoken driver instead of arc driver
-        /*
-        while(arc_getPacket(&packet))
-	{
-	    //process incomming packet
-            printf("incoming packet");
-	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
+	
+	while(arctoken_readPacket(&packet)){
+	  //Process packets
+	  printf("incoming packets");
+	  packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
 	}
-        arc_processPackets();*/
+	arctoken_processPacket();	  
+
         hbridge_process();
-        handle_underwater_modem();
+        
+	uwmodem_process();
     //Sending a Status packet
     if (status_loops >= STATUS_PACKET_PERIOD){
          sendStatusPacket();
