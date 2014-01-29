@@ -1,3 +1,5 @@
+#include "uwmodem.h"
+#include "avalon_can.h"
 #include "../common/mainboardstate.h"
 #include "../common/packethandling.h"
 #include "../common/arc_packet.h"
@@ -24,12 +26,6 @@
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
-//TODO use this definitions if needed (might be moved to ARC code?)
-#define STRAVE_FACTOR 9 
-#define SPEED_FACTOR 13
-#define DIVE_FACTOR 7 
-
-
 //USART2 = AMBER
 //USART3 = Ethernet/Serial
 //USART5 = Underwater Modem
@@ -37,12 +33,13 @@
 //TODO Where co configure motor commands and set them to the motors
 
 
-//TODO Possible wrong here ;)
-struct arc_asv_control_packet{
-    uint8_t quer_vorne;
-    uint8_t quer_hinten;
-    uint8_t motor_rechts;
-    uint8_t motor_links;	
+struct arc_avalon_control_packet{
+    uint8_t dive;
+    uint8_t strave;
+    uint8_t left;
+    uint8_t right;	
+    uint8_t pitch;	
+    uint8_t yaw;	
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 void sendStatusPacket(){
@@ -64,39 +61,53 @@ void sendStatusPacket(){
 
 
 int status_loops = 0;
-struct arc_asv_control_packet curCmd;
+uint8_t surface_sign_counter= 0;
+struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
-void asv_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    struct arc_asv_control_packet *cmd  = (struct arc_asv_control_packet *) data;
+void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    struct arc_avalon_control_packet *cmd  = (struct arc_avalon_control_packet *) data;
     curCmd = *cmd;
     cmdValid = 1;
 }
 
-//Rename and cleanup
-void asv_runningState(void){
-    //TODO Why timeout is removed?
-    //TODO Make FULL_Autonomous timeout configureable from OCU side
-
-    /*if(timeout_hasTimeout())
+void avalon_runningState(void){
+    if(timeout_hasTimeout())
     {
 	printf("Timout, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
-    }*/
+    }
     
     //check actuators
     if(hbridge_hasActuatorError())
     {
 	printf("Actuator error, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
+        return;
     }
+
     if (!cmdValid)
         return;
-}
+
+    //TODO mapping korrigieren
+    hbridge_setValues(
+            (curCmd.strave-127)*4, 
+            (curCmd.dive-127)*4, 
+            (curCmd.left-127)*4, 
+            (curCmd.right-127)*4,
+            PACKET_ID_SET_VALUE14);
+
+    hbridge_setValues(
+            (curCmd.pitch-127)*4, 
+            (curCmd.yaw-127)*4,
+            0,
+            0,
+            PACKET_ID_SET_VALUE58);
+};
 
 
 //TODO Add this function to be executed and adapt it to compile ;)
 //Don't forget to initialize the CANid and the USART
-bool handle_underwater_modem() {
+uint8_t handle_underwater_modem() {
   int seek, i;
   u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
 
@@ -124,9 +135,9 @@ bool handle_underwater_modem() {
 	    inputMessage.Data[i] = packet_buffer[i];
 	    if(packet_buffer[i] == SURFACE_SIGN){ //TODO Extend packed
                 if(++surface_sign_counter == SURFACE_SIGN_COUNT){
-        	    	print("diving up\n");
-        	    	wanted_system_state = SURFACE;
-        		control_timeout = 0;
+        	    	//print("diving up\n");
+                        //TODO IMPORTAND CHANGE STATE TO SURFACE
+        	    	//wanted_system_state = SURFACE;
                         surface_sign_counter=0;
                 }
 	    }else{
@@ -136,6 +147,8 @@ bool handle_underwater_modem() {
 	int counter=0;
 	
 
+        //TODO What's this:?
+        /*
 	while(CAN_Transmit(&inputMessage) == CAN_NO_MB) {
 	    counter++;
 	    if (counter > CAN_SEND_RETRIES) {
@@ -144,77 +157,28 @@ bool handle_underwater_modem() {
 		return 1; //flase
 	   }
 	}
+        */
     }
     UART5_GetData(packet_buffer, seek);
   }
   return 0; //true
 }
 
-//TODO Adapt this function too for passthrought modem messages to the PC
-//Don't forget to setup the Can message filter for match the needed ID's
-void processCANMsg(CanRXMsg *curMsg){
-    if((curMsg = CAN_GetNextData()) != 0) {
-    	if((curMsg->StdId) == 0x1E1){ //Modem Messages
-		UART5_SendData(curMsg->Data,curMsg->DLC);
-        }else if(curMsg->StdId == DEPTH_READER_ID){ //Depth Reader messages
-                const struct canData *data = (const struct canData *)(curMsg->Data);
-                //See depth_reader task for numeric explanation
-                int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
-                int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
-                int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
-                int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
-                cur_depth = (depth + 6550);
-	}else if(curMsg->StdId == 0x141){ //Can Telnet connection
-	        send_can_telnet_packet(curMsg->DLC,curMsg->Data);
-        }else if(curMsg->StdId == CAN_ID_BATTERY_OUTGOING_DATA){ //????????????????
-            uint8_t *pCombinedData = &combinedDataMessage[0];
-            bool* pGotFirstMessagePart = &gotFirstDataMessagePart;
-            bool* pGotCompleteMessage = &gotCompleteDataMessage;
-            int packetCount = DATA_MEASSAGE_PACKET_COUNT;
-
-            int i=0;
-            for(i=0;i<curMsg->DLC;i++){
-                (&pCombinedData[7*curMsg->Data[0]])[i] = (&curMsg->Data[1])[i];
-            }
-//            memcpy(&pCombinedData[7*curMsg->Data[0]], &curMsg->Data[1], curMsg->DLC);
-            if (curMsg->Data[0] == 0) {
-                *pGotFirstMessagePart = TRUE;
-            }
-            if (curMsg->Data[0] == packetCount-1 && *pGotFirstMessagePart) {
-                *pGotCompleteMessage = TRUE;
-            }
-            if (gotCompleteDataMessage){
-                gotFirstDataMessagePart = FALSE;
-                gotCompleteDataMessage = FALSE;
-                const BatteryMessage_t *batt = (BatteryMessage_t*)combinedDataMessage;
-                taken_battery_capacity = batt->takenCapacity;
-                voltage = batt->overallVoltage; //Does not work cucrently
-                //voltage = batt->cellVoltage1 + batt->cellVoltage2 + batt->cellVoltage3 + batt->cellVoltage4 + batt->cellVoltage5 + batt->cellVoltage6 + batt->cellVoltage7 + batt->cellVoltage8;
-                //voltage = batt->cellVoltage8;
-                //See communication.h from battery for additional information
-
-            }
-
-            
-        }else{
-		printf("Got Unknown ID: %lu\n",curMsg->StdId);
-		//TODO Add message for DEPTH Readings and other status messages
-	}
-    	CAN_MarkNextDataAsRead();
-
-    }
-}
-
 
 int main()
 {
-    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
+    Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
-    USART3_Init(USART_POLL);
+    USART1_Init(USART_POLL);
+    printf_setSendFunction(USART1_SendData);
 
-    printf_setSendFunction(USART3_SendData);
-    
-    USART1_Init(USART_USE_INTERRUPTS);
+    //ARC's
+    USART2_Init(USART_USE_INTERRUPTS);
+    USART3_Init(USART_USE_INTERRUPTS);
+
+    //Modem
+    USART5_Init(USART_USE_INTERRUPTS);
+    uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
     
     printf("The Maiboard is up with the version: ");
     
@@ -231,26 +195,33 @@ int main()
     can_protocolInit();
 
     //wait till rest got up
-    while(time_getTimeInMs() - lastStateTime < 30)
-        ;
+    while(time_getTimeInMs() - lastStateTime < 30);
+    protocol_init(1);
+    protocol_registerHandler(PACKET_ID_STATUS, &hbridgeStatusHandler);
+    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgeExtendedStatusHandler);
+    protocol_setRecvFunc(avaloncan_recvPacket);
     hbridge_init(NUM_MOTORS);
-    
-    for(unsigned int i = 0;i<NUM_MOTORS; i++){
+    unsigned int i; 
+    for(i = 0;i<NUM_MOTORS; i++){
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
     }
    
-    //TODO Add multiple ARC channels USART 2 and USART 3, don't forget the setup
-    arc_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
+    arc_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    arc_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+
     mbstate_init();
     packet_init();
 
-    packet_registerHandler(MB_CONTROL, asv_controlHandler);
+    packet_registerHandler(MB_CONTROL, avalon_controlHandler);
 
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
-    state->stateHandler=asv_runningState;
+    //Functionpointer of the running_state
+    state->stateHandler=avalon_runningState;
     while(1)
     {
+      
+	uwmodem_process();
 	unsigned int curTime = time_getTimeInMs();
         //only call state processing every ms
 	if(curTime != lastStateTime)
@@ -263,14 +234,17 @@ int main()
 // 	    printf(".");
 	}
 	arc_packet_t packet;	
-        while(arc_getPacket(&packet))
-	{
-	    //process incomming packet
-            printf("incoming packet");
-	    packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
+	
+	while(arctoken_readPacket(&packet)){
+	  //Process packets
+	  printf("incoming packets");
+	  packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
 	}
+	arctoken_processPacket();	  
+
         hbridge_process();
-        arc_processPackets();
+        
+	uwmodem_process();
     //Sending a Status packet
     if (status_loops >= STATUS_PACKET_PERIOD){
          sendStatusPacket();

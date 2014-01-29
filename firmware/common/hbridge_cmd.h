@@ -48,15 +48,13 @@ void hbridge_sendControllerConfiguration(enum hostIDs hbridgeId, struct setActiv
 /**
  * Sends a value to the 4 HBridges used in setValueData (see HBridge documentation)
  * values are interpretated as documented in HBridge-documentation, but this method sends them as they are
- * TODO!!!! get this out of this!
- * value1/2 * 9
- * value3/4 * 4
  * @param value1 
  * @param value2
  * @param value3
  * @param value4
  */
 void hbridge_setValue( int16_t value1, int16_t value2, int16_t value3, int16_t value4);
+void hbridge_setValues( int16_t value1, int16_t value2, int16_t value3, int16_t value4, enum HIGH_PRIORITY_IDs hbSet);
 
 /**
  * Clears a sensorerror of the given HBridge

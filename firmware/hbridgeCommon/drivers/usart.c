@@ -30,7 +30,9 @@ signed int USARTx_GetData(USART_TypeDef* USARTx, volatile struct USART_Data *usa
 void USART_IRQHandler(USART_TypeDef* USARTx, volatile struct USART_Data *data);
 
 volatile struct USART_Data USART1_Data;
+volatile struct USART_Data USART2_Data;
 volatile struct USART_Data USART3_Data;
+volatile struct USART_Data USART5_Data;
 
 void USART1_Init(enum USART_MODE mode)
 {
@@ -93,6 +95,128 @@ void USART1_Init(enum USART_MODE mode)
     USART_Cmd(USART1, ENABLE);
 }
 
+void USART2_Init(enum USART_MODE mode)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    assert_param(mode == USART_USE_INTERRUPTS || mode == USART_POLL);
+
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB1Periph_USART2, ENABLE);
+
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+    // Configure USART2 Tx (PA02 as alternate function push-pull
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    // Configure USART2 Rx (PA10) as input floating
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOA, &GPIO_InitStructure); 
+
+    USART2_Data.RxWritePointer = 0;
+    USART2_Data.RxReadPointer = 0;
+    
+    USART2_Data.TxWritePointer = 0;
+    USART2_Data.TxReadPointer = 0;
+    USART2_Data.usesInterrupts = mode == USART_USE_INTERRUPTS;
+
+    if(mode == USART_USE_INTERRUPTS)
+    {
+	NVIC_InitTypeDef NVIC_InitStructure;
+	
+	NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+    }
+
+    USART_InitTypeDef USART_InitStructure;
+
+    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    
+    /* Configure USART1 */
+    USART_Init(USART2, &USART_InitStructure);
+
+    /* Enable USART1 Receive and Transmit interrupts */
+    USART_ITConfig(USART2, USART_IT_RXNE, mode == USART_USE_INTERRUPTS);
+    USART_ITConfig(USART2, USART_IT_TXE, mode == USART_USE_INTERRUPTS);
+
+    /* Enable the USART1 */
+    USART_Cmd(USART2, ENABLE);
+}
+
+void USART5_Init(enum USART_MODE mode)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    assert_param(mode == USART_USE_INTERRUPTS || mode == USART_POLL);
+
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD |  RCC_APB2Periph_GPIOC | RCC_APB1Periph_UART5, ENABLE);
+
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+    // Configure USART2 Tx (PD02 as alternate function push-pull
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+    // Configure USART2 Rx (PC12) as input floating
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure); 
+
+    USART5_Data.RxWritePointer = 0;
+    USART5_Data.RxReadPointer = 0;
+    
+    USART5_Data.TxWritePointer = 0;
+    USART5_Data.TxReadPointer = 0;
+    USART5_Data.usesInterrupts = mode == USART_USE_INTERRUPTS;
+
+    if(mode == USART_USE_INTERRUPTS)
+    {
+	NVIC_InitTypeDef NVIC_InitStructure;
+	
+	//TODO WTF correct CPU?
+        //NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+    }
+
+    USART_InitTypeDef USART_InitStructure;
+
+    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+    USART_InitStructure.USART_Parity = USART_Parity_No;
+    USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+    
+    /* Configure USART5 */
+    USART_Init(UART5, &USART_InitStructure);
+
+    /* Enable USART5 Receive and Transmit interrupts */
+    USART_ITConfig(UART5, USART_IT_RXNE, mode == USART_USE_INTERRUPTS);
+    USART_ITConfig(UART5, USART_IT_TXE, mode == USART_USE_INTERRUPTS);
+
+    /* Enable the USART5 */
+    USART_Cmd(UART5, ENABLE);
+}
 
 void USART1_DeInit(void )
 {
@@ -220,10 +344,53 @@ signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_leng
   return USARTx_GetData(USART3, &USART3_Data, buffer, buffer_length);
 }
 
+signed int USART3_SeekData(unsigned char* buffer, const unsigned int buffer_length)
+{
+    return USARTx_SeekData(USART3, &USART3_Data, buffer, buffer_length);
+}
+
 void USART3_IRQHandler(void)
 { 
   USART_IRQHandler(USART3, &USART3_Data);
 }
+
+signed int USART2_SendData(const unsigned char *data, const unsigned int size) {
+  return USARTx_SendData(USART2, &USART2_Data, data, size);
+}
+
+signed int USART2_GetData (unsigned char *buffer, const unsigned int buffer_length) {
+  return USARTx_GetData(USART2, &USART2_Data, buffer, buffer_length);
+}
+
+void USART2_IRQHandler(void)
+{ 
+  USART_IRQHandler(USART2, &USART2_Data);
+}
+
+signed int USART2_SeekData(unsigned char* buffer, const unsigned int buffer_length)
+{
+    return USARTx_SeekData(USART2, &USART2_Data, buffer, buffer_length);
+}
+
+
+signed int UART5_SendData(const unsigned char *data, const unsigned int size) {
+  return USARTx_SendData(UART5, &USART5_Data, data, size);
+}
+
+signed int UART5_GetData (unsigned char *buffer, const unsigned int buffer_length) {
+  return USARTx_GetData(UART5, &USART5_Data, buffer, buffer_length);
+}
+
+void UART5_IRQHandler(void)
+{ 
+  USART_IRQHandler(UART5, &USART5_Data);
+}
+
+signed int UART5_SeekData(unsigned char* buffer, const unsigned int buffer_length)
+{
+    return USARTx_SeekData(UART5, &USART5_Data, buffer, buffer_length);
+}
+
 
 /**
  * returns the amount of bytes sent.

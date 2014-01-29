@@ -111,7 +111,6 @@ add_executable(main
     ${MB_COMMON_DIR}/timeout.c
     ${MB_COMMON_DIR}/time.c
     ${MB_COMMON_DIR}/arc_ringbuffer.c
-    ${MB_COMMON_DIR}/tokenhandling.c
     ${MB_COMMON_DIR}/packethandling.c
     ${MB_COMMON_DIR}/mainboardstate.c
 )
