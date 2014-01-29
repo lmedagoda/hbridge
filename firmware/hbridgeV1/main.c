@@ -50,7 +50,7 @@ enum hostIDs getOwnHostId() {
     gpioData |= (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) << 3);
 
     //get correct host id from gpio pins
-    id = gpioData +1;
+    id += gpioData;
     printf("Configured as H_BRIDGE_%hu\n", id);
 
     if(id > 8)
@@ -59,7 +59,7 @@ enum hostIDs getOwnHostId() {
 	//blink and do nothing
 	assert_failed((uint8_t *)__FILE__, __LINE__);
     }    
-    return (id << 5);
+    return id;
 }
 
 /*******************************************************************************
@@ -116,15 +116,6 @@ int main(void)
     can_protocolInit();
 
 
-    CanTxMsg msg; 
-    msg.StdId = id; 
-    msg.DLC = 3; 
-    int i; 
-    for(i=0; i < 3; i++){ 
-        msg.Data[i] = 0; 
-    } 
-    CAN_SendMessage(&msg);
-/*
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadrature;
@@ -147,7 +138,6 @@ int main(void)
     encoder.getTicks = getTicksADC;
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
-*/
 
     platformInit();
     
