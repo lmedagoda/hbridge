@@ -373,20 +373,20 @@ signed int USART2_SeekData(unsigned char* buffer, const unsigned int buffer_leng
 }
 
 
-signed int UART5_SendData(const unsigned char *data, const unsigned int size) {
+signed int USART5_SendData(const unsigned char *data, const unsigned int size) {
   return USARTx_SendData(UART5, &USART5_Data, data, size);
 }
 
-signed int UART5_GetData (unsigned char *buffer, const unsigned int buffer_length) {
+signed int USART5_GetData (unsigned char *buffer, const unsigned int buffer_length) {
   return USARTx_GetData(UART5, &USART5_Data, buffer, buffer_length);
 }
 
-void UART5_IRQHandler(void)
+void USART5_IRQHandler(void)
 { 
   USART_IRQHandler(UART5, &USART5_Data);
 }
 
-signed int UART5_SeekData(unsigned char* buffer, const unsigned int buffer_length)
+signed int USART5_SeekData(unsigned char* buffer, const unsigned int buffer_length)
 {
     return USARTx_SeekData(UART5, &USART5_Data, buffer, buffer_length);
 }

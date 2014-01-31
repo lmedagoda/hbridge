@@ -32,6 +32,11 @@
 //TODO Add CAN IDs to keep a easy overview
 //TODO Where co configure motor commands and set them to the motors
 
+int32_t cur_depth;
+void hbridgeStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+}
+void hbridgeExtendedStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+}
 
 struct arc_avalon_control_packet{
     uint8_t dive;
@@ -112,7 +117,7 @@ uint8_t handle_underwater_modem() {
   u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
 
   // look for a valid packet as long as enough bytes are left
-  while( (seek = UART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= 1 ) {
+  while( (seek = USART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= 1 ) {
 
     //seek =  UART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH);
     int size = seek;
@@ -159,7 +164,7 @@ uint8_t handle_underwater_modem() {
 	}
         */
     }
-    UART5_GetData(packet_buffer, seek);
+    USART5_GetData(packet_buffer, seek);
   }
   return 0; //true
 }
@@ -178,7 +183,7 @@ int main()
 
     //Modem
     USART5_Init(USART_USE_INTERRUPTS);
-    uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
+    ///uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
     
     printf("The Maiboard is up with the version: ");
     
@@ -206,13 +211,13 @@ int main()
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
     }
    
-    arc_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
-    arc_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    ///arc_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    ///arc_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
 
     mbstate_init();
-    packet_init();
+    ///packet_init();
 
-    packet_registerHandler(MB_CONTROL, avalon_controlHandler);
+    ///packet_registerHandler(MB_CONTROL, avalon_controlHandler);
 
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
@@ -221,7 +226,7 @@ int main()
     while(1)
     {
       
-	uwmodem_process();
+	///uwmodem_process();
 	unsigned int curTime = time_getTimeInMs();
         //only call state processing every ms
 	if(curTime != lastStateTime)
@@ -233,25 +238,25 @@ int main()
 	    
 // 	    printf(".");
 	}
-	arc_packet_t packet;	
+	///arc_packet_t packet;	
 	
-	while(arctoken_readPacket(&packet)){
+	///while(arctoken_readPacket(&packet)){
 	  //Process packets
-	  printf("incoming packets");
-	  packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
-	}
-	arctoken_processPacket();	  
+	 /// printf("incoming packets");
+	  ///packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
+	///}
+	///arctoken_processPackets();	  
 
         hbridge_process();
         
-	uwmodem_process();
+	///uwmodem_process();
     //Sending a Status packet
-    if (status_loops >= STATUS_PACKET_PERIOD){
-         sendStatusPacket();
-         status_loops = 0;
-     } else {
-         status_loops++;
-     }
+    ///if (status_loops >= STATUS_PACKET_PERIOD){
+    ///     sendStatusPacket();
+    ///     status_loops = 0;
+     ///} else {
+     ///    status_loops++;
+     ///}
     }
     return 0;
 }

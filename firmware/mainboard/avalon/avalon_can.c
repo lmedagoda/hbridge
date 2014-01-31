@@ -1,9 +1,22 @@
 #include "../../hbridgeCommon/protocol_can.h"
-#include "asv_can.h"
+#include "avalon_can.h"
+#include <protocol.h>
 
 #define DEPTH_READER_ID 131
 #define TELNET_ID 0x141
 #define CAN_ID_BATTERY_OUTGOING_DATA  
+extern cur_depth;
+typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+struct depthReader_canData {
+    unsigned externalPressure:16;
+    unsigned internalPressure:12;
+    unsigned initialInternalPressure:12;
+    unsigned temperature:12;
+    unsigned waterIngress1:1;
+    unsigned waterIngress2:1;
+    unsigned waterIngress3:1;
+    unsigned unused:5; //9
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 const int externalPressureRangeShift = 2048;
 
@@ -51,48 +64,18 @@ void avaloncan_handlePacket(CanRxMsg *msg){
 
 //TODO Adapt this function too for passthrought modem messages to the PC
 //Don't forget to setup the Can message filter for match the needed ID's
-void avaloncan_handlePacket(CanRXMsg *curMsg){
+void avaloncan_handlePacket(CanRxMsg *curMsg){
     if((curMsg = CAN_GetNextData()) != 0) {
     	if((curMsg->StdId) == 0x1E1){ //Modem Messages
-		uwmodem_SendData(curMsg->Data,curMsg->DLC);
+		uwmodem_sendData(curMsg->Data,curMsg->DLC);
         }else if(curMsg->StdId == DEPTH_READER_ID){ //Depth Reader messages
-                const struct canData *data = (const struct canData *)(curMsg->Data);
+                const struct depthReader_canData *data = (const struct canData *)(curMsg->Data);
                 //See depth_reader task for numeric explanation
                 int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
                 int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
                 int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
                 int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
                 cur_depth = (depth + 6550);
-        }else if(curMsg->StdId == CAN_ID_BATTERY_OUTGOING_DATA){ //????????????????
-            uint8_t *pCombinedData = &combinedDataMessage[0];
-            bool* pGotFirstMessagePart = &gotFirstDataMessagePart;
-            bool* pGotCompleteMessage = &gotCompleteDataMessage;
-            int packetCount = DATA_MEASSAGE_PACKET_COUNT;
-
-            int i=0;
-            for(i=0;i<curMsg->DLC;i++){
-                (&pCombinedData[7*curMsg->Data[0]])[i] = (&curMsg->Data[1])[i];
-            }
-//            memcpy(&pCombinedData[7*curMsg->Data[0]], &curMsg->Data[1], curMsg->DLC);
-            if (curMsg->Data[0] == 0) {
-                *pGotFirstMessagePart = TRUE;
-            }
-            if (curMsg->Data[0] == packetCount-1 && *pGotFirstMessagePart) {
-                *pGotCompleteMessage = TRUE;
-            }
-            if (gotCompleteDataMessage){
-                gotFirstDataMessagePart = FALSE;
-                gotCompleteDataMessage = FALSE;
-                const BatteryMessage_t *batt = (BatteryMessage_t*)combinedDataMessage;
-                taken_battery_capacity = batt->takenCapacity;
-                voltage = batt->overallVoltage; //Does not work cucrently
-                //voltage = batt->cellVoltage1 + batt->cellVoltage2 + batt->cellVoltage3 + batt->cellVoltage4 + batt->cellVoltage5 + batt->cellVoltage6 + batt->cellVoltage7 + batt->cellVoltage8;
-                //voltage = batt->cellVoltage8;
-                //See communication.h from battery for additional information
-
-            }
-
-            
         }else{
 		printf("Got Unknown ID: %lu\n",curMsg->StdId);
 		//TODO Add message for DEPTH Readings and other status messages
