@@ -31,7 +31,7 @@ uint32_t arc_readPacket(arc_packet_t * packet);
  */
 int arc_sendPacket(arc_packet_t *packet);
 
-void arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc);
+int arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc);
 
     
 /**

@@ -19,6 +19,14 @@
 
 #define STATUS_PACKET_PERIOD 200000 
 
+uint32_t lastStateTime;
+typedef struct {
+    ARC_SYSTEM_STATE current_state;
+    int32_t current_depth;
+    uint8_t water_ingress_front:1;
+    uint8_t water_ingress_back:1;
+    uint8_t has_timeout:1;
+} avalon_arc_status;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
@@ -76,7 +84,21 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
 }
 
 void avalon_runningState(void){
-    if(timeout_hasTimeout())
+    hbridge_setValues(
+            1000, 
+            1000, 
+            1000, 
+            1000,
+            PACKET_ID_SET_VALUE14);
+    hbridge_setValues(
+            1000, 
+            1000,
+            0,
+            0,
+            PACKET_ID_SET_VALUE58);
+
+
+    /*if(timeout_hasTimeout())
     {
 	printf("Timout, switching to off\n");
 	mbstate_changeState(MAINBOARD_OFF);
@@ -107,6 +129,7 @@ void avalon_runningState(void){
             0,
             0,
             PACKET_ID_SET_VALUE58);
+            */
 };
 
 
@@ -169,87 +192,102 @@ uint8_t handle_underwater_modem() {
   return 0; //true
 }
 
-
-int main()
-{
+void init(){
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
     USART1_Init(USART_POLL);
-    printf_setSendFunction(USART1_SendData);
 
     //ARC's
     USART2_Init(USART_USE_INTERRUPTS);
     USART3_Init(USART_USE_INTERRUPTS);
+    printf_setSendFunction(USART3_SendData);
 
     //Modem
     USART5_Init(USART_USE_INTERRUPTS);
-    ///uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
-    
-    printf("The Maiboard is up with the version: ");
+    uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
+
+    printf("The Maiboard is up with the version: 1.2 ");
     
     timeout_init(300000);
-
+    //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
     
-    CAN_Configuration(CAN_REMAP1);
+    CAN_Configuration(CAN_NO_REMAP);
     CAN_ConfigureFilters(0);
 
     startHardPeriodicThread(1000, time_msPassed);
-    uint32_t lastStateTime = time_getTimeInMs();
+    lastStateTime = time_getTimeInMs();
 
     can_protocolInit();
 
     //wait till rest got up
     while(time_getTimeInMs() - lastStateTime < 30);
+    //Hbridge Protocol
     protocol_init(1);
     protocol_registerHandler(PACKET_ID_STATUS, &hbridgeStatusHandler);
     protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgeExtendedStatusHandler);
+    //Register a own can Receive function to filter No-Hbridge-Packets out
     protocol_setRecvFunc(avaloncan_recvPacket);
+    
     hbridge_init(NUM_MOTORS);
     unsigned int i; 
+    struct actuatorConfig *ac;
+    struct sensorConfig *sc;
     for(i = 0;i<NUM_MOTORS; i++){
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
+        ac = getActuatorConfig(i);
+        ac->maxCurrent = 1000;
+        ac->maxCurrentCount = 200;
+        ac->pwmStepPerMs = 2;
+        sc = getSensorConfig(i);
+        sc->statusEveryMs = 100;
+        hbridge_configureSensors();
+
     }
-   
-    ///arc_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
-    ///arc_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    //ARC Init
+    //First ARC-Channel Amber 
+    arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    //Second ARC-Channel Ethernet
+    arctoken_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    
 
     mbstate_init();
-    ///packet_init();
+    packet_init();
+    //State handler wenn das MB Controlled 
+    packet_registerHandler(MB_CONTROL, avalon_controlHandler);
 
-    ///packet_registerHandler(MB_CONTROL, avalon_controlHandler);
-
-    ///Overload the state handler for running
+    //Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
-    //Functionpointer of the running_state
     state->stateHandler=avalon_runningState;
+
+}
+
+
+int main()
+{
+    init();
     while(1)
     {
-      
-	///uwmodem_process();
 	unsigned int curTime = time_getTimeInMs();
         //only call state processing every ms
 	if(curTime != lastStateTime)
 	{
 	    //process state handlers
 	    mbstate_processState();
+	    lastStateTime  = curTime;
+            //printf(".");
 	    
-	    lastStateTime = curTime;
-	    
-// 	    printf(".");
 	}
-	///arc_packet_t packet;	
+	arc_packet_t packet;	
 	
-	///while(arctoken_readPacket(&packet)){
+	while(arctoken_readPacket(&packet)){
 	  //Process packets
-	 /// printf("incoming packets");
-	  ///packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
-	///}
-	///arctoken_processPackets();	  
-
+	    printf("incoming packets");
+	packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
+	}
+	arctoken_processPackets();	  
         hbridge_process();
-        
-	///uwmodem_process();
+	uwmodem_process();
     //Sending a Status packet
     ///if (status_loops >= STATUS_PACKET_PERIOD){
     ///     sendStatusPacket();

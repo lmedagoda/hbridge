@@ -4,7 +4,7 @@
 #define SYSTEM_ID 2
 int stat_bad_packets = 0;
 
-unsigned int arc_num_serial_hanlder = 0;
+unsigned int arc_num_serial_handler = 0;
 unsigned int arc_current_serial_handler = 0;
 arc_send_func_t arc_sendFunc[5];
 arc_recv_func_t arc_recvFunc[5];
@@ -16,11 +16,15 @@ arc_seek_func_t arc_seekFunc[5];
 //void arc_receivePackets();
 //void arc_giveTokenBack();
 
-void arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
-    arc_sendFunc[arc_num_serial_hanlder] = sendFunc;
-    arc_recvFunc[arc_num_serial_hanlder] = recvFunc;
-    arc_seekFunc[arc_num_serial_hanlder] = seekFunc;
-    arc_num_serial_hanlder++;
+int arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
+    if (arc_num_serial_handler >= 5){
+        return 1;
+    }
+    arc_sendFunc[arc_num_serial_handler] = sendFunc;
+    arc_recvFunc[arc_num_serial_handler] = recvFunc;
+    arc_seekFunc[arc_num_serial_handler] = seekFunc;
+    arc_num_serial_handler++;
+    return 0;
 }
 
 
@@ -31,8 +35,7 @@ void arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_
     arc_recvFunc[0] = recvFunc;
     arc_seekFunc[0] = seekFunc;
     arc_current_serial_handler = 0;
-    arc_num_serial_hanlder = 1;
-    initTokenhandling();
+    arc_num_serial_handler = 1;
 }
 uint32_t arc_readPacket(arc_packet_t * packet) {
   // function will return 0 if no packet has been found
@@ -40,7 +43,7 @@ uint32_t arc_readPacket(arc_packet_t * packet) {
   int seek, i,channel;
   uint8_t packet_buffer[ARC_MAX_FRAME_LENGTH];
 
-  for(channel=0;channel<arc_num_serial_hanlder;channel++){
+  for(channel=0;channel<arc_num_serial_handler;channel++){
       // look for a valid packet as long as enough bytes are left
       while( (seek = arc_seekFunc[channel](packet_buffer, ARC_MAX_FRAME_LENGTH)) >= ARC_MIN_FRAME_LENGTH ) {
 
@@ -103,6 +106,7 @@ int arc_sendPacket(arc_packet_t *packet){
     }
     return ret;
 }
+
 uint32_t arc_sendPacketDirect(arc_packet_t* packet) 
 {
     int len = 0;

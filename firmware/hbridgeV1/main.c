@@ -115,7 +115,7 @@ int main(void)
     
     can_protocolInit();
 
-
+/*
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadrature;
@@ -138,7 +138,7 @@ int main(void)
     encoder.getTicks = getTicksADC;
     encoder.setTicksPerTurn = setTicksPerTurnADC;
     encoder_setImplementation(ANALOG_VOLTAGE, encoder);
-
+*/
     platformInit();
     
     run();

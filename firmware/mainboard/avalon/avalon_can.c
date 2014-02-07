@@ -66,7 +66,7 @@ void avaloncan_handlePacket(CanRxMsg *msg){
 //Don't forget to setup the Can message filter for match the needed ID's
 void avaloncan_handlePacket(CanRxMsg *curMsg){
     if((curMsg = CAN_GetNextData()) != 0) {
-    	if((curMsg->StdId) == 0x1E1){ //Modem Messages
+    	if((curMsg->StdId) == 0x500){ //Modem Messages
 		uwmodem_sendData(curMsg->Data,curMsg->DLC);
         }else if(curMsg->StdId == DEPTH_READER_ID){ //Depth Reader messages
                 const struct depthReader_canData *data = (const struct canData *)(curMsg->Data);

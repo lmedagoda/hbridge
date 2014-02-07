@@ -22,6 +22,9 @@ void arctoken_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_
     arc_init(sendFunc, recvFunc, seekFunc);
     initTokenhandling();
 }
+int arctoken_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
+    return arc_add_serial_handler(sendFunc, recvFunc, seekFunc);
+}
 
 void arctoken_setOwnSystemID(ARC_SYSTEM_ID sys_id){
     arc_system_id = sys_id;
