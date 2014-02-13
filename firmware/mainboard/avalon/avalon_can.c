@@ -2,7 +2,7 @@
 #include "avalon_can.h"
 #include <protocol.h>
 
-#define DEPTH_READER_ID 131
+#define DEPTH_READER_ID 0x440
 #define TELNET_ID 0x141
 #define CAN_ID_BATTERY_OUTGOING_DATA  
 extern cur_depth;
@@ -74,6 +74,22 @@ void avaloncan_handlePacket(CanRxMsg *curMsg){
                 int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
                 int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
                 int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
+                uint8_t water_ingress = 0;
+                if (data->waterIngress1){
+                    water_ingress = 1;
+                } 
+                if (data->waterIngress2){
+                    water_ingress = 1;
+                }
+                if (data->waterIngress3){
+                    water_ingress = 1;
+                }
+                if (water_ingress){
+                    printf("WATER INGRESS\n");
+                } else {
+                    printf("no water ingress\n");
+                }
+
                 int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
                 cur_depth = (depth + 6550);
         }else{
