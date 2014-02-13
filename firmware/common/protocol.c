@@ -87,10 +87,8 @@ void protocol_setAllowedSender(enum hostIDs allowed)
 
 void protocol_checkCallHandler(int senderId, int receiverId, int id, unsigned char* data, short unsigned int size)
 {
-    printf("Got a packet with SenderID: %i ReceiverID: %i and ID: %i\n", senderId, receiverId, id);
     if(receiverId == ownHostId || receiverId == RECEIVER_ID_ALL)
     {
-        printf("Got a packet to me\n");
 	if(id > PACKET_ID_TOTAL_COUNT)
 	{
 	    printf("Error, got packet with to big packet id\n");

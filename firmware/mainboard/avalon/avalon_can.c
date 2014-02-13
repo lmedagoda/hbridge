@@ -2,7 +2,8 @@
 #include "avalon_can.h"
 #include <protocol.h>
 
-#define DEPTH_READER_ID 0x440
+#define DEPTH_READER_FRONT 0x440
+#define DEPTH_READER_REAR 0x441
 #define TELNET_ID 0x141
 #define CAN_ID_BATTERY_OUTGOING_DATA  
 extern cur_depth;
@@ -65,38 +66,54 @@ void avaloncan_handlePacket(CanRxMsg *msg){
 //TODO Adapt this function too for passthrought modem messages to the PC
 //Don't forget to setup the Can message filter for match the needed ID's
 void avaloncan_handlePacket(CanRxMsg *curMsg){
-    if((curMsg = CAN_GetNextData()) != 0) {
-    	if((curMsg->StdId) == 0x500){ //Modem Messages
-		uwmodem_sendData(curMsg->Data,curMsg->DLC);
-        }else if(curMsg->StdId == DEPTH_READER_ID){ //Depth Reader messages
-                const struct depthReader_canData *data = (const struct canData *)(curMsg->Data);
-                //See depth_reader task for numeric explanation
-                int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
-                int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
-                int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
-                uint8_t water_ingress = 0;
-                if (data->waterIngress1){
-                    water_ingress = 1;
-                } 
-                if (data->waterIngress2){
-                    water_ingress = 1;
-                }
-                if (data->waterIngress3){
-                    water_ingress = 1;
-                }
-                if (water_ingress){
-                    printf("WATER INGRESS\n");
-                } else {
-                    printf("no water ingress\n");
-                }
+    if((curMsg->StdId) == 0x500){ //Modem Messages
+        uwmodem_sendData(curMsg->Data,curMsg->DLC);
+    }else if(curMsg->StdId == DEPTH_READER_FRONT){ //Depth Reader messages
+        const struct depthReader_canData *data = (const struct canData *)(curMsg->Data);
+        //See depth_reader task for numeric explanation
+        int32_t externalPress = (data->externalPressure - externalPressureRangeShift) *1600000 / 65536; //   / 65536.0 * 1600000;
+        int32_t internalPress = data->internalPressure * 152167 / 4096 + 10556;   //  / 4096.0  * 152166.666666667 + 10555.555555556; 
+        int32_t internalOffset = data->initialInternalPressure * 152167 / 4096 + 10556;  //  / 4096.0  * 152166.666666667 + 10555.555555556;
+        uint8_t water_ingress = 0;
+        if (data->waterIngress1){
+            water_ingress = 1;
+        } 
+        if (data->waterIngress2){
+            water_ingress = 1;
+        }
+        if (data->waterIngress3){
+            water_ingress = 1;
+        }
+        if (water_ingress){
+            printf("WATER INGRESS\n");
+        } else {
+            //printf("no water ingress\n");
+        }
 
-                int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
-                cur_depth = (depth + 6550);
-        }else{
-		printf("Got Unknown ID: %lu\n",curMsg->StdId);
-		//TODO Add message for DEPTH Readings and other status messages
-	}
-    	CAN_MarkNextDataAsRead();
-
+        int32_t depth = (externalPress - (internalOffset-internalPress)) * 655 / 10000; //Depth is positive here, sorry
+        cur_depth = (depth + 6550);
+    } else if (curMsg->StdId == DEPTH_READER_REAR){
+        const struct depthReader_canData *data = (const struct canData *)(curMsg->Data);
+        //See depth_reader task for numeric explanation
+        uint8_t water_ingress = 0;
+        if (data->waterIngress1){
+            water_ingress = 1;
+        } 
+        if (data->waterIngress2){
+            water_ingress = 1;
+        }
+        if (data->waterIngress3){
+            water_ingress = 1;
+        }
+        if (water_ingress){
+            printf("WATER INGRESS\n");
+        } else {
+            //printf("no water ingress\n");
+        }
     }
+    else{
+        printf("Got Unknown ID: %lu\n",curMsg->StdId);
+        //TODO Add message for DEPTH Readings and other status messages
+    }
+
 }

@@ -34,9 +34,9 @@ typedef struct {
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
-//USART2 = AMBER
-//USART3 = Ethernet/Serial
-//USART5 = Underwater Modem
+//USART? = AMBER
+//USART3 = Underwater Modem
+//USART? = Ethernet/Serial
 //TODO Add CAN IDs to keep a easy overview
 //TODO Where co configure motor commands and set them to the motors
 
@@ -84,15 +84,16 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
 }
 
 void avalon_runningState(void){
+    //printf("runs avalon\n");
     hbridge_setValues(
-            1000, 
-            1000, 
-            1000, 
-            1000,
+            0, 
+            0, 
+            0, 
+            0,
             PACKET_ID_SET_VALUE14);
     hbridge_setValues(
-            1000, 
-            1000,
+            0, 
+            0,
             0,
             0,
             PACKET_ID_SET_VALUE58);
@@ -196,15 +197,20 @@ void init(){
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
     USART1_Init(USART_POLL);
+    //USART3_Init(USART_POLL);
+    //USART1_Init(USART_USE_INTERRUPTS);
 
     //ARC's
     USART2_Init(USART_USE_INTERRUPTS);
     USART3_Init(USART_USE_INTERRUPTS);
-    printf_setSendFunction(USART3_SendData);
 
     //Modem
-    USART5_Init(USART_USE_INTERRUPTS);
-    uwmodem_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
+    USART5_Init(USART_POLL);
+    printf_setSendFunction(USART5_SendData);
+    //uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    //while (1){
+    //    printf(".");
+    //}
 
     printf("The Maiboard is up with the version: 1.2 ");
     
@@ -224,10 +230,10 @@ void init(){
     while(time_getTimeInMs() - lastStateTime < 30);
     //Hbridge Protocol
     protocol_init(1);
+    protocol_setRecvFunc(avaloncan_recvPacket);
     protocol_registerHandler(PACKET_ID_STATUS, &hbridgeStatusHandler);
     protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgeExtendedStatusHandler);
     //Register a own can Receive function to filter No-Hbridge-Packets out
-    protocol_setRecvFunc(avaloncan_recvPacket);
     
     hbridge_init(NUM_MOTORS);
     unsigned int i; 
@@ -246,9 +252,9 @@ void init(){
     }
     //ARC Init
     //First ARC-Channel Amber 
-    arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    ///arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
     //Second ARC-Channel Ethernet
-    arctoken_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    ///arctoken_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
     
 
     mbstate_init();
@@ -266,6 +272,7 @@ void init(){
 int main()
 {
     init();
+    //mbstate_changeState(MAINBOARD_RUNNING);
     while(1)
     {
 	unsigned int curTime = time_getTimeInMs();
@@ -280,14 +287,15 @@ int main()
 	}
 	arc_packet_t packet;	
 	
-	while(arctoken_readPacket(&packet)){
+	///while(arctoken_readPacket(&packet)){
 	  //Process packets
-	    printf("incoming packets");
-	packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
-	}
-	arctoken_processPackets();	  
+	///    printf("incoming packets");
+	///packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
+	///}
+	//arctoken_processPackets();	  
         hbridge_process();
-	uwmodem_process();
+
+	//uwmodem_process();
     //Sending a Status packet
     ///if (status_loops >= STATUS_PACKET_PERIOD){
     ///     sendStatusPacket();

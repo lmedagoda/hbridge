@@ -478,6 +478,7 @@ uint8_t hbridge_configureActuators()
 	printf("Error, motor drivers in unexpected state\n");
 	return 0;
     }
+    printf("actuators configured");
     
     return 1;
 }
