@@ -104,7 +104,9 @@ void USART2_Init(enum USART_MODE mode)
     //get default GPIO config
     GPIO_StructInit(&GPIO_InitStructure);
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA | RCC_APB1Periph_USART2, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA, ENABLE);
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
@@ -145,17 +147,19 @@ void USART2_Init(enum USART_MODE mode)
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
     
-    /* Configure USART1 */
+    /* Configure USART2 */
     USART_Init(USART2, &USART_InitStructure);
 
-    /* Enable USART1 Receive and Transmit interrupts */
+    /* Enable USART2 Receive and Transmit interrupts */
     USART_ITConfig(USART2, USART_IT_RXNE, mode == USART_USE_INTERRUPTS);
     USART_ITConfig(USART2, USART_IT_TXE, mode == USART_USE_INTERRUPTS);
 
     /* Enable the USART1 */
     USART_Cmd(USART2, ENABLE);
 }
-
+//There are still other CPUs, they have a UART5.
+//But we use only this CPU today
+#ifdef STM32F10X_HD
 void USART5_Init(enum USART_MODE mode)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -165,18 +169,19 @@ void USART5_Init(enum USART_MODE mode)
     //get default GPIO config
     GPIO_StructInit(&GPIO_InitStructure);
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD |  RCC_APB2Periph_GPIOC | RCC_APB1Periph_UART5, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOD |  RCC_APB2Periph_GPIOC, ENABLE);
 
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     // Configure USART2 Tx (PD02 as alternate function push-pull
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
 
     // Configure USART2 Rx (PC12) as input floating
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_Init(GPIOC, &GPIO_InitStructure); 
 
     USART5_Data.RxWritePointer = 0;
@@ -191,7 +196,7 @@ void USART5_Init(enum USART_MODE mode)
 	NVIC_InitTypeDef NVIC_InitStructure;
 	
 	//TODO WTF correct CPU?
-        //NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+        NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -217,6 +222,8 @@ void USART5_Init(enum USART_MODE mode)
     /* Enable the USART5 */
     USART_Cmd(UART5, ENABLE);
 }
+#endif //STM32F10X_HD
+
 
 void USART1_DeInit(void )
 {

@@ -72,8 +72,10 @@ void USART2_Init(enum USART_MODE mode);
 signed int USART2_SendData(const unsigned char *data, const unsigned int size);
 signed int USART2_GetData (unsigned char *buffer, const unsigned int buffer_length);
 signed int USART2_SeekData (unsigned char *buffer, const unsigned int buffer_length);
-
+#ifdef STM32F10X_HD
 void USART5_Init(enum USART_MODE mode);
+#endif 
+
 //void UART5_DeInit(void); //Not implemented so far
 signed int USART5_SendData(const unsigned char *data, const unsigned int size);
 signed int USART5_GetData (unsigned char *buffer, const unsigned int buffer_length);
