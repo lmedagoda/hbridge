@@ -32,7 +32,7 @@ set(MB_COMMON_DIR ${STM32_SOURCE_DIR}/../common)
 set(ROCK_COMMON_DIR ${AUTOPROJ_CURRENT_ROOT}/install/include)
 
 #compile asm files with gcc
-set_source_files_properties(${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s PROPERTIES LANGUAGE C)
+set_source_files_properties(${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_hd.s PROPERTIES LANGUAGE C)
 set_source_files_properties(core_cm3.c PROPERTIES LANGUAGE C)
 
 set(CMAKE_EXE_LINKER_FLAGS "-T ${STM32_SOURCE_DIR}/stm_h103_rom.ld -nostartfiles")
@@ -41,7 +41,7 @@ add_definitions(
     -Wall
     -mcpu=cortex-m3 -mthumb -Wall -fno-unwind-tables -fno-common -fno-builtin-printf
     -O3 -ggdb
-    -D STM32F10X_MD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
+    -D STM32F10X_HD -D USE_STDPERIPH_DRIVER -D HSE_VALUE=16000000  
 )
 
 
@@ -68,7 +68,7 @@ add_executable(main
     avalon_can.c
     ${STM32_COMMON_DIR}/system_clock.c
     ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
-    ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s
+    ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_hd.s
     ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/misc.c
     ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_adc.c
     ${STM32_COMMON_DIR}/lib/STM32F10x_StdPeriph_Driver/src/stm32f10x_dma.c
