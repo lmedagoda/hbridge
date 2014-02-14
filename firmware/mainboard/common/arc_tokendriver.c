@@ -69,6 +69,7 @@ void arctoken_receivePackets(){
     arc_packet_t packet;
     int32_t result;
     while ((result = arc_readPacket(&packet)) != 0){
+        printf("Read a ARC PACKET\n");
         if (result<0){
             printf("Got an error by reading Packets\n");
             break;
