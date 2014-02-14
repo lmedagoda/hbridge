@@ -81,7 +81,7 @@ void arctoken_receivePackets(){
                         printf("receive buffer overflowed some pakets may not received\n");
                     }
                 } else {
-                    printf("packet to other system %i\n", packet.system_id);
+                    //printf("packet to other system %i\n", packet.system_id);
                 }
                 //handlePacket(&packet);
         }
