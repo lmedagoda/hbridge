@@ -17,16 +17,24 @@
 #include "../../hbridgeCommon/drivers/printf.h"
 #include <stddef.h>
 
-#define STATUS_PACKET_PERIOD 200000 
+#define STATUS_PACKET_PERIOD_MS 500 
+enum ChangeReason {
+    CR_INITIAL,
+    CR_MB_TIMEOUT,
+    CR_HB_ERROR,
+    CR_LEGAL,
+    CR_EMERGENCY
+}; 
 
 uint32_t lastStateTime;
 typedef struct {
     ARC_SYSTEM_STATE current_state;
+    ARC_SYSTEM_STATE wanted_state;
     int32_t current_depth;
     uint8_t water_ingress_front:1;
     uint8_t water_ingress_back:1;
-    uint8_t has_timeout:1;
-} avalon_arc_status;
+    enum ChangeReason change_reason; 
+} avalon_arc_status_t;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
@@ -56,7 +64,7 @@ struct arc_avalon_control_packet{
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 void sendStatusPacket(){
-    arc_status_packet_t status_information;
+    avalon_arc_status_t status_information;
     status_information.current_state = (ARC_SYSTEM_STATE)mbstate_getCurrentState();
     status_information.wanted_state = (ARC_SYSTEM_STATE)mbstate_getCurrentState();
     arc_packet_t packet;
@@ -100,97 +108,97 @@ void avalon_runningState(void){
 
 
     /*if(timeout_hasTimeout())
-    {
-	printf("Timout, switching to off\n");
-	mbstate_changeState(MAINBOARD_OFF);
-    }
-    
+      {
+      printf("Timout, switching to off\n");
+      mbstate_changeState(MAINBOARD_OFF);
+      }
+
     //check actuators
     if(hbridge_hasActuatorError())
     {
-	printf("Actuator error, switching to off\n");
-	mbstate_changeState(MAINBOARD_OFF);
-        return;
+    printf("Actuator error, switching to off\n");
+    mbstate_changeState(MAINBOARD_OFF);
+    return;
     }
 
     if (!cmdValid)
-        return;
+    return;
 
     //TODO mapping korrigieren
     hbridge_setValues(
-            (curCmd.strave-127)*4, 
-            (curCmd.dive-127)*4, 
-            (curCmd.left-127)*4, 
-            (curCmd.right-127)*4,
-            PACKET_ID_SET_VALUE14);
+    (curCmd.strave-127)*4, 
+    (curCmd.dive-127)*4, 
+    (curCmd.left-127)*4, 
+    (curCmd.right-127)*4,
+    PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
-            (curCmd.pitch-127)*4, 
-            (curCmd.yaw-127)*4,
-            0,
-            0,
-            PACKET_ID_SET_VALUE58);
-            */
+    (curCmd.pitch-127)*4, 
+    (curCmd.yaw-127)*4,
+    0,
+    0,
+    PACKET_ID_SET_VALUE58);
+    */
 };
 
 
 //TODO Add this function to be executed and adapt it to compile ;)
 //Don't forget to initialize the CANid and the USART
 uint8_t handle_underwater_modem() {
-  int seek, i;
-  u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
+    int seek, i;
+    u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
 
-  // look for a valid packet as long as enough bytes are left
-  while( (seek = USART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= 1 ) {
+    // look for a valid packet as long as enough bytes are left
+    while( (seek = USART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= 1 ) {
 
-    //seek =  UART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH);
-    int size = seek;
-    while( size > 0 ) {
-	int fragment_size = 8;
+        //seek =  UART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH);
+        int size = seek;
+        while( size > 0 ) {
+            int fragment_size = 8;
 
-	if(size < 8)
-	  fragment_size = size;
+            if(size < 8)
+                fragment_size = size;
 
-	printf("Readed %hi bytes\r\n",seek);
-	CanTxMsg inputMessage;
-	inputMessage.StdId=0x1E0; //TODO Hardcoded Modem value
-	inputMessage.RTR=CAN_RTR_DATA;
-	inputMessage.IDE=CAN_ID_STD;
-	inputMessage.DLC= fragment_size;
-	
-	size -= fragment_size;
+            printf("Readed %hi bytes\r\n",seek);
+            CanTxMsg inputMessage;
+            inputMessage.StdId=0x1E0; //TODO Hardcoded Modem value
+            inputMessage.RTR=CAN_RTR_DATA;
+            inputMessage.IDE=CAN_ID_STD;
+            inputMessage.DLC= fragment_size;
 
-	for(i=0;i<fragment_size;i++) {
-	    inputMessage.Data[i] = packet_buffer[i];
-	    if(packet_buffer[i] == SURFACE_SIGN){ //TODO Extend packed
-                if(++surface_sign_counter == SURFACE_SIGN_COUNT){
-        	    	//print("diving up\n");
+            size -= fragment_size;
+
+            for(i=0;i<fragment_size;i++) {
+                inputMessage.Data[i] = packet_buffer[i];
+                if(packet_buffer[i] == SURFACE_SIGN){ //TODO Extend packed
+                    if(++surface_sign_counter == SURFACE_SIGN_COUNT){
+                        //print("diving up\n");
                         //TODO IMPORTAND CHANGE STATE TO SURFACE
-        	    	//wanted_system_state = SURFACE;
+                        //wanted_system_state = SURFACE;
                         surface_sign_counter=0;
+                    }
+                }else{
+                    surface_sign_counter=0;
                 }
-	    }else{
-                surface_sign_counter=0;
             }
-	}
-	int counter=0;
-	
+            int counter=0;
 
-        //TODO What's this:?
-        /*
-	while(CAN_Transmit(&inputMessage) == CAN_NO_MB) {
-	    counter++;
-	    if (counter > CAN_SEND_RETRIES) {
-    		UART5_GetData(packet_buffer, size);
-	    	printf("Giving up %hi\r\n",counter);
-		return 1; //flase
-	   }
-	}
-        */
+
+            //TODO What's this:?
+            /*
+               while(CAN_Transmit(&inputMessage) == CAN_NO_MB) {
+               counter++;
+               if (counter > CAN_SEND_RETRIES) {
+               UART5_GetData(packet_buffer, size);
+               printf("Giving up %hi\r\n",counter);
+               return 1; //flase
+               }
+               }
+               */
+        }
+        USART5_GetData(packet_buffer, seek);
     }
-    USART5_GetData(packet_buffer, seek);
-  }
-  return 0; //true
+    return 0; //true
 }
 
 void init(){
@@ -213,11 +221,11 @@ void init(){
     //}
 
     printf("The Maiboard is up with the version: 1.2 ");
-    
+
     timeout_init(300000);
     //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
-    
+
     CAN_Configuration(CAN_NO_REMAP);
     CAN_ConfigureFilters(0);
 
@@ -234,7 +242,7 @@ void init(){
     protocol_registerHandler(PACKET_ID_STATUS, &hbridgeStatusHandler);
     protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, &hbridgeExtendedStatusHandler);
     //Register a own can Receive function to filter No-Hbridge-Packets out
-    
+
     hbridge_init(NUM_MOTORS);
     unsigned int i; 
     struct actuatorConfig *ac;
@@ -248,14 +256,13 @@ void init(){
         sc = getSensorConfig(i);
         sc->statusEveryMs = 100;
         hbridge_configureSensors();
-
     }
     //ARC Init
     //First ARC-Channel Amber 
-    ///arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
     //Second ARC-Channel Ethernet
-    ///arctoken_add_serial_handler(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
-    
+    ///arctoken_add_serial_handler(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
+
 
     mbstate_init();
     packet_init();
@@ -275,34 +282,34 @@ int main()
     //mbstate_changeState(MAINBOARD_RUNNING);
     while(1)
     {
-	unsigned int curTime = time_getTimeInMs();
+        unsigned int curTime = time_getTimeInMs();
         //only call state processing every ms
-	if(curTime != lastStateTime)
-	{
-	    //process state handlers
-	    mbstate_processState();
-	    lastStateTime  = curTime;
+        if(curTime != lastStateTime)
+        {
+            //process state handlers
+            mbstate_processState();
+            lastStateTime  = curTime;
+            if (status_loops >= STATUS_PACKET_PERIOD_MS){
+                sendStatusPacket();
+                status_loops = 0;
+            } else {
+                status_loops++;
+            }   
             //printf(".");
-	    
-	}
-	arc_packet_t packet;	
-	
-	///while(arctoken_readPacket(&packet)){
-	  //Process packets
-	///    printf("incoming packets");
-	///packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
-	///}
-	//arctoken_processPackets();	  
+
+        }
+        arc_packet_t packet;	
+
+        while(arctoken_readPacket(&packet)){
+            //Process packets
+            printf("incoming packets");
+            packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
+        }
+        arctoken_processPackets();	  
         hbridge_process();
 
-	//uwmodem_process();
-    //Sending a Status packet
-    ///if (status_loops >= STATUS_PACKET_PERIOD){
-    ///     sendStatusPacket();
-    ///     status_loops = 0;
-     ///} else {
-     ///    status_loops++;
-     ///}
+        //uwmodem_process();
+        //Sending a Status packet
     }
     return 0;
 }

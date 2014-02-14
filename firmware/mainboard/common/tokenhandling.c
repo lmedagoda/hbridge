@@ -53,12 +53,15 @@ uint8_t giveTokenHandler(arc_packet_t* packet){
         }
         //still unregistered
         if (amber_state == AMBER_UNREGISTERED){
+            printf("waiting for registerchance\n");
             if (packet->system_id == REGISTER_CHANCE){
+                printf("There is an Register Chance\n");
                 if (random_register == 0){
                     arctoken_sendProtocolPacket(MB_REGISTER);
                     printf("Tried register with ID %i\n", arctoken_getOwnSystemID()); 
                     //TODO random_register zufaellig setzen
                 } else {
+                    printf("But i am not allowed to register because collision\n");
                     random_register--;
                 }
             } 
