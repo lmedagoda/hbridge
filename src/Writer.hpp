@@ -4,6 +4,7 @@
 #include <vector>
 #include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
+#include <base/JointState.hpp>
 
 namespace hbridge
 {
@@ -110,7 +111,7 @@ public:
      * of the previous registered Controllers
      * with the correct id.
      * */
-    void setActiveController(DRIVE_MODE id);
+    void setActiveController(base::JointState::MODE id);
     
     /**
      * Return the active controller

@@ -259,19 +259,19 @@ void Writer::registerForMsg(PacketReceiver* receiver, int packetId)
     msgHandlers[packetId] = receiver;
 }
 
-void Writer::setActiveController(DRIVE_MODE id)
+void Writer::setActiveController(base::JointState::MODE id)
 {	
     firmware::controllerModes modeIntern;
 
     switch(id)
     {
-	case base::actuators::DM_PWM:
+        case base::JointState::RAW:
 	    modeIntern = firmware::CONTROLLER_MODE_PWM;
 	    break;
-	case base::actuators::DM_SPEED:
+        case base::JointState::SPEED:
 	    modeIntern = firmware::CONTROLLER_MODE_SPEED;
 	    break;
-	case base::actuators::DM_POSITION:
+        case base::JointState::POSITION:
 	    modeIntern = firmware::CONTROLLER_MODE_POSITION;
 	    break;
 	default:

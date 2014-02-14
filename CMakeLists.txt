@@ -22,10 +22,10 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/hbridge.pc DESTINATION lib/pkgconfig)
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR})
 
-add_subdirectory(firmware/stubs)
-add_subdirectory(firmware/mainboard/stubs)
+#add_subdirectory(firmware/stubs)
+#add_subdirectory(firmware/mainboard/stubs)
 
 add_subdirectory(src)
 
-add_subdirectory(test)
+#add_subdirectory(test)
 
