@@ -22,6 +22,7 @@ void packet_statusHandler(int senderId, int receiverId, int id, unsigned char *d
 
 void packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
+    printf("Got a Set State\n");
     timeout_reset();
 //     assert(sizeof(enum MAINBOARDSTATE) == size);
     
@@ -64,6 +65,7 @@ void packet_canSendData(struct canMsg *inMsg, unsigned short size)
 void packet_canHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     timeout_reset();
+    printf("got a can packet\n");
     
     packet_canSendData((struct canMsg *) data, size);
 }

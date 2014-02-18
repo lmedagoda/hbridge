@@ -50,74 +50,105 @@ void sendStatusPacket(){
     packet.originator = SLAVE;
     packet.system_id = SYSTEM_ID;
     packet.packet_id = MB_STATUS;
-    packet.length = sizeof(arc_status_packet_t);
+    packet.length = sizeof(avalon_status_t);
     int i;
-    for (i=0; i<sizeof(arc_status_packet_t); i++){
+    for (i=0; i<sizeof(avalon_status_t); i++){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
     //printf("send status packet\n");
     arc_sendPacket(&packet);
 }
 
+void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    timeout_reset();
+    struct canMsg *inMsg = (struct canMsg*) data;
+    const uint8_t payloadSize = size-2;
+    CanTxMsg msg;
+    msg.StdId = data[0];
+    msg.StdId = (msg.StdId << 3) | (data[1]>>5);
+    msg.RTR=CAN_RTR_DATA;
+    msg.IDE=CAN_ID_STD;
 
+    printf("Got A Can Passhrough and send it out with id %i\n", msg.StdId);
+    printf("ARC letzten Byte %i", data[9]);
+    msg.DLC = payloadSize;
+    int i;
+    //copy down data as first two are CAN id and index
+    for(i=0; i < payloadSize; i++) {
+	msg.Data[i] = inMsg->data[i];
+    }
+    printf("CAN letztes Byte %i, %i, %i", msg.Data[7], inMsg->data[7], msg.DLC);
+    //Simulates receiving self send can messages
+    //asvcan_handlePacket(&msg);
+    //Real sending of the Can Package
+    CAN_SendMessage(&msg);
+
+}
 int status_loops = 0;
 uint8_t surface_sign_counter= 0;
 struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
 void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    printf("control packet\n");
     struct arc_avalon_control_packet *cmd  = (struct arc_avalon_control_packet *) data;
+
     curCmd = *cmd;
     cmdValid = 1;
 }
 
 void avalon_runningState(void){
     //printf("runs avalon\n");
-    hbridge_setValues(
-            0, 
-            0, 
-            0, 
-            0,
-            PACKET_ID_SET_VALUE14);
-    hbridge_setValues(
-            0, 
-            0,
-            0,
-            0,
-            PACKET_ID_SET_VALUE58);
-
 
     /*if(timeout_hasTimeout())
       {
       printf("Timout, switching to off\n");
       mbstate_changeState(MAINBOARD_OFF);
+        curent_status.change_reason = CR_MB_TIMEOUT;
       }
 
     //check actuators
-    if(hbridge_hasActuatorError())
+    */
+    /*if(hbridge_hasActuatorError())
     {
-    printf("Actuator error, switching to off\n");
-    mbstate_changeState(MAINBOARD_OFF);
-    return;
+        printf("Actuator error, switching to off\n");
+        mbstate_changeState(MAINBOARD_OFF);
+        current_status.change_reason = CR_HB_ERROR;
+        return;
     }
 
     if (!cmdValid)
-    return;
+        return;
+        */
 
     //TODO mapping korrigieren
-    hbridge_setValues(
-    (curCmd.strave-127)*4, 
-    (curCmd.dive-127)*4, 
-    (curCmd.left-127)*4, 
-    (curCmd.right-127)*4,
-    PACKET_ID_SET_VALUE14);
+
+/*    hbridge_setValues(
+            0, 
+            0, 
+            0, 
+            0,
+            PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
-    (curCmd.pitch-127)*4, 
-    (curCmd.yaw-127)*4,
-    0,
-    0,
-    PACKET_ID_SET_VALUE58);
-    */
+            0, 
+            0,
+            0,
+            0,
+            PACKET_ID_SET_VALUE58);*/
+    printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*4, (curCmd.dive-127)*4, (curCmd.left-127)*4, (curCmd.right-127)*4, (curCmd.pitch-127)*4, (curCmd.yaw-127)*4);
+    hbridge_setValues(
+            500, 
+            500, 
+            0, 
+            0,
+            PACKET_ID_SET_VALUE14);
+
+    hbridge_setValues(
+            500,
+            500,
+            0,
+            0,
+            PACKET_ID_SET_VALUE58);
 };
 
 
@@ -213,6 +244,13 @@ void init(){
 
     can_protocolInit();
 
+    current_status.current_state = (ARC_SYSTEM_STATE)mbstate_getCurrentState();
+    current_status.wanted_state = OFF;
+    current_status.current_depth = 0;
+    current_status.water_ingress_front = 0;
+    current_status.water_ingress_back = 0;
+    current_status.change_reason = CR_INITIAL;
+
     //wait till rest got up
     while(time_getTimeInMs() - lastStateTime < 30);
     //Hbridge Protocol
@@ -229,9 +267,15 @@ void init(){
     for(i = 0;i<NUM_MOTORS; i++){
         hbridge_setControllerWithData(i, CONTROLLER_MODE_PWM, 0, NULL, 0);
         ac = getActuatorConfig(i);
-        ac->maxCurrent = 1000;
+        ac->openCircuit = 1;
+        ac->maxCurrent = 3000;
         ac->maxCurrentCount = 200;
-        ac->pwmStepPerMs = 2;
+        ac->maxMotorTemp = 200;
+        ac->maxMotorTempCount = 50;
+        ac->maxBoardTemp = 60;
+        ac->maxBoardTempCount = 50;
+        ac->pwmStepPerMs = 20;
+        ac->timeout = 32000;
         sc = getSensorConfig(i);
         sc->statusEveryMs = 100;
         hbridge_configureSensors();
@@ -239,6 +283,7 @@ void init(){
     //ARC Init
     //First ARC-Channel Amber 
     arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
+    arctoken_setOwnSystemID(AVALON);
     //Second ARC-Channel Ethernet
     ///arctoken_add_serial_handler(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
 
@@ -247,6 +292,7 @@ void init(){
     packet_init();
     //State handler wenn das MB Controlled 
     packet_registerHandler(MB_CONTROL, avalon_controlHandler);
+    packet_registerHandler(MB_ID_CAN, avalon_packet_canHandler);
 
     //Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
@@ -281,7 +327,6 @@ int main()
 
         while(arctoken_readPacket(&packet)){
             //Process packets
-            printf("incoming packets");
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
         }
         arctoken_processPackets();	  

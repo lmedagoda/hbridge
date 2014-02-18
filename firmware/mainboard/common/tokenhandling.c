@@ -72,7 +72,7 @@ uint8_t giveTokenHandler(arc_packet_t* packet){
                 amber_state = AMBER_REGISTERED; 
                 printf("GOT THE FIRST TOKEN; NOW REGISTERED\n");
             }
-            printf("Got a token to me\n");
+            //printf("Got a token to me %i\n", packet->system_id);
             given_tokens = 0;
             has_token = TRUE;
         }

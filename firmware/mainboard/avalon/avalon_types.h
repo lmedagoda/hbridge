@@ -14,8 +14,9 @@ typedef struct {
     int32_t current_depth;
     uint8_t water_ingress_front:1;
     uint8_t water_ingress_back:1;
-    enum ChangeReason change_reason; 
-} avalon_status_t;
+    enum ChangeReason change_reason:3; 
+} __attribute__ ((packed)) __attribute__((__may_alias__)) avalon_status_t;
+
 struct arc_avalon_control_packet{
     uint8_t dive;
     uint8_t strave;

@@ -54,14 +54,14 @@ uint32_t arc_readPacket(arc_packet_t * packet) {
           if (result < 0) {
               // debug: print out content of buffer   
               if (seek >= ARC_MIN_FRAME_LENGTH) {
-                  printf("bad packet: ");
+                  //printf("bad packet: ");
                   for (i = 0; i < seek; i++) {
                       int x = packet_buffer[i];
-                      printf("%d ", x);
+                      //printf("%d ", x);
                   }
-                  printf(" skipping:%d \n", -result);
+                  //printf(" skipping:%d \n", -result);
               } else {
-                  printf("got bad packet for seek %d. This shouldn't happen.", seek);
+                  //printf("got bad packet for seek %d. This shouldn't happen.", seek);
               }
               
               if( arc_recvFunc[channel](packet_buffer, -result) != -result )
