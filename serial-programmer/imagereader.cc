@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <libelf.h>
+//#include <libelf.h>
 #include <stdlib.h>
 #include "imagereader.hh"
 #include "ioerror.hh"

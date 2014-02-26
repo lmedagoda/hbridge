@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE(static_tests) {
     std::cout << "Testing packet building" << std::endl;
 
     canbus::Message dmmsg = hbd.setDriveMode(hbridge::BOARDS_14, base::actuators::DM_SPEED);
-    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
+//     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_MODE14, dmData, dmDataSize, dmmsg));
 
     for (int i = 0; i < 4; ++i)
     {
@@ -173,8 +173,8 @@ BOOST_AUTO_TEST_CASE(static_tests) {
         BOOST_CHECK(checkMessage(i + 1, firmware::PACKET_ID_SET_PID_SPEED, pidData, pidDataSize, pidmsg));
     }
 
-    canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
-    BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE14, value1Data, valueDataSize, msg));
+//     canbus::Message msg = hbd.setTargetValues(hbridge::BOARDS_14, 20, 0, 0, 0);
+//     BOOST_CHECK(checkMessage(0, firmware::PACKET_ID_SET_VALUE14, value1Data, valueDataSize, msg));
 
 
 
@@ -221,17 +221,15 @@ BOOST_AUTO_TEST_CASE(configure_encoder_clear_Error) {
     canbus::Message msg;
 
     std::cout << "Configuring Encoders " << (hbridge_id +1) << std::endl;
-    hbridge::EncoderConfiguration encConfInt;
-    hbridge::EncoderConfiguration encConfExt;
-    encConfInt.tickDivider = 4;
-    encConfInt.ticksPerTurn = ticksPerTurnIntern * 4;
-
-    encConfExt.tickDivider = 1;
-    encConfExt.ticksPerTurn = ticksPerTurnExtern;
+    hbridge::EncoderConfiguration encConfInt(ticksPerTurnIntern * 4, hbridge::ENCODER_QUADRATURE);
+    hbridge::EncoderConfiguration encConfExt(ticksPerTurnExtern, hbridge::ENCODER_QUADRATURE_WITH_ZERO);
     
-    canbus::Message encConfMsg = hbd.setEncoderConfiguration(hbridge_id, encConfInt, encConfExt);
+    canbus::Message encConfMsg = hbd.setInternalEncoderConfiguration(hbridge_id, encConfInt);
     driver->write(encConfMsg);
 
+    encConfMsg = hbd.setExternalEncoderConfiguration(hbridge_id, encConfExt);
+    driver->write(encConfMsg);
+    
     //now reconfigure
     hbridge::Configuration config = getDefaultConfig();
     hbridge::MessagePair config_msgs;
@@ -333,7 +331,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	if(gotmsg) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
-	    if(abs(state.position - posInternStart) > ticksPerTurnIntern / 2) {
+	    if((uint) abs(state.position - posInternStart) > ticksPerTurnIntern / 2) {
 		if(speed < 0)
 		    break;
 		posInternStart = state.position;
@@ -366,7 +364,7 @@ BOOST_AUTO_TEST_CASE(internal_encoder_test) {
 	if(gotmsg) {
 	    hbridge::BoardState state = hbd.getState(hbridge_id);
 	    std::cout << "\r Encoder Pos is " << state.position << "    Externen Enc is " << state.positionExtern << "          ";
-	    if(abs(state.positionExtern - posExternStart) > ticksPerTurnExtern / 2) {
+	    if((uint) abs(state.positionExtern - posExternStart) > ticksPerTurnExtern / 2) {
 		if(speed < 0)
 		    break;
 		posExternStart = state.positionExtern;

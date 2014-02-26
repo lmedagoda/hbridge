@@ -1,2 +1,9 @@
 build/
 *-autobuild-stamp
+*~
+*.o
+Makefile
+CMakeFiles
+CMakeCache.txt
+nbproject
+cmake_install.cmake
