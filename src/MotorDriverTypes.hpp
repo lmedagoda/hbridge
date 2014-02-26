@@ -21,6 +21,7 @@ namespace hbridge
     
     struct ActuatorConfiguration
     {
+        std::string name;
 	unsigned short maxPWM;
         unsigned char openCircuit;
         unsigned char maxMotorTemp;
@@ -102,6 +103,9 @@ namespace hbridge
 	SensorConfiguration() : externalTempSensor(0), statusFrequency(10)
 	{
 	}
+	
+        std::string name;
+	
         unsigned char externalTempSensor;
 	/**
 	 * The frequency in hz in which the firmware should
