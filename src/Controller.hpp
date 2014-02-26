@@ -67,9 +67,9 @@ protected:
      * The receiver, sender will be filled in automatically
      * */
     void sendPacket(const Packet &msg, bool isAcked);
-    
-public:
+
     Controller(Writer *writer, firmware::controllerModes controllerId);
+public:
     virtual void sendControllerConfig() {};
 
     const std::vector<uint8_t> *getCommandData()
