@@ -100,6 +100,21 @@ public:
     virtual void processMsg(const Packet& msg);
     
     /**
+     * Instanciates a controller of the given type 
+     * and registers it at the writer object
+     * */
+    template<class T>
+    void registerController()
+    {
+        
+        T *ctrl = new T(this);
+        if(controllers[ctrl->getControllerId()])
+            throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
+    
+        controllers[ctrl->getControllerId()] = ctrl;
+    }
+    
+    /**
      * Set the active controller inside the firmware.
      * Note this function MUST be called after the  
      * device was configured
