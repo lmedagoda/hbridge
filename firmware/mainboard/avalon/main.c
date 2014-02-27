@@ -40,6 +40,14 @@ void hbridgeExtendedStatusHandler(int senderId, int receiverId, int id, unsigned
 }
 
 void sendStatusPacket(){
+    CanTxMsg msg;
+    msg.StdId = 0x541;
+    msg.RTR=CAN_RTR_DATA;
+    msg.IDE=CAN_ID_STD;
+    msg.DLC = 8;
+    msg.Data[2] =(ARC_SYSTEM_STATE)mbstate_getCurrentState();
+    CAN_SendMessage(&msg);
+
     avalon_status_t status_information;
     status_information.current_state = (ARC_SYSTEM_STATE)mbstate_getCurrentState();
     status_information.wanted_state = current_status.wanted_state;
@@ -285,7 +293,7 @@ void init(){
     arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
     arctoken_setOwnSystemID(AVALON);
     //Second ARC-Channel Ethernet
-    ///arctoken_add_serial_handler(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
+    arctoken_add_serial_handler(&USART5_SendData, &USART5_GetData, &USART5_SeekData);
 
 
     mbstate_init();
