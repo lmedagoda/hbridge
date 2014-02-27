@@ -89,7 +89,7 @@ uint8_t surface_sign_counter= 0;
 struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
 void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    printf("control packet\n");
+    //printf("control packet\n");
     struct arc_avalon_control_packet *cmd  = (struct arc_avalon_control_packet *) data;
 
     curCmd = *cmd;
@@ -137,10 +137,10 @@ void avalon_runningState(void){
             PACKET_ID_SET_VALUE58);*/
     printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*4, (curCmd.dive-127)*4, (curCmd.left-127)*4, (curCmd.right-127)*4, (curCmd.pitch-127)*4, (curCmd.yaw-127)*4);
     hbridge_setValues(
-            500, 
-            500, 
-            0, 
-            0,
+            (curCmd.left-127)*4, 
+            (curCmd.right-127)*4,
+            (curCmd.dive-127)*4,
+            (curCmd.strave-127)*4,
             PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
