@@ -234,8 +234,8 @@ void systick_sendSensorData(uint32_t index)
     statusMsgCounter = 0;
     
     struct statusData sdata;
-    
-    sdata.pwm = currentPwmValue;
+     
+    sdata.pwm =(currentPwmValue/16);
     sdata.externalPosition = getDividedTicks(activeCState->sensorConfig.externalEncoder);
     sdata.position = getDividedTicks(activeCState->sensorConfig.internalEncoder);
     sdata.currentValue = currentValue;
