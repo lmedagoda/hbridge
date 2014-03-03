@@ -204,6 +204,7 @@ void systick_runningState(uint32_t index)
     //calculate pwm value
     const struct ControllerInterface *curCtrl = controllers_getController(activeCState->controllMode);
     pwmValue =  curCtrl->step((struct ControllerTargetData *) &(activeCState->targetData), wheelPos, ticksPerTurn);
+    //printf("PWM %i", pwmValue);
 
     //trunkcate to int16_t
     if(pwmValue > MAX_S16) 
@@ -229,13 +230,12 @@ void systick_runningState(uint32_t index)
 void systick_sendSensorData(uint32_t index)
 {
     if(statusMsgCounter < activeCState->sensorConfig.statusEveryMs || !activeCState->sensorConfig.statusEveryMs)
-	return;
-    
+	return; 
     statusMsgCounter = 0;
     
     struct statusData sdata;
-    
-    sdata.pwm = currentPwmValue;
+     
+    sdata.pwm =(currentPwmValue/16);
     sdata.externalPosition = getDividedTicks(activeCState->sensorConfig.externalEncoder);
     sdata.position = getDividedTicks(activeCState->sensorConfig.internalEncoder);
     sdata.currentValue = currentValue;

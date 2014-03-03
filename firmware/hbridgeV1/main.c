@@ -88,7 +88,7 @@ int main(void)
     printf("Entered main loop\n");
 
     //turn of red led
-    //GPIO_SetBits(GPIOA, GPIO_Pin_8);
+    GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
     //init basic functionality
     //read address, turn on peripherals etc.
