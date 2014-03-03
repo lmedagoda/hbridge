@@ -149,7 +149,7 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
     
     state->firmwareState = stateData->curState;
 
-    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState <<  std::endl;
+    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState << " for hbridge " << boardId << std::endl;
 
     switch(state->driverState)
     {
