@@ -342,45 +342,57 @@ void state_setTargetValueHandler(int senderId, int receiverId, int id, unsigned 
 	case PACKET_ID_SET_VALUE14:
 	{
 	    struct setValueData *tdata = (struct setValueData *) data;
+	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
 	    switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_1:
 			value = tdata->board1Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_2:
 			value = tdata->board2Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_3:
 			value = tdata->board3Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_4:
 			value = tdata->board4Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		}
-	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
-	    *value_p = value;
-	    lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 	}
 	break;
 	case PACKET_ID_SET_VALUE58:
 	{
 	    struct setValueData *tdata = (struct setValueData *) data;
+	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
 	    switch(ownHostId) {
 		    case RECEIVER_ID_H_BRIDGE_5:
 			value = tdata->board1Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_6:
 			value = tdata->board2Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_7:
 			value = tdata->board3Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 		    case RECEIVER_ID_H_BRIDGE_8:
 			value = tdata->board4Value;
+			*value_p = value;
+			lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 			break;
 	    }
-	    uint16_t *value_p = (uint16_t *) lastActiveCState->targetData.data;
-	    *value_p = value;
-	    lastActiveCState->targetData.dataSize = sizeof(uint16_t);
 	}
 	break;
     }
