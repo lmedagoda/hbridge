@@ -241,7 +241,9 @@ void hbridge_init() {
 
 void hbridge_setNewPWM(const int16_t value2, uint8_t useOpenLoop) {
     
-  int16_t value = value2;
+    int32_t value = value2;
+    value *= 10;
+    value /= 182;
 
   //truncate to max of 95% PWM, needed to charge boost circuit
   if(value < -1710)
