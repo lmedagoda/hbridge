@@ -124,7 +124,7 @@ void Reader::processMsg(const Packet &msg)
 
 		this->state.index   = data->index;
 		this->state.current = data->currentValue; // Current in [mA]
-		this->state.pwm     = static_cast<float>(data->pwm) / 1800; // PWM in [-1; 1]
+		this->state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16; // PWM in [-1; 1]
 		encoderIntern.setRawEncoderValue(data->position);
 		encoderExtern.setRawEncoderValue(data->externalPosition);
 
@@ -169,6 +169,9 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 {
     const firmware::announceStateData *stateData = 
 	reinterpret_cast<const firmware::announceStateData *>(msg.data.data());
+
+    int state = stateData->curState;
+    std::cout << "Board " << boardId << " announced State " << state << std::endl;
 
     switch(dstate)
     {
