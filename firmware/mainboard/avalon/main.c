@@ -144,17 +144,17 @@ void avalon_runningState(void){
             0,
             PACKET_ID_SET_VALUE58);*/
     int scaling=320;
-    printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
+    //printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
             (curCmd.right-127)      * scaling, 
             (curCmd.left-127)       * scaling,
             (curCmd.dive-127)       * scaling,
-            (curCmd.pitch-127)      * scaling,
+            (curCmd.yaw-127)      * scaling,
             PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
             (curCmd.strave-127)     * scaling,
-            (curCmd.yaw-127)        * scaling,
+            (curCmd.pitch-127)        * scaling,
             0,
             0,
             PACKET_ID_SET_VALUE58);
