@@ -24,7 +24,7 @@ uint32_t lastStateTime;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
-#define NUM_MOTORS 6
+#define NUM_MOTORS 3
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
@@ -76,6 +76,7 @@ void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned cha
     msg.StdId = (msg.StdId << 3) | (data[1]>>5);
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
+    timeout_reset();
 
     printf("Got A Can Passhrough and send it out with id %i\n", msg.StdId);
     printf("ARC letzten Byte %i", data[9]);
@@ -97,7 +98,7 @@ uint8_t surface_sign_counter= 0;
 struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
 void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
-    //printf("control packet\n");
+    timeout_reset();
     struct arc_avalon_control_packet *cmd  = (struct arc_avalon_control_packet *) data;
 
     curCmd = *cmd;
@@ -107,15 +108,15 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
 void avalon_runningState(void){
     //printf("runs avalon\n");
 
-    /*if(timeout_hasTimeout())
-      {
-      printf("Timout, switching to off\n");
-      mbstate_changeState(MAINBOARD_OFF);
-        curent_status.change_reason = CR_MB_TIMEOUT;
-      }
+    if(timeout_hasTimeout())
+    {
+        printf("Timout, switching to off\n");
+        mbstate_changeState(MAINBOARD_OFF);
+        current_status.change_reason = CR_MB_TIMEOUT;
+    }
 
     //check actuators
-    */
+    
     /*if(hbridge_hasActuatorError())
     {
         printf("Actuator error, switching to off\n");
@@ -239,15 +240,15 @@ void init(){
     //printf_setSendFunction(USART5_SendData); //Debug ethernet
 
     //uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
-    //while (1){
-    //    printf(".");
-    //}
+    /*while (1){
+        printf(".");
+    }*/
 
     printf("The Maiboard is up with the version: 1.2 ");
     USART5_Init(USART_USE_INTERRUPTS);
     printf("OK ");
 
-    timeout_init(300000);
+    timeout_init(300);
     //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
 
@@ -322,7 +323,7 @@ void init(){
 int main()
 {
     init();
-    //mbstate_changeState(MAINBOARD_RUNNING);
+    mbstate_changeState(MAINBOARD_RUNNING);
     while(1)
     {
         unsigned int curTime = time_getTimeInMs();
@@ -337,22 +338,15 @@ int main()
                 status_loops = 0;
             } else {
                 status_loops++;
-            } 
-
-            static int blasel=0;
-            if(blasel++==1000){
-                printf(".");
-                blasel=0;
             }
-
         }
-        arc_packet_t packet;	
+        /*arc_packet_t packet;	
 
         while(arctoken_readPacket(&packet)){
             //Process packets
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
         }
-        arctoken_processPackets();	  
+        arctoken_processPackets();	  */
         hbridge_process();
 
         //uwmodem_process();
