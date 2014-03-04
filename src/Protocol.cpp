@@ -100,7 +100,10 @@ void SendQueue::processAck(const hbridge::Packet& msg)
 
 void Protocol::Handle::processMsg(const hbridge::Packet& msg)
 {    
-    assert(senderId == msg.senderId);
+    if((senderId != msg.senderId) && !msg.broadcastMsg){
+        printf("Got error state sender id: %u, msg.senderID: %u, Boradcast: %s\n",senderId,msg.senderId,msg.broadcastMsg);
+        assert(false);
+    }
     
     //automatic ack handling
     if(msg.packetId == firmware::PACKET_ID_ACK)

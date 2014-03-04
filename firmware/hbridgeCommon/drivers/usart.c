@@ -174,7 +174,6 @@ void USART5_Init(enum USART_MODE mode)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-    // Configure USART2 Tx (PD02 as alternate function push-pull
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -388,7 +387,7 @@ signed int USART5_GetData (unsigned char *buffer, const unsigned int buffer_leng
   return USARTx_GetData(UART5, &USART5_Data, buffer, buffer_length);
 }
 
-void USART5_IRQHandler(void)
+void UART5_IRQHandler(void)
 { 
   USART_IRQHandler(UART5, &USART5_Data);
 }
