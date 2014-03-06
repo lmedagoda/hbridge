@@ -4,6 +4,8 @@
 #include <vector>
 #include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
+#include <string>
+#include <boost/lexical_cast.hpp>
 #include <base/JointState.hpp>
 
 namespace hbridge
@@ -109,7 +111,7 @@ public:
         
         T *ctrl = new T(this);
         if(controllers[ctrl->getControllerId()])
-            throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
+	  throw std::out_of_range("HbridgeHandle: Error: There is already a controller with id " + boost::lexical_cast<std::string>((int) ctrl->getControllerId()) + std::string(" registered"));
     
         controllers[ctrl->getControllerId()] = ctrl;
     }

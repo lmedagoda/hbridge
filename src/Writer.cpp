@@ -2,6 +2,7 @@
 #include "Reader.hpp"
 #include "Protocol.hpp"
 #include "Controller.hpp"
+#include <boost/lexical_cast.hpp>
 
 using namespace firmware;
 
@@ -246,7 +247,7 @@ void Writer::processMsg(const Packet& msg)
 void Writer::registerController(Controller* ctrl)
 {
     if(controllers[ctrl->getControllerId()])
-	throw std::out_of_range("HbridgeHandle: Error: There is allready a controller with id " + ctrl->getControllerId() + std::string(" registered"));
+      throw std::out_of_range("HbridgeHandle: Error: There is already a controller with id " + boost::lexical_cast<std::string>((int) ctrl->getControllerId()) + std::string(" registered"));
     
     controllers[ctrl->getControllerId()] = ctrl;
 }
