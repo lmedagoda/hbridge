@@ -12,8 +12,6 @@
 #include "lm73cimk.h"
 #include "protocol_can.h"
 #include "encoder.h"
-#include "encoder_ichaus.h"
-#include "encoder_adc.h"
 #include "encoder_quadrature.h"
 #include "encoder_quadrature_exti.h"
 
@@ -115,7 +113,6 @@ int main(void)
     
     can_protocolInit();
 
-/*
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadrature;
@@ -128,7 +125,7 @@ int main(void)
     encoder.setTicksPerTurn = setTicksPerTurnQuadratureWithZero;
     encoder_setImplementation(QUADRATURE_WITH_ZERO, encoder);
 
-    encoder.encoderInit = encoderInitIcHaus;
+    /*    encoder.encoderInit = encoderInitIcHaus;
     encoder.getTicks = getTicksIcHaus;
     encoder.setTicksPerTurn = setTicksPerTurnIcHaus;
     encoder_setImplementation(IC_HOUSE_MH_Y, encoder);
