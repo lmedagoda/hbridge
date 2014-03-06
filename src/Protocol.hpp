@@ -38,6 +38,7 @@ public:
 class BusInterface
 {
 public:
+    virtual ~BusInterface() {};
     virtual bool sendPacket(const Packet &packet) = 0;
     virtual bool readPacket(Packet &packet) = 0;
     virtual uint16_t getMaxPacketSize() = 0;
