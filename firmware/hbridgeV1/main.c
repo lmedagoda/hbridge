@@ -113,6 +113,7 @@ int main(void)
     
     can_protocolInit();
 
+    struct EncoderInterface encoder;
     encoder_defaultStructInit(&encoder);
 
     encoder.encoderInit = encoderInitQuadrature;
