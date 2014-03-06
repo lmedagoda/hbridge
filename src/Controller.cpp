@@ -10,7 +10,6 @@ namespace hbridge
 
 Controller::Controller(Writer *writer, firmware::controllerModes controllerId):mode(controllerId), writer(writer)
 {
-    writer->registerController(this);
 }
 
 void Controller::sendPacket(const hbridge::Packet& msg, bool isAcked)

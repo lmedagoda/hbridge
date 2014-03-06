@@ -71,6 +71,7 @@ protected:
     Controller(Writer *writer, firmware::controllerModes controllerId);
 public:
     virtual void sendControllerConfig() {};
+    virtual ~Controller() {};
 
     const std::vector<uint8_t> *getCommandData()
     {
@@ -101,24 +102,25 @@ public:
  * */
 class PWMController : public Controller
 {
+    friend class hbridge::Writer;
 public:
-    PWMController(Writer *writer);
     void setTargetValue(double value);
     virtual void processMsg(const hbridge::Packet& msg) {};
 private:
+    PWMController(Writer *writer);
 };
 
 
 
 class SpeedPIDController : public Controller
 {
+    friend class hbridge::Writer;
 public:
     class Config
     {
     public:
 	base::actuators::PIDValues pidValues;
     };
-    SpeedPIDController(hbridge::Writer *writer);
     void setConfig(const Config &config);
     void setTargetValue(double);
 
@@ -126,12 +128,14 @@ public:
     virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
 private:
+    SpeedPIDController(hbridge::Writer *writer);
     Config config;
     SpeedControllerDebug speedControllerDebug;
 };
 
 class PosPIDController: public Controller
 {
+    friend class hbridge::Writer;
 public:
     class Config
     {
@@ -139,7 +143,6 @@ public:
 	base::actuators::PIDValues pidValues;
 	PositionControllerConfiguration posCtrlConfig;
     };
-    PosPIDController(hbridge::Writer *writer);
     void setConfig(const Config &config);
     
     void setTargetValue(double value);
@@ -148,6 +151,7 @@ public:
     virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
 private:
+    PosPIDController(hbridge::Writer *writer);
     Config config;
     PositionControllerDebug positionControllerDebug;
 };
