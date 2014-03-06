@@ -265,5 +265,6 @@ struct LowPrioPacket
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 const char *getPacketName(uint16_t packetId);
+const char *getStateName(enum STATES state);
 
 #endif

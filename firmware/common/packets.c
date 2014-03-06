@@ -1,5 +1,34 @@
 #include "packets.h"
 
+const char *getStateName(enum STATES state)
+{
+    switch(state)
+    {
+        case STATE_UNCONFIGURED:
+	    return "STATE_UNCONFIGURED";
+	    break;
+        case STATE_SENSOR_ERROR:
+	    return "STATE_SENSOR_ERROR";
+	    break;
+        case STATE_SENSORS_CONFIGURED:
+	    return "STATE_SENSORS_CONFIGURED";
+	    break;
+        case STATE_ACTUATOR_ERROR:
+	    return "STATE_ACTUATOR_ERROR";
+	    break;
+        case STATE_ACTUATOR_CONFIGURED:
+	    return "STATE_ACTUATOR_CONFIGURED";
+	    break;
+        case STATE_CONTROLLER_CONFIGURED:
+	    return "STATE_CONTROLLER_CONFIGURED";
+	    break;
+        case STATE_RUNNING:
+	    return "STATE_RUNNING";
+	    break;
+    }
+    return "";
+}
+
 const char *getPacketName(uint16_t packetId)
 {
     switch(packetId)
