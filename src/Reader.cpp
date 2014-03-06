@@ -70,7 +70,7 @@ void Reader::sendConfigureMsg()
     firmware::sensorConfig *cfg1 = reinterpret_cast<firmware::sensorConfig *>(msg.data.data());
 
     cfg1->externalTempSensor = cfg.externalTempSensor;
-    cfg1->statusEveryMs = 1;
+    cfg1->statusEveryMs = 1000 / cfg.statusFrequency;
     cfg1->encoder1Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type);
     cfg1->encoder1Config.ticksPerTurn = configuration.encoder_config_intern.ticksPerTurnDivided;
     cfg1->encoder1Config.tickDivider = configuration.encoder_config_intern.tickDivider;
