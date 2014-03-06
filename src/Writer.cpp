@@ -73,6 +73,8 @@ void Writer::sendActuatorConfig()
     msg.packetId = firmware::PACKET_ID_SET_ACTUATOR_CONFIG;
     msg.data.resize(sizeof(firmware::actuatorConfig));
     
+    std::cout << "HB " << boardId << " sendinf ACC configuration " << std::endl;
+
     firmware::actuatorConfig *cfg = reinterpret_cast<firmware::actuatorConfig *>(msg.data.data());
     
     cfg->openCircuit = actuatorConfig.openCircuit;
@@ -119,6 +121,7 @@ void Writer::startConfigure()
 {
     driverError = false;
     state->driverState = WRITER_STATE_REQUEST;
+    std::cout << "HB " << boardId << " Starting configuration " << std::endl;
     requestDeviceState();    
 }
 
@@ -136,7 +139,7 @@ bool Writer::hasError()
 
 void Writer::configurationError(const hbridge::Packet& msg)
 {
-    std::cout << "Writer: Error, actuator config was not acked" << std::endl;
+    std::cout << "HB " << boardId << " Writer: Error, actuator config was not acked" << std::endl;
     if(callbacks)
 	callbacks->configurationError();
 }
@@ -150,7 +153,7 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
     
     state->firmwareState = stateData->curState;
 
-    std::cout << "GOT STATE ACCOUNCE conf " <<  state->firmwareState <<  std::endl;
+    std::cout << "GOT STATE ACCOUNCE hb " << boardId << " new state " <<  getStateName(stateData->curState) <<  std::endl;
 
     switch(state->driverState)
     {
@@ -162,14 +165,14 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
 		case STATE_UNCONFIGURED:
 		case STATE_SENSOR_ERROR:
 		    {
-			std::cout << "Error, Sensors not configured " << std::endl;
+			std::cout << "Error, Sensors not configured hb " << boardId << std::endl;
 			driverError = true;
 			if(callbacks)
 			    callbacks->configurationError();
 		    }
 		    break;    
 		case STATE_SENSORS_CONFIGURED:
-		    std::cout << "WRITING ACC CONFIG" << std::endl;
+		    std::cout << "WRITING ACC CONFIG hb " << boardId << std::endl;
 		    sendActuatorConfig();
 		    state->driverState = WRITER_CONFIGURING;
 		    break;
@@ -177,6 +180,7 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
 		case STATE_CONTROLLER_CONFIGURED:
 		case STATE_RUNNING:
 		case STATE_ACTUATOR_ERROR:
+		    std::cout << "HB " << boardId << " is still configured, removing old configuration" << std::endl;
 		    resetActuator();
 		    break;
 	    }
@@ -185,21 +189,20 @@ void Writer::processStateAnnounce(const hbridge::Packet& msg)
 	case WRITER_CONFIGURING:
 	    switch(stateData->curState)
 	    {
-		case STATE_UNCONFIGURED:
-		case STATE_SENSORS_CONFIGURED:
-		case STATE_SENSOR_ERROR:
-		    driverError = true;
-		    if(callbacks)
-			callbacks->actuatorError();
-		    break;    
 		case STATE_ACTUATOR_CONFIGURED:
+		    std::cout << "HB " << boardId << " is reconfigured, sendinf controller config" << std::endl;
 		    sendControllerConfig();
 		    break;
+		case STATE_SENSORS_CONFIGURED:
+		    std::cout << "HB " <<  boardId << " Warning, got reanounce of state SENSORS_CONFIGURED, ignoring it" << std::endl;
+		    break;
+		case STATE_UNCONFIGURED:
+		case STATE_SENSOR_ERROR:
 		default:
+		  std::cout << "HB " << boardId << " ERROR got wrong response" << std::endl;
 		    driverError = true;
 		    if(callbacks)
 			callbacks->actuatorError();
-		    break;
 		    break;
 	    }
 	    break;
@@ -255,7 +258,7 @@ void Writer::registerController(Controller* ctrl)
 void Writer::registerForMsg(PacketReceiver* receiver, int packetId)
 {
     if(packetId < 0 || packetId > PACKET_ID_TOTAL_COUNT)
-	throw std::out_of_range("HbridgeHandle: Error tried to register receiver for invalid id " + packetId);
+	throw std::out_of_range("HbridgeHandle: Error tried to register receiver for invalid id " + packetId );
     
     msgHandlers[packetId] = receiver;
 }

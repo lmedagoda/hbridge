@@ -204,7 +204,7 @@ void Protocol::processSendQueues()
 		continue;
 	    }
 	    curEntry.retryCnt--;
-	    std::cout << "Timeout, resending " << getPacketName(curEntry.msg.packetId) << " retry " << retryCount - curEntry.retryCnt << std::endl;
+	    std::cout << "Timeout, resending " << getPacketName(curEntry.msg.packetId) << " retry " << retryCount - curEntry.retryCnt << " receiver is " << curEntry.msg.receiverId << " cur time " << curTime << " original send time " << curEntry.sendTime << " timeout " << sendTimout <<  std::endl;
 	    doSend = true;
 	}
 	

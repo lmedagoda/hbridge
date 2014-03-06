@@ -170,6 +170,8 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
     const firmware::announceStateData *stateData = 
 	reinterpret_cast<const firmware::announceStateData *>(msg.data.data());
 
+    std::cout << "GOT STATE ACCOUNCE hb " << boardId << " new state " <<  getStateName(stateData->curState) <<  std::endl;
+
     switch(dstate)
     {
 	case READER_OFF:
