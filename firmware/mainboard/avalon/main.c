@@ -54,6 +54,7 @@ void sendStatusPacket(){
     status_information.current_depth = current_status.current_depth;
     status_information.water_ingress_front = current_status.water_ingress_front;
     status_information.water_ingress_back =  current_status.water_ingress_back;
+    status_information.change_reason = current_status.change_reason;
     arc_packet_t packet;
     packet.originator = SLAVE;
     packet.system_id = SYSTEM_ID;
@@ -104,6 +105,18 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
     curCmd = *cmd;
     cmdValid = 1;
 }
+void avalon_autonomousState(void){
+    if(timeout_hasTimeout())
+    {
+        printf("Timout, switching to off\n");
+        mbstate_changeState(MAINBOARD_OFF);
+        current_status.change_reason = CR_MB_TIMEOUT;
+        timeout_reset();
+        return;
+    }
+    current_status.change_reason = CR_LEGAL;
+
+}
 
 void avalon_runningState(void){
     //printf("runs avalon\n");
@@ -113,11 +126,12 @@ void avalon_runningState(void){
         printf("Timout, switching to off\n");
         mbstate_changeState(MAINBOARD_OFF);
         current_status.change_reason = CR_MB_TIMEOUT;
+        timeout_reset();
+        return;
     }
 
     //check actuators
-    
-    /*if(hbridge_hasActuatorError())
+    if(hbridge_hasActuatorError())
     {
         printf("Actuator error, switching to off\n");
         mbstate_changeState(MAINBOARD_OFF);
@@ -127,7 +141,6 @@ void avalon_runningState(void){
 
     if (!cmdValid)
         return;
-        */
 
     //TODO mapping korrigieren
 
@@ -144,21 +157,23 @@ void avalon_runningState(void){
             0,
             0,
             PACKET_ID_SET_VALUE58);*/
-    int scaling=320;
-    //printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
+    int scaling=224;
+    printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
             (curCmd.right-127)      * scaling, 
             (curCmd.left-127)       * scaling,
-            (curCmd.dive-127)       * scaling,
-            (curCmd.yaw-127)      * scaling,
+            (curCmd.dive-127)       * scaling *-1,
+            (curCmd.pitch-127)      * scaling,
             PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
-            (curCmd.strave-127)     * scaling,
-            (curCmd.pitch-127)        * scaling,
+            (curCmd.strave-127)     * scaling * -1,
+            (curCmd.yaw-127)        * scaling * -1,
             0,
             0,
             PACKET_ID_SET_VALUE58);
+    current_status.change_reason = CR_LEGAL;
+    
 };
 
 
@@ -248,7 +263,7 @@ void init(){
     USART5_Init(USART_USE_INTERRUPTS);
     printf("OK ");
 
-    timeout_init(300);
+    timeout_init(3000);
     //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
 
@@ -317,6 +332,8 @@ void init(){
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
     state->stateHandler=avalon_runningState;
 
+    struct MainboardState *state2=mbstate_getState(MAINBOARD_AUTONOMOUS);
+    state2->stateHandler=avalon_autonomousState;
 }
 
 
