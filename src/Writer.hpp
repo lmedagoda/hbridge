@@ -146,6 +146,10 @@ public:
      * set the controller in the motor driver
      * */
     bool isControllerConfiguring();    
+    uint32_t getId() const
+    {
+        return boardId;
+    }
 };
 
 }

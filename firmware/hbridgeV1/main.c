@@ -48,6 +48,7 @@ enum hostIDs getOwnHostId() {
     gpioData |= (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) << 3);
 
     //get correct host id from gpio pins
+    //gpioData = 2;
     id += gpioData;
     printf("Configured as H_BRIDGE_%hu\n", id);
 
@@ -86,7 +87,7 @@ int main(void)
     printf("Entered main loop\n");
 
     //turn of red led
-    //GPIO_SetBits(GPIOA, GPIO_Pin_8);
+    GPIO_SetBits(GPIOA, GPIO_Pin_8);
 
     //init basic functionality
     //read address, turn on peripherals etc.
