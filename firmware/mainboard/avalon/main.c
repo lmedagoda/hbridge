@@ -116,7 +116,9 @@ void avalon_autonomousState(void){
     current_status.change_reason = CR_LEGAL;
 
 }
-
+void avalon_offState(void){
+    timeout_reset();
+}
 void avalon_runningState(void){
     //printf("runs avalon\n");
 
@@ -327,12 +329,15 @@ void init(){
     packet_registerHandler(MB_CONTROL, avalon_controlHandler);
     packet_registerHandler(MB_ID_CAN, avalon_packet_canHandler);
 
-    //Overload the state handler for running
-    struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
-    state->stateHandler=avalon_runningState;
 
-    struct MainboardState *state2=mbstate_getState(MAINBOARD_AUTONOMOUS);
-    state2->stateHandler=avalon_autonomousState;
+    struct MainboardState *state_off=mbstate_getState(MAINBOARD_RUNNING);
+    state_off->stateHandler=avalon_offState;
+
+    struct MainboardState *state_running=mbstate_getState(MAINBOARD_RUNNING);
+    state_running->stateHandler=avalon_runningState;
+
+    struct MainboardState *state_autonomous=mbstate_getState(MAINBOARD_AUTONOMOUS);
+    state_autonomous->stateHandler=avalon_autonomousState;
 }
 
 
