@@ -24,7 +24,7 @@ uint32_t lastStateTime;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
-#define NUM_MOTORS 3
+#define NUM_MOTORS 6
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
@@ -77,7 +77,6 @@ void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned cha
     msg.StdId = (msg.StdId << 3) | (data[1]>>5);
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
-    timeout_reset();
 
     printf("Got A Can Passhrough and send it out with id %i\n", msg.StdId);
     printf("ARC letzten Byte %i", data[9]);
@@ -157,18 +156,18 @@ void avalon_runningState(void){
             0,
             0,
             PACKET_ID_SET_VALUE58);*/
-    int scaling=224;
+    int scaling=300;
     printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
-            (curCmd.right-127)      * scaling, 
-            (curCmd.left-127)       * scaling,
+            (curCmd.right-127)      * scaling *-1, 
+            (curCmd.left-127)       * scaling *-1,
             (curCmd.dive-127)       * scaling *-1,
-            (curCmd.pitch-127)      * scaling,
+            (curCmd.pitch-127) + (((curCmd.dive-127)*3)/10) * scaling *-1,
             PACKET_ID_SET_VALUE14);
 
     hbridge_setValues(
-            (curCmd.strave-127)     * scaling * -1,
-            (curCmd.yaw-127)        * scaling * -1,
+            (curCmd.strave-127)     * scaling,
+            (curCmd.yaw-127)        * scaling,
             0,
             0,
             PACKET_ID_SET_VALUE58);
@@ -357,13 +356,13 @@ int main()
                 status_loops++;
             }
         }
-        /*arc_packet_t packet;	
+        arc_packet_t packet;	
 
         while(arctoken_readPacket(&packet)){
             //Process packets
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
         }
-        arctoken_processPackets();	  */
+        arctoken_processPackets();
         hbridge_process();
 
         //uwmodem_process();
