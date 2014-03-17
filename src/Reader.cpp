@@ -94,6 +94,7 @@ void Reader::processMsg(const Packet &msg)
 		const firmware::errorData *edata =
 		    reinterpret_cast<const firmware::errorData *>(msg.data.data());
 		
+                state.can_time = msg.receiveTime;
 		state.index   = edata->index;
 		//hbridge is off, no current is flowing
 		state.current = 0;
@@ -122,17 +123,18 @@ void Reader::processMsg(const Packet &msg)
 		const firmware::statusData *data =
 		    reinterpret_cast<const firmware::statusData *>(msg.data.data());
 
-		this->state.index   = data->index;
-		this->state.current = data->currentValue; // Current in [mA]
-		this->state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
+                state.can_time = msg.receiveTime;
+		state.index   = data->index;
+		state.current = data->currentValue; // Current in [mA]
+		state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
 		encoderIntern.setRawEncoderValue(data->position);
 		encoderExtern.setRawEncoderValue(data->externalPosition);
 
-		this->state.position = encoderIntern.getAbsoluteTurns();
-		this->state.positionExtern = encoderExtern.getAbsoluteTurns();
+		state.position = encoderIntern.getAbsoluteTurns();
+		state.positionExtern = encoderExtern.getAbsoluteTurns();
 
 		//getting an status package is an implicit cleaner for all error states
-		bzero(&(this->state.error), sizeof(struct ErrorState));
+		bzero(&(state.error), sizeof(struct ErrorState));
 
 		gotBoardState = true;
 		
@@ -145,8 +147,9 @@ void Reader::processMsg(const Packet &msg)
 		const firmware::extendedStatusData *esdata = 
 		    reinterpret_cast<const firmware::extendedStatusData *>(msg.data.data());
 		    
-		this->state.temperature = esdata->temperature;
-		this->state.motorTemperature = esdata->motorTemperature;
+                state.can_time = msg.receiveTime;
+                state.temperature = esdata->temperature;
+		state.motorTemperature = esdata->motorTemperature;
 		if(callbacks)
 		    callbacks->gotStatus(boardId, state);
 		break;

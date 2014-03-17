@@ -35,7 +35,7 @@ bool CanBusInterface::readPacket(hbridge::Packet& packet)
     if(!readCanMsg(msg))
 	return false;
     
-    
+    packet.receiveTime = msg.can_time;
     packet.data.resize(msg.size);
     memcpy(packet.data.data(), msg.data, msg.size);
 

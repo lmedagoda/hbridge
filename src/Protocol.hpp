@@ -28,6 +28,7 @@ public:
     Packet(): senderId(-1), receiverId(-1), packetId(-1), broadcastMsg(false) 
     {
     };
+    base::Time receiveTime;
     unsigned int senderId;
     unsigned int receiverId;
     unsigned int packetId;
