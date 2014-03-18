@@ -126,7 +126,7 @@ void Protocol::Handle::processMsg(const hbridge::Packet& msg)
         {
             for(std::vector<PacketReceiver *>::iterator handler = msgHandlers.begin(); handler != msgHandlers.end(); handler++)
             {
-                (*handler)->processMsg(msg);
+                (*handler)->processMsg(*inMsg);
             }
         }
     }
