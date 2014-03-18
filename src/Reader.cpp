@@ -131,111 +131,108 @@ void Reader::sendConfigureMsg()
 
 void Reader::processMsg(const Packet &msg)
 {    
-    if(msg.packetId < firmware::PACKET_ID_LOWIDS_START)
+    switch (msg.packetId)
     {
-	switch (msg.packetId)
-	{
-	    case firmware::PACKET_ID_ERROR: {
-		const firmware::errorData *edata =
-		    reinterpret_cast<const firmware::errorData *>(msg.data.data());
-		
-                state.can_time = msg.receiveTime;
-		state.index   = edata->index;
-		//hbridge is off, no current is flowing
-		state.current = 0;
-		state.pwm = 0;
-		state.error.badConfig = edata->badConfig;
-		state.error.boardOverheated = edata->boardOverheated;
-		state.error.encodersNotInitialized = edata->encodersNotInitalized;
-		state.error.motorOverheated = edata->motorOverheated;
-		state.error.overCurrent = edata->overCurrent;
-		state.error.timeout = edata->timeout;
-		state.temperature = edata->temperature;
-
-		encoderIntern.setRawEncoderValue(edata->position);
-		encoderExtern.setRawEncoderValue(edata->externalPosition);
-		
-		this->state.position = encoderIntern.getAbsoluteTurns();
-		this->state.positionExtern = encoderExtern.getAbsoluteTurns();
-		
-		if(callbacks)
-		    callbacks->gotErrorStatus(boardId, state.error);
-
-	    }
-	    break;
-	    case firmware::PACKET_ID_STATUS:
-	    {
-		const firmware::statusData *data =
-		    reinterpret_cast<const firmware::statusData *>(msg.data.data());
-
-                state.can_time = msg.receiveTime;
-		state.index   = data->index;
-		state.current = data->currentValue; // Current in [mA]
-		state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
-		encoderIntern.setRawEncoderValue(data->position);
-		encoderExtern.setRawEncoderValue(data->externalPosition);
-
-		state.position = encoderIntern.getAbsoluteTurns();
-		state.positionExtern = encoderExtern.getAbsoluteTurns();
-
-		//getting an status package is an implicit cleaner for all error states
-		bzero(&(state.error), sizeof(struct ErrorState));
-
-		gotBoardState = true;
-		
-		if(callbacks)
-		    callbacks->gotStatus(boardId, state);
-		break;
-	    }
-	    case firmware::PACKET_ID_EXTENDED_STATUS:
-	    {
-		const firmware::extendedStatusData *esdata = 
-		    reinterpret_cast<const firmware::extendedStatusData *>(msg.data.data());
-		    
-                state.can_time = msg.receiveTime;
-                state.temperature = esdata->temperature;
-		state.motorTemperature = esdata->motorTemperature;
-		if(callbacks)
-		    callbacks->gotStatus(boardId, state);
-		break;
-	    }
-	    case firmware::PACKET_ID_ANNOUNCE_STATE:
-	    {
-		processStateMsg(msg);
-		break;
-	    }
-            case firmware::PACKET_ID_ANNOUNCE_SENSOR_CONFIG:
-            {
-                if(!checkIfConfigIsSame(msg))
-                {
-                    std::cout << "Config of HBridge " << boardId << " differs, reconfiguring it " << std::endl;
-                    resetDevice();
-                    driverState = hbridge::Reader::READER_REQUEST_STATE;
-                } 
-                else 
-                {
-                    configureDone();
-                }
-                break;
-            }
-            case firmware::PACKED_ID_ANNOUNCE_VERSION:
-            {
-                if(!checkForCorrectVersion(msg))
-                {
-                    configurationError(msg);
-                } 
-                else 
-                {
-                    requestDeviceState();
-                }
-                break;
-            }
+        case firmware::PACKET_ID_ERROR: {
+            const firmware::errorData *edata =
+                reinterpret_cast<const firmware::errorData *>(msg.data.data());
             
+            state.can_time = msg.receiveTime;
+            state.index   = edata->index;
+            //hbridge is off, no current is flowing
+            state.current = 0;
+            state.pwm = 0;
+            state.error.badConfig = edata->badConfig;
+            state.error.boardOverheated = edata->boardOverheated;
+            state.error.encodersNotInitialized = edata->encodersNotInitalized;
+            state.error.motorOverheated = edata->motorOverheated;
+            state.error.overCurrent = edata->overCurrent;
+            state.error.timeout = edata->timeout;
+            state.temperature = edata->temperature;
 
-	    default:
-		std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
-		break;
-	}
+            encoderIntern.setRawEncoderValue(edata->position);
+            encoderExtern.setRawEncoderValue(edata->externalPosition);
+            
+            this->state.position = encoderIntern.getAbsoluteTurns();
+            this->state.positionExtern = encoderExtern.getAbsoluteTurns();
+            
+            if(callbacks)
+                callbacks->gotErrorStatus(boardId, state.error);
+
+        }
+        break;
+        case firmware::PACKET_ID_STATUS:
+        {
+            const firmware::statusData *data =
+                reinterpret_cast<const firmware::statusData *>(msg.data.data());
+
+            state.can_time = msg.receiveTime;
+            state.index   = data->index;
+            state.current = data->currentValue; // Current in [mA]
+            state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
+            encoderIntern.setRawEncoderValue(data->position);
+            encoderExtern.setRawEncoderValue(data->externalPosition);
+
+            state.position = encoderIntern.getAbsoluteTurns();
+            state.positionExtern = encoderExtern.getAbsoluteTurns();
+
+            //getting an status package is an implicit cleaner for all error states
+            bzero(&(state.error), sizeof(struct ErrorState));
+
+            gotBoardState = true;
+            
+            if(callbacks)
+                callbacks->gotStatus(boardId, state);
+            break;
+        }
+        case firmware::PACKET_ID_EXTENDED_STATUS:
+        {
+            const firmware::extendedStatusData *esdata = 
+                reinterpret_cast<const firmware::extendedStatusData *>(msg.data.data());
+                
+            state.can_time = msg.receiveTime;
+            state.temperature = esdata->temperature;
+            state.motorTemperature = esdata->motorTemperature;
+            if(callbacks)
+                callbacks->gotStatus(boardId, state);
+            break;
+        }
+        case firmware::PACKET_ID_ANNOUNCE_STATE:
+        {
+            processStateMsg(msg);
+            break;
+        }
+        case firmware::PACKET_ID_ANNOUNCE_SENSOR_CONFIG:
+        {
+            if(!checkIfConfigIsSame(msg))
+            {
+                std::cout << "Config of HBridge " << boardId << " differs, reconfiguring it " << std::endl;
+                resetDevice();
+                driverState = hbridge::Reader::READER_REQUEST_STATE;
+            } 
+            else 
+            {
+                configureDone();
+            }
+            break;
+        }
+        case firmware::PACKED_ID_ANNOUNCE_VERSION:
+        {
+            if(!checkForCorrectVersion(msg))
+            {
+                configurationError(msg);
+            } 
+            else 
+            {
+                requestDeviceState();
+            }
+            break;
+        }
+        
+
+        default:
+            std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
+            break;
     }
 }
 

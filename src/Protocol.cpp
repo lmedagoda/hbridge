@@ -112,10 +112,23 @@ void Protocol::Handle::processMsg(const hbridge::Packet& msg)
     }
     else
     {
-	for(std::vector<PacketReceiver *>::iterator handler = msgHandlers.begin(); handler != msgHandlers.end(); handler++)
-	{
-	    (*handler)->processMsg(msg);
-	}
+        const hbridge::Packet *inMsg;
+        if(msg.packetId >= firmware::PACKET_ID_LOWIDS_START)
+        {
+             inMsg = lowPrioProtocol.processPackage(msg);
+        }
+        else
+        {
+            inMsg = &msg;
+        }
+        
+        if(inMsg)
+        {
+            for(std::vector<PacketReceiver *>::iterator handler = msgHandlers.begin(); handler != msgHandlers.end(); handler++)
+            {
+                (*handler)->processMsg(msg);
+            }
+        }
     }
 
 }
