@@ -68,22 +68,25 @@ private:
     enum DriverState
     {
 	READER_OFF,
-	READER_REQUEST_STATE,
+        READER_REQUEST_STATE,
+        READER_REQUEST_CONFIG,
 	READER_CONFIG_SENT,
 	READER_RUNNING,
     };
     
-    enum DriverState dstate;
+    enum DriverState driverState;
     
     SensorConfiguration configuration;
     
     BoardState state;
-    enum firmware::STATES internal_state;
+    enum firmware::STATES boardState;
     
     Encoder encoderIntern;
     Encoder encoderExtern;
     
     void sendConfigureMsg();
+    void requestSensorConfig();
+    bool checkIfConfigIsSame(const hbridge::Packet& msg);
     
     void registerControllerForPacketId(Controller *ctrl, int packetId);
     void unregisterController(Controller *ctrl);
@@ -126,7 +129,7 @@ public:
     /**
      * Resets the motor driver into the
      * unconfigured state.This function
-     * must be called to reover the 
+     * must be called to recover the 
      * motor driver form an sensor error.
      * */
     void resetDevice();

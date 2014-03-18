@@ -5,7 +5,7 @@ using namespace firmware;
 
 namespace hbridge {
 
-Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), gotBoardState(false), dstate(READER_OFF)
+Reader::Reader(uint32_t boardId, Protocol *protocol): boardId(boardId), protocol(protocol), callbacks(NULL), configured(false), error(false), gotBoardState(false), driverState(READER_OFF)
 {
     protocol->registerReceiver(this, boardId);
 }
@@ -21,7 +21,7 @@ void Reader::startConfigure()
     error = false;
     gotBoardState = false;
     requestDeviceState();
-    dstate = READER_REQUEST_STATE;
+    driverState = READER_REQUEST_STATE;
 }
 
 void Reader::resetDevice()
@@ -40,6 +40,32 @@ void Reader::requestDeviceState()
     protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
 }
 
+void Reader::requestSensorConfig()
+{
+    Packet msg;
+    msg.packetId = PACKET_ID_REQUEST_SENSOR_CONFIG;
+    
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
+}
+
+bool Reader::checkIfConfigIsSame(const Packet& msg)
+{
+    const sensorConfig *hbConf = reinterpret_cast<const sensorConfig *>(msg.data.data());
+    
+    if(hbConf->externalTempSensor != configuration.externalTempSensor ||
+        hbConf->statusEveryMs != 1000 / configuration.statusFrequency ||        
+        hbConf->encoder1Config.encoderType != static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type) ||
+        hbConf->encoder1Config.ticksPerTurn != configuration.encoder_config_intern.ticksPerTurnDivided ||
+        hbConf->encoder1Config.tickDivider != configuration.encoder_config_intern.tickDivider ||
+        hbConf->encoder1Config.leapTickCounter != configuration.encoder_config_intern.leapTickValue ||
+        hbConf->encoder2Config.encoderType != static_cast<firmware::encoderTypes>(configuration.encoder_config_extern.type) ||
+        hbConf->encoder2Config.ticksPerTurn != configuration.encoder_config_extern.ticksPerTurnDivided ||
+        hbConf->encoder2Config.tickDivider != configuration.encoder_config_extern.tickDivider ||
+        hbConf->encoder2Config.leapTickCounter != configuration.encoder_config_extern.leapTickValue)
+        return false;
+
+    return true;
+}
 
 void Reader::setConfiguration(const hbridge::SensorConfiguration& config)
 {
@@ -62,15 +88,14 @@ void Reader::setConfiguration(const hbridge::SensorConfiguration& config)
 
 void Reader::sendConfigureMsg()
 {
-    SensorConfiguration &cfg(configuration);
     Packet msg;
     msg.packetId = firmware::PACKET_ID_SET_SENSOR_CONFIG;
     msg.data.resize(sizeof(firmware::sensorConfig));
     
     firmware::sensorConfig *cfg1 = reinterpret_cast<firmware::sensorConfig *>(msg.data.data());
 
-    cfg1->externalTempSensor = cfg.externalTempSensor;
-    cfg1->statusEveryMs = 1000 / cfg.statusFrequency;
+    cfg1->externalTempSensor = configuration.externalTempSensor;
+    cfg1->statusEveryMs = 1000 / configuration.statusFrequency;
     cfg1->encoder1Config.encoderType = static_cast<firmware::encoderTypes>(configuration.encoder_config_intern.type);
     cfg1->encoder1Config.ticksPerTurn = configuration.encoder_config_intern.ticksPerTurnDivided;
     cfg1->encoder1Config.tickDivider = configuration.encoder_config_intern.tickDivider;
@@ -159,6 +184,20 @@ void Reader::processMsg(const Packet &msg)
 		processStateMsg(msg);
 		break;
 	    }
+            case firmware::PACKET_ID_ANNOUNCE_SENSOR_CONFIG:
+            {
+                if(!checkIfConfigIsSame(msg))
+                {
+                    std::cout << "Config of HBridge " << boardId << " differs, reconfiguring it " << std::endl;
+                    resetDevice();
+                    driverState = hbridge::Reader::READER_REQUEST_STATE;
+                } 
+                else 
+                {
+                    configureDone();
+                }
+                break;
+            }
 
 	    default:
 		std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
@@ -175,8 +214,9 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 
     std::cout << "GOT STATE ACCOUNCE hb " << boardId << " new state " <<  getStateName(stateData->curState) <<  std::endl;
 
-    switch(dstate)
+    switch(driverState)
     {
+        default:
 	case READER_OFF:
 	    break;
 	case READER_REQUEST_STATE:
@@ -185,16 +225,17 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 	    {
 		case firmware::STATE_UNCONFIGURED:
 		    sendConfigureMsg();
-		    dstate = READER_CONFIG_SENT;
+		    driverState = READER_CONFIG_SENT;
 		    break;
-		case firmware::STATE_SENSORS_CONFIGURED:
-		    configureDone();
 		    break;    
 		case firmware::STATE_SENSOR_ERROR:
 		    resetDevice();
 		    break;    
+                case firmware::STATE_SENSORS_CONFIGURED:
 		default:
-		    configureDone();
+                    //state is configured or higher, we need to figure out 
+                    //if the sensor config mathes the wanted one
+                    requestSensorConfig();
 		    break;
 	    }
 	    break;
@@ -232,7 +273,7 @@ void Reader::processStateMsg(const hbridge::Packet& msg)
 	    break;
     };
 	
-    this->internal_state = stateData->curState;
+    boardState = stateData->curState;
     if (callbacks)
 	callbacks->gotInternalState(boardId, stateData->curState);    
 
@@ -274,7 +315,7 @@ bool Reader::hasError()
 
 void Reader::configureDone()
 {
-    dstate = READER_RUNNING;
+    driverState = READER_RUNNING;
     configured = true;
 
     if(callbacks)
@@ -283,7 +324,7 @@ void Reader::configureDone()
 
 bool Reader::isConfigured()
 {
-    return (dstate == READER_RUNNING) && (internal_state >= firmware::STATE_SENSORS_CONFIGURED);
+    return (driverState == READER_RUNNING) && (boardState >= firmware::STATE_SENSORS_CONFIGURED);
 }
 
 void Reader::gotError(const hbridge::ErrorState& errorState)

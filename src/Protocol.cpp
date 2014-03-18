@@ -101,7 +101,7 @@ void SendQueue::processAck(const hbridge::Packet& msg)
 void Protocol::Handle::processMsg(const hbridge::Packet& msg)
 {    
     if((senderId != msg.senderId) && !msg.broadcastMsg){
-        printf("Got error state sender id: %u, msg.senderID: %u, Boradcast: %s\n",senderId,msg.senderId,msg.broadcastMsg);
+        std::cout << "Got error state sender id: " << senderId << ", msg.senderID: " << msg.senderId << " Broadcast: " << msg.broadcastMsg << std::endl;
         assert(false);
     }
     

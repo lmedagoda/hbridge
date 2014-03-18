@@ -41,6 +41,7 @@ void state_init()
     protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_UNCONFIGURED, state_setUnconfigured);
     protocol_registerHandler(PACKET_ID_REQUEST_STATE, state_sendStateHandler);
+    protocol_registerHandler(PACKET_ID_REQUEST_SENSOR_CONFIG, state_sendSensorConfigHandler);
 }
 
 void state_switchState(uint8_t forceSynchronisation)
@@ -174,6 +175,18 @@ void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char*
     data.curState = activeCState->internalState;
     
     protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));    
+}
+
+void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size)
+{
+    protocol_ackPacket(id, senderId);
+    struct sensorConfig data;
+    data.encoder1Config = activeCState->sensorConfig.internalEncoder;
+    data.encoder2Config = activeCState->sensorConfig.externalEncoder;
+    data.externalTempSensor = activeCState->sensorConfig.useExternalTempSensor;
+    data.statusEveryMs = activeCState->sensorConfig.statusEveryMs;
+    
+    protocol_sendData(senderId, PACKET_ID_ANNOUNCE_SENSOR_CONFIG, (const unsigned char *)&data, sizeof(struct sensorConfig));    
 }
 
 void state_sensorConfigHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
