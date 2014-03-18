@@ -124,6 +124,13 @@ void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tic
     encoders[type].setTicksPerTurn(ticks * tickDivider, tickDivider);
 }
 
+void encoder_getTicksPerTurn(enum encoderTypes type, uint32_t *ticks, uint8_t *tickDivider, uint32_t *leapTicks)
+{
+    *tickDivider = encoders[type].encoderConfig.tickDivider;
+    *ticks = encoders[type].encoderConfig.ticksPerTurn / *tickDivider;
+    *leapTicks = encoders[type].encoderConfig.leapTickValue; 
+}
+
 uint32_t getTicksPerTurn(enum encoderTypes type)
 {
     return encoders[type].encoderConfig.ticksPerTurn;

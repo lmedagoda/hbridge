@@ -23,6 +23,7 @@ void state_sensorClearError(int senderId, int receiverId, int id, unsigned char 
 void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_setUnconfigured(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size);
 const char *state_getStateString(enum STATES state);
 
 void state_init()
@@ -75,6 +76,12 @@ void state_setEncoder(volatile enum encoderTypes *curEncoder, const struct encod
 	encoder_setTicksPerTurn(newConfig->encoderType, newConfig->ticksPerTurn, newConfig->tickDivider, newConfig->leapTickCounter);
 	*curEncoder = newConfig->encoderType;
     }
+}
+
+void state_getEncoder(struct encoderConfiguration *config, const volatile enum encoderTypes curEncoder)
+{
+    config->encoderType = curEncoder;
+    encoder_getTicksPerTurn(config->encoderType, &(config->ticksPerTurn), &(config->tickDivider), &(config->leapTickCounter));
 }
 
 void state_switchToState(enum STATES nextState)
@@ -181,8 +188,8 @@ void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigne
 {
     protocol_ackPacket(id, senderId);
     struct sensorConfig data;
-    data.encoder1Config = activeCState->sensorConfig.internalEncoder;
-    data.encoder2Config = activeCState->sensorConfig.externalEncoder;
+    state_getEncoder(&(data.encoder1Config), activeCState->sensorConfig.internalEncoder);
+    state_getEncoder(&(data.encoder2Config), activeCState->sensorConfig.externalEncoder);
     data.externalTempSensor = activeCState->sensorConfig.useExternalTempSensor;
     data.statusEveryMs = activeCState->sensorConfig.statusEveryMs;
     

@@ -34,6 +34,8 @@ void encoder_setImplementation(enum encoderTypes type, struct EncoderInterface i
 void encoder_initEncoder(enum encoderTypes type);
 void encoder_deinitEncoder(enum encoderTypes type);
 void encoder_setTicksPerTurn(enum encoderTypes type, uint32_t ticks, uint8_t tickDivider, uint32_t leapTicks);
+void encoder_getTicksPerTurn(enum encoderTypes type, uint32_t *ticks, uint8_t *tickDivider, uint32_t *leapTicks);
+
 
 
 
