@@ -106,14 +106,16 @@ public:
      * and registers it at the writer object
      * */
     template<class T>
-    void registerController()
+    T &registerController()
     {
         
         T *ctrl = new T(this);
         if(controllers[ctrl->getControllerId()])
-	  throw std::out_of_range("HbridgeHandle: Error: There is already a controller with id " + boost::lexical_cast<std::string>((int) ctrl->getControllerId()) + std::string(" registered"));
+          throw std::out_of_range("HbridgeHandle: Error: There is already a controller with id " + boost::lexical_cast<std::string>((int) ctrl->getControllerId()) + std::string(" registered"));
     
         controllers[ctrl->getControllerId()] = ctrl;
+        
+        return *ctrl;
     }
     
     /**

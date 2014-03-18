@@ -208,47 +208,6 @@ namespace hbridge
         base::Time can_time;
     };
     
-    struct PositionControllerConfiguration
-    {
-	PositionControllerConfiguration () :minHystDist(0), maxHystDist(0), 
-	hysteresisActive(false), allowWrapAround(false), overDistCount(0) {};
-	
-	double minHystDist;
-	double maxHystDist;
-	bool hysteresisActive;
-	bool allowWrapAround;
-	short overDistCount;
-    };
-    
-    struct PID_Debug
-    {
-	PID_Debug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};
-	signed short pPart;
-	signed short iPart;
-	signed short dPart;
-	unsigned short minMaxPidOutput;
-    };
-    
-    struct PositionControllerDebug
-    {
-	PositionControllerDebug() : targetValue(0), pwmValue(0), encoderValue(0), positionValue(0) {};
-	unsigned short targetValue;
-	signed short pwmValue;
-	unsigned int encoderValue;
-	unsigned int positionValue;
-	PID_Debug pidDebug;
-    };
-    
-    struct SpeedControllerDebug
-    {
-	SpeedControllerDebug() : targetValue(0), pwmValue(0), encoderValue(0), speedValue(0) {};
-	unsigned short targetValue;
-	signed short pwmValue;
-	unsigned int encoderValue;
-	unsigned int speedValue;
-	PID_Debug pidDebug;
-    };
-
     struct MotorConfiguration {
 	SensorConfiguration sensorConfig;
 	ActuatorConfiguration actuatorConfig;

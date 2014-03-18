@@ -204,11 +204,11 @@ void PosPIDController::sendControllerConfig()
     msg.packetId = firmware::PACKET_ID_SET_POS_CONTROLLER_DATA;
     msg.data.resize(sizeof(firmware::posControllerData));
     firmware::posControllerData *data = (firmware::posControllerData *) msg.data.data();
-    data->hysteresisActive = config.posCtrlConfig.hysteresisActive;
-    data->allowWrapAround = config.posCtrlConfig.allowWrapAround;
-    data->minHystDist = config.posCtrlConfig.maxHystDist;
-    data->maxHystDist = config.posCtrlConfig.maxHystDist;
-    data->overDistCount = config.posCtrlConfig.overDistCount;
+    data->hysteresisActive = config.hysteresisActive;
+    data->allowWrapAround = config.allowWrapAround;
+    data->minHystDist = config.maxHystDist;
+    data->maxHystDist = config.maxHystDist;
+    data->overDistCount = config.overDistCount;
     data->unused = 0;
     
     //check if values exceed signed short

@@ -92,6 +92,15 @@ public:
 	return mode;
     };
 
+    struct PID_Debug
+    {
+        PID_Debug() : pPart(0), iPart(0), dPart(0), minMaxPidOutput(0) {};
+        signed short pPart;
+        signed short iPart;
+        signed short dPart;
+        unsigned short minMaxPidOutput;
+    };
+
 };
 
 
@@ -121,6 +130,17 @@ public:
     public:
 	base::actuators::PIDValues pidValues;
     };
+    
+    struct Debug
+    {
+        Debug() : targetValue(0), pwmValue(0), encoderValue(0), speedValue(0) {};
+        unsigned short targetValue;
+        signed short pwmValue;
+        unsigned int encoderValue;
+        unsigned int speedValue;
+        PID_Debug pidDebug;
+    };
+    
     void setConfig(const Config &config);
     void setTargetValue(double);
 
@@ -130,7 +150,7 @@ public:
 private:
     SpeedPIDController(hbridge::Writer *writer);
     Config config;
-    SpeedControllerDebug speedControllerDebug;
+    Debug speedControllerDebug;
 };
 
 class PosPIDController: public Controller
@@ -140,9 +160,27 @@ public:
     class Config
     {
     public:
-	base::actuators::PIDValues pidValues;
-	PositionControllerConfiguration posCtrlConfig;
+        Config() :minHystDist(0), maxHystDist(0), 
+        hysteresisActive(false), allowWrapAround(false), overDistCount(0) {};
+
+        base::actuators::PIDValues pidValues;
+        double minHystDist;
+        double maxHystDist;
+        bool hysteresisActive;
+        bool allowWrapAround;
+        short overDistCount;
     };
+    
+    struct Debug
+    {
+        Debug() : targetValue(0), pwmValue(0), encoderValue(0), positionValue(0) {};
+        unsigned short targetValue;
+        signed short pwmValue;
+        unsigned int encoderValue;
+        unsigned int positionValue;
+        PID_Debug pidDebug;
+    };
+    
     void setConfig(const Config &config);
     
     void setTargetValue(double value);
@@ -153,7 +191,7 @@ public:
 private:
     PosPIDController(hbridge::Writer *writer);
     Config config;
-    PositionControllerDebug positionControllerDebug;
+    Debug positionControllerDebug;
 };
 
 }
