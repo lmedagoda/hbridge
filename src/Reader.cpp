@@ -20,7 +20,7 @@ void Reader::startConfigure()
     configured = false;
     error = false;
     gotBoardState = false;
-    requestDeviceState();
+    requestVersion();
     driverState = READER_REQUEST_STATE;
 }
 
@@ -38,6 +38,14 @@ void Reader::requestDeviceState()
     msg.packetId = PACKET_ID_REQUEST_STATE;
     
     protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));
+}
+
+void Reader::requestVersion()
+{
+    Packet msg;
+    msg.packetId = PACKED_ID_REQUEST_VERSION;
+    
+    protocol->sendPacket(boardId, msg, true, boost::bind(&Reader::configurationError, this, _1));    
 }
 
 void Reader::requestSensorConfig()
@@ -64,6 +72,18 @@ bool Reader::checkIfConfigIsSame(const Packet& msg)
         hbConf->encoder2Config.leapTickCounter != configuration.encoder_config_extern.leapTickValue)
         return false;
 
+    return true;
+}
+
+bool Reader::checkForCorrectVersion(const Packet& msg)
+{
+    const announceVersionData *version = reinterpret_cast<const announceVersionData *>(msg.data.data());
+    
+    if(version->major != HB_MAJOR_VERSI0N || version->minor != HB_MINOR_VERSI0N)
+    {
+        return false;
+    }
+    
     return true;
 }
 
@@ -198,6 +218,19 @@ void Reader::processMsg(const Packet &msg)
                 }
                 break;
             }
+            case firmware::PACKED_ID_ANNOUNCE_VERSION:
+            {
+                if(!checkForCorrectVersion(msg))
+                {
+                    configurationError(msg);
+                } 
+                else 
+                {
+                    requestDeviceState();
+                }
+                break;
+            }
+            
 
 	    default:
 		std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
@@ -285,6 +318,14 @@ void Reader::configurationError(const Packet &msg)
     std::cout << "Reason:" << std::endl;
     switch(msg.packetId)
     {
+        case PACKED_ID_ANNOUNCE_VERSION:
+        {
+            const announceVersionData *version = reinterpret_cast<const announceVersionData *>(msg.data.data());
+            std::cout << "Firmware version is different from driver version :" << std::endl;
+            std::cout << "  Firmware : " << version->major << "." << version->minor << std::endl;
+            std::cout << "  Driver   : " << HB_MAJOR_VERSI0N << "." << HB_MINOR_VERSI0N << std::endl;
+        }
+            break;
 	case PACKET_ID_REQUEST_STATE:
 	    std::cout << "Motor driver did not ack state request packet." << std::endl;
 	    break;	    	    

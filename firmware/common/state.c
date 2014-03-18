@@ -23,6 +23,7 @@ void state_sensorClearError(int senderId, int receiverId, int id, unsigned char 
 void state_actuatorClearError(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_setUnconfigured(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
+void state_sendVersionHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size);
 void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size);
 const char *state_getStateString(enum STATES state);
 
@@ -42,6 +43,7 @@ void state_init()
     protocol_registerHandler(PACKET_ID_SET_VALUE58, state_setTargetValueHandler);
     protocol_registerHandler(PACKET_ID_SET_UNCONFIGURED, state_setUnconfigured);
     protocol_registerHandler(PACKET_ID_REQUEST_STATE, state_sendStateHandler);
+    protocol_registerHandler(PACKED_ID_REQUEST_VERSION, state_sendVersionHandler);
     protocol_registerHandler(PACKET_ID_REQUEST_SENSOR_CONFIG, state_sendSensorConfigHandler);
 }
 
@@ -182,6 +184,16 @@ void state_sendStateHandler(int senderId, int receiverId, int id, unsigned char*
     data.curState = activeCState->internalState;
     
     protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_ANNOUNCE_STATE, (const unsigned char *)&data, sizeof(struct announceStateData));    
+}
+
+void state_sendVersionHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size)
+{
+    protocol_ackPacket(id, senderId);
+    struct announceVersionData data;
+    data.major = HB_MAJOR_VERSI0N;
+    data.minor = HB_MINOR_VERSI0N;
+    
+    protocol_sendData(RECEIVER_ID_ALL, PACKED_ID_ANNOUNCE_VERSION, (const unsigned char *)&data, sizeof(struct announceVersionData));    
 }
 
 void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size)

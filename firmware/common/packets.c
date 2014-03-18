@@ -102,8 +102,8 @@ const char *getPacketName(uint16_t packetId)
 	    return "PACKED_ID_REQUEST_VERSION";
 	    break;
 	    
-	case PACKED_ID_VERSION: 
-	    return "PACKED_ID_VERSION";
+	case PACKED_ID_ANNOUNCE_VERSION: 
+	    return "PACKED_ID_ANNOUNCE_VERSION";
 	    break;
 
 	case PACKET_ID_SET_SPEED_CONTROLLER_DATA: 

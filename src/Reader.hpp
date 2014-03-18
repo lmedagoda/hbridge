@@ -85,7 +85,10 @@ private:
     Encoder encoderExtern;
     
     void sendConfigureMsg();
+    void requestVersion();
     void requestSensorConfig();
+    
+    bool checkForCorrectVersion(const hbridge::Packet& msg);
     bool checkIfConfigIsSame(const hbridge::Packet& msg);
     
     void registerControllerForPacketId(Controller *ctrl, int packetId);

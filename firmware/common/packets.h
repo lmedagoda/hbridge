@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define HB_MAJOR_VERSI0N 2
+#define HB_MINOR_VERSI0N 0
+
 enum STATES
 {
     STATE_UNCONFIGURED,
@@ -47,12 +50,12 @@ enum LOW_PRIORITY_IDs
     PACKET_ID_SET_ACTIVE_CONTROLLER,
 
     PACKET_ID_REQUEST_STATE,
-    PACKET_ID_REQUEST_SENSOR_CONFIG,
 
+    PACKET_ID_REQUEST_SENSOR_CONFIG,
     PACKET_ID_ANNOUNCE_SENSOR_CONFIG,
 
     PACKED_ID_REQUEST_VERSION,
-    PACKED_ID_VERSION,
+    PACKED_ID_ANNOUNCE_VERSION,
 
     PACKET_ID_SET_SPEED_CONTROLLER_DATA,
     PACKET_ID_SPEED_CONTROLLER_DEBUG,
@@ -103,6 +106,11 @@ struct ackData {
 
 struct announceStateData {
     enum STATES curState:8;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct announceVersionData {
+    uint8_t major;
+    uint16_t minor;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct setAllowedSenderData {
