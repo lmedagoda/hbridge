@@ -193,7 +193,7 @@ void state_sendVersionHandler(int senderId, int receiverId, int id, unsigned cha
     data.major = HB_MAJOR_VERSI0N;
     data.minor = HB_MINOR_VERSI0N;
     
-    protocol_sendData(RECEIVER_ID_ALL, PACKED_ID_ANNOUNCE_VERSION, (const unsigned char *)&data, sizeof(struct announceVersionData));    
+    protocol_sendData(senderId, PACKED_ID_ANNOUNCE_VERSION, (const unsigned char *)&data, sizeof(struct announceVersionData));    
 }
 
 void state_sendSensorConfigHandler(int senderId, int receiverId, int id, unsigned char* idata, short unsigned int size)
