@@ -164,7 +164,7 @@ void mbstate_setBlinkLed(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(mbstate_BlinkLedBank, &GPIO_InitStructure);
 
-    GPIO_ResetBits(mbstate_BlinkLedBank, mbstate_BlinkLedPin);
+    GPIO_SetBits(mbstate_BlinkLedBank, mbstate_BlinkLedPin);
 }
 
 void mbstate_generateBlinkCode()
@@ -176,18 +176,24 @@ void mbstate_generateBlinkCode()
     unsigned int curTime = time_getTimeInMs();
     
     static uint8_t blinksLeft = 0;
-    static BitAction lastLedState = Bit_RESET;
+    static BitAction lastLedState = Bit_SET;
     
     if(curTime - lastBlinkTime > 500)
     {
         if(blinksLeft > 0)
         {
-            lastLedState = ~lastLedState;
+	    if(lastLedState == Bit_RESET)
+		lastLedState = Bit_SET;
+	    else
+		lastLedState = Bit_RESET;
+		
             GPIO_WriteBit(mbstate_BlinkLedBank, mbstate_BlinkLedPin, lastLedState);
-        } else 
+	    blinksLeft--;
+        } 
+	else 
         {
             //recompute needed blinks from state
-            blinksLeft = currentState;
+            blinksLeft = currentState * 2;
         }
         
         lastBlinkTime = curTime;
