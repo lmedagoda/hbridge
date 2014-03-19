@@ -5,10 +5,15 @@
 #include "../../common/hbridge_cmd2.h"
 #include "../../common/hbridge_cmd.h"
 #include "../../common/protocol.h"
+#include "stm32f10x_gpio.h"
 
 enum MAINBOARDSTATE currentState;
 
 struct MainboardState mbstate_states[MAINBOARD_NUM_STATES];
+
+uint8_t mb_blinkLedSet = 0;
+GPIO_TypeDef* mbstate_BlinkLedBank;
+uint16_t mbstate_BlinkLedPin;
 
 uint8_t mbstate_defaultToHandler()
 {
@@ -131,8 +136,70 @@ struct MainboardState* mbstate_getState(enum MAINBOARDSTATE state)
     return &(mbstate_states[state]);
 }
 
+void mbstate_setBlinkLed(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+{
+    mb_blinkLedSet = 1;
+    
+    mbstate_BlinkLedBank = GPIOx;
+    mbstate_BlinkLedPin = GPIO_Pin;
+    
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
+
+    if(mbstate_BlinkLedBank == GPIOC)
+    {
+        RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+    }
+    else
+    {
+        printf("Error, Activation GPIO bank is not implemented for given bank\n");
+        assert_param(0);
+    }
+    
+    GPIO_WriteBit(mbstate_BlinkLedBank,mbstate_BlinkLedPin,Bit_SET);
+    GPIO_InitStructure.GPIO_Pin = mbstate_BlinkLedPin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(mbstate_BlinkLedBank, &GPIO_InitStructure);
+
+    GPIO_ResetBits(mbstate_BlinkLedBank, mbstate_BlinkLedPin);
+}
+
+void mbstate_generateBlinkCode()
+{
+    if(!mb_blinkLedSet)
+        return;
+    
+    static unsigned int lastBlinkTime = 0;
+    unsigned int curTime = time_getTimeInMs();
+    
+    static uint8_t blinksLeft = 0;
+    static BitAction lastLedState = Bit_RESET;
+    
+    if(curTime - lastBlinkTime > 500)
+    {
+        if(blinksLeft > 0)
+        {
+            lastLedState = ~lastLedState;
+            GPIO_WriteBit(mbstate_BlinkLedBank, mbstate_BlinkLedPin, lastLedState);
+        } else 
+        {
+            //recompute needed blinks from state
+            blinksLeft = currentState;
+        }
+        
+        lastBlinkTime = curTime;
+    }
+}
+
 void mbstate_processState()
 {
+    //give blink codes
+    mbstate_generateBlinkCode();
+    
+    
     //call state handler
     mbstate_states[currentState].stateHandler();
 }
