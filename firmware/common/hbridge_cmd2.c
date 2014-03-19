@@ -174,6 +174,17 @@ void hbridge_ackHandler(int senderId, int receiverId, int id, unsigned char *dat
     hbridge_states[hbId].pendingAck = 0;
 }
 
+void hbridge_statusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    //for now we just ignore the status
+}
+
+void hbridge_setValueHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
+{
+    //this is a setValue from the PC
+    //we ignore it, but install a handler to get rid of the nasty error message
+}
+
 void hbridge_stateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
     int hbId = senderId - SENDER_ID_H_BRIDGE_1;
@@ -219,6 +230,10 @@ void hbridge_init(uint16_t numHbridges)
     
     protocol_registerHandler(PACKET_ID_ANNOUNCE_STATE, hbridge_stateHandler);
     protocol_registerHandler(PACKET_ID_ACK, hbridge_ackHandler);
+    protocol_registerHandler(PACKET_ID_STATUS, hbridge_statusHandler);
+    protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, hbridge_statusHandler);
+    protocol_registerHandler(PACKET_ID_SET_VALUE14, hbridge_setValueHandler);
+    protocol_registerHandler(PACKET_ID_SET_VALUE58, hbridge_setValueHandler);
 }
 
 void hbridge_setControllerWithData(const uint16_t hbridgeId, enum controllerModes controller, const int packetId, const char* data, const uint8_t dataSize)
