@@ -17,6 +17,26 @@
 int16_t voltage_reading = 0;
 int16_t encoder_reading = 0;
 
+void GPIO_Configuration(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  //get default GPIO config
+  GPIO_StructInit(&GPIO_InitStructure);
+
+  /* Enable GPIOA, GPIOD, USB_DISCONNECT(GPIOC) clock*/
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
+
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+
+  //configure PC7 (emergency) as push-pull, default high
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_SetBits(GPIOC, GPIO_Pin_7);
+}
+
+
 void sendStatusPacket() {
     arc_packet_t packet;
     packet.originator = SLAVE;
@@ -165,6 +185,15 @@ int main()
     USART4_Init(USART_USE_INTERRUPTS);
     
     printf("START: Up and running\n");
+    
+    GPIO_Configuration();
+    
+    //set led for blink codes
+    mbstate_setBlinkLed(GPIOC, GPIO_Pin_12);
+
+    //pull down to not signal emergency
+    GPIO_ResetBits(GPIOC, GPIO_Pin_7);
+
     
     timeout_init(3000);
     
