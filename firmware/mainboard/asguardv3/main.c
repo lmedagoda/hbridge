@@ -17,6 +17,10 @@
 int16_t voltage_reading = 0;
 int16_t encoder_reading = 0;
 
+uint16_t controlPacketCnt;
+uint16_t controlPacketsInLastSecond;
+uint32_t controlPacketCntStartTime = 0;
+
 void GPIO_Configuration(void)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -46,8 +50,8 @@ void sendStatusPacket() {
     packet.data[0] = voltage_reading >> 8;
     packet.data[1] = voltage_reading & 0xff;
     packet.data[2] = mbstate_getCurrentState();
-    packet.data[3] = 0; //stat_packets_persec;
-    packet.data[4] = 0; //stat_control_packets_persec;
+    packet.data[3] = packet_getPacketsInLastSecond();
+    packet.data[4] = controlPacketsInLastSecond;
     packet.data[5] = encoder_reading >> 8;
     packet.data[6] = encoder_reading & 0xff;
     arc_sendPacketDirect(&packet);
@@ -116,6 +120,17 @@ uint8_t cmdValid;
  * */
 void asguard_cmdHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
+    uint32_t curTime = time_getTimeInMs();
+    
+    if(curTime - controlPacketCntStartTime > 1000)
+    {
+        controlPacketsInLastSecond = controlPacketCnt;
+        controlPacketCnt = 0;
+        controlPacketCntStartTime = curTime;
+    }
+    
+    controlPacketCnt++;
+    
     struct AsguardControlData *cmd = (struct AsguardControlData *) data;
     curCmd = *cmd;
     cmdValid = 1;
