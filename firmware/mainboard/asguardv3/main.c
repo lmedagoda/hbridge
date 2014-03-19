@@ -33,6 +33,55 @@ void sendStatusPacket() {
     arc_sendPacketDirect(&packet);
 }
 
+int asguard_getVoltageReading() {
+    /* protocol:
+        supervisor emulates a 6bit usart with 7 stop bits:
+        LHHHHHL|HHHHHHH|LL98765|HHHHHHH|LL43210|HHHHHHH
+
+        we use an 8bit usart with 1 stop bit.
+        we will receive:
+        HHHHHLHH => 0xdf
+        L56789HH => (D << 1) | 0xc0  (with D being bit-swapped)
+        L01234HH => (D << 1) | 0xc0  (with D being bit-swapped)
+        */
+    int voltage = -1;
+    while(1) {
+        u8 buffer[3];
+        u32 len = 0;
+        len = USART4_SeekData(buffer,3);
+        if (len < 3)
+            break;
+        if (buffer[0] == 0xdf) {
+            u8 d1, d2;
+            d1 = (buffer[1] >> 1) & 0x1f;//high 5 bits
+            d2 = (buffer[2] >> 1) & 0x1f;//low 5 bits
+            //bits are in reverse order, so shuffle them
+            d1 =
+                ((d1 << 4) & (1 << 4)) |
+                ((d1 << 2) & (1 << 3)) |
+                ((d1     ) & (1 << 2)) |
+                ((d1 >> 2) & (1 << 1)) |
+                ((d1 >> 4) & (1 << 0));
+            d2 =
+                ((d2 << 4) & (1 << 4)) |
+                ((d2 << 2) & (1 << 3)) |
+                ((d2     ) & (1 << 2)) |
+                ((d2 >> 2) & (1 << 1)) |
+                ((d2 >> 4) & (1 << 0));
+            unsigned int v = d1 << 5 | d2; //raw value from atmel, 588 => 28.72V
+            voltage = v*718/147; //in 10mV, final granularity: >4 lsb
+            USART4_GetData(buffer,3);
+        } else if(buffer[1] == 0xdf) {
+            USART4_GetData(buffer,1);
+        } else if(buffer[2] == 0xdf) {
+            USART4_GetData(buffer,2);
+        } else {
+            USART4_GetData(buffer,3);
+        }
+    }
+    return voltage;
+}
+
 struct AsguardControlData {
   int8_t speed; 
   int8_t direction;
@@ -111,6 +160,9 @@ int main()
     printf_setSendFunction(USART3_SendData);
     
     USART2_Init(USART_USE_INTERRUPTS);
+    
+    //Usart for voltage reading
+    USART4_Init(USART_USE_INTERRUPTS);
     
     printf("START: Up and running\n");
     
@@ -193,6 +245,9 @@ int main()
 	
 	//process hbridge driver
 	hbridge_process();
+        
+        //get voltage from battery guard
+        voltage_reading = asguard_getVoltageReading();
     }
     
     return 0;
