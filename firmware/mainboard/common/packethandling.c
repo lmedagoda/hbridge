@@ -5,10 +5,15 @@
 #include "timeout.h"
 #include <hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
 #include "mb_types.h"
+#include "../common/time.h"
 
 #define PACKET_MAX_HANDLERS 16
 
 packet_callback_t packet_handlers[PACKET_MAX_HANDLERS];
+
+uint16_t packet_packetCnt;
+uint16_t packet_packetsInLastSecond;
+uint32_t packet_cntStartTime = 0;
 
 void packet_pingHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
 {
@@ -97,6 +102,7 @@ void packet_canAckHandler(int senderId, int receiverId, int id, unsigned char *d
     ack.index = inMsg->index;
     
     //TODO SEND
+    //TODO WHERE ?
     
     lastIndex = inMsg->index;
 }
@@ -132,13 +138,29 @@ void packet_registerHandler(int id, packet_callback_t callback)
     packet_handlers[id] = callback;
 }
 
+uint16_t packet_getPacketsInLastSecond()
+{
+    return packet_packetsInLastSecond;
+}
+
 void packet_handlePacket(int senderId, int receiverId, int id, unsigned char* data, short unsigned int size)
 {
+    uint32_t curTime = time_getTimeInMs();
+    
+    if(curTime - packet_cntStartTime > 1000)
+    {
+        packet_packetsInLastSecond = packet_packetCnt;
+        packet_packetCnt = 0;
+        packet_cntStartTime = curTime;
+    }
+    
+    packet_packetCnt++;
+    
     if (id >= PACKET_MAX_HANDLERS){
 	printf("Packet: ERROR, tried to handle packet with to high id\n");
         return;
     }
-    packet_handlers[id](senderId, receiverId, id, data, size);
     
+    packet_handlers[id](senderId, receiverId, id, data, size);
 }
 
