@@ -61,7 +61,7 @@ signed int USART1_SeekData (unsigned char *buffer, const unsigned int buffer_len
 
 
 
-void USART3_Init(enum USART_MODE mode);
+void USART3_Init(enum USART_MODE mode, unsigned int speed);
 void USART3_DeInit(void);
 signed int USART3_SendData(const unsigned char *data, const unsigned int size);
 signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_length);

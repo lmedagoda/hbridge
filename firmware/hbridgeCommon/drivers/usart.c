@@ -218,7 +218,7 @@ signed int USART2_SeekData(unsigned char* buffer, const unsigned int buffer_leng
     return USARTx_SeekData(USART2, &USART2_Data, buffer, buffer_length);
 }
 
-void USART3_Init(enum USART_MODE mode)
+void USART3_Init(enum USART_MODE mode, unsigned int speed)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -262,7 +262,7 @@ void USART3_Init(enum USART_MODE mode)
 
     USART_InitTypeDef USART_InitStructure;
 
-    USART_InitStructure.USART_BaudRate = 57600;
+    USART_InitStructure.USART_BaudRate = speed;
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
     USART_InitStructure.USART_StopBits = USART_StopBits_1;
     USART_InitStructure.USART_Parity = USART_Parity_No;
