@@ -57,8 +57,11 @@ void packet_canSendData(struct canMsg *inMsg, unsigned short size)
     const uint8_t payloadSize = size-2;
     CanTxMsg msg;
     msg.StdId = inMsg->canId;
+    msg.RTR=CAN_RTR_DATA;
+    msg.IDE=CAN_ID_STD;
     msg.DLC = payloadSize;
     int i;
+
     //copy down data as first two are CAN id and index
     for(i=0; i < payloadSize; i++) {
 	msg.Data[i] = inMsg->data[i];
@@ -71,8 +74,21 @@ void packet_canHandler(int senderId, int receiverId, int id, unsigned char *data
 {
     timeout_reset();
     //printf("got a can packet\n");
+
+    const uint8_t payloadSize = size-2;
+    CanTxMsg msg;
+    msg.StdId = data[0] << 3;
+    msg.RTR=CAN_RTR_DATA;
+    msg.IDE=CAN_ID_STD;
+    msg.DLC = payloadSize;
+    int i;
+
+    //copy down data as first byte is the CAN id
+    for(i=0; i < payloadSize; i++) {
+	msg.Data[i] = data[i + 1];
+    }
     
-    packet_canSendData((struct canMsg *) data, size);
+    CAN_SendMessage(&msg);
 }
 
 void packet_canAckHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size)
