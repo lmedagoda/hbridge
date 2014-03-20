@@ -172,7 +172,7 @@ struct pidDebugData {
 struct speedDebugData {
   int16_t targetVal;
   int16_t pwmVal;
-  unsigned short encoderVal;
+  int32_t encoderVal;
   int16_t speedVal;
   struct pidDebugData pidData;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
@@ -191,6 +191,12 @@ struct setPidData {
   int16_t kd;
   uint16_t minMaxPidOutput;
 } __attribute__ ((packed)) __attribute__((__may_alias__)) ;
+
+struct speedControllerData {
+    unsigned debugActive:1;
+    unsigned unused:7;
+    struct setPidData pidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct posControllerData {
     uint16_t minHystDist;

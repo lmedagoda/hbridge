@@ -105,7 +105,7 @@ void SpeedPIDController::processMsg(const hbridge::Packet& msg)
 	    const firmware::speedDebugData *data =
 		reinterpret_cast<const firmware::speedDebugData *>(msg.data.data());
 		
-		//BUG fix encoder value
+            speedControllerDebug.boardId = msg.receiverId;
 	    speedControllerDebug.encoderValue = data->encoderVal;
 	    speedControllerDebug.pwmValue = data->pwmVal;
 	    speedControllerDebug.speedValue = data->speedVal;
@@ -114,9 +114,17 @@ void SpeedPIDController::processMsg(const hbridge::Packet& msg)
 	    speedControllerDebug.pidDebug.iPart = data->pidData.iPart;
 	    speedControllerDebug.pidDebug.pPart = data->pidData.pPart;
 	    speedControllerDebug.pidDebug.minMaxPidOutput = data->pidData.minMaxPidOutput;
+            
+            if(debugCallback)
+                debugCallback(speedControllerDebug);
 	    break;
 	}
     }
+}
+
+void SpeedPIDController::registerDebugCallback(boost::function<void (const Debug &debugData)> callback)
+{
+    debugCallback = callback;
 }
 
 void SpeedPIDController::printSendError(const hbridge::Packet& msg)
@@ -148,13 +156,13 @@ void SpeedPIDController::sendControllerConfig()
 
     msg.data.resize(sizeof(firmware::setPidData));
     
-    firmware::setPidData *data = reinterpret_cast<firmware::setPidData *>(msg.data.data());
+    firmware::speedControllerData *data = reinterpret_cast<firmware::speedControllerData *>(msg.data.data());
     //convert given parameters to fixed point values for transmission
-    data->kp = config.pidValues.kp * 100;
-    data->ki = config.pidValues.ki * 100;
-    data->kd = config.pidValues.kd * 100;
-    data->minMaxPidOutput = config.pidValues.maxPWM;
-    
+    data->pidData.kp = config.pidValues.kp * 100;
+    data->pidData.ki = config.pidValues.ki * 100;
+    data->pidData.kd = config.pidValues.kd * 100;
+    data->pidData.minMaxPidOutput = config.pidValues.maxPWM;
+    data->debugActive = config.debugActive;
     sendPacket(msg, true);
 }
 

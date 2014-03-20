@@ -14,11 +14,12 @@ void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsign
     switch(id)
     {
         case PACKET_ID_SET_SPEED_CONTROLLER_DATA: {
-	    struct setPidData *data = (struct setPidData *) idata;
-	    setKp(&(speedControllerData.pidData), data->kp);
-	    setKi(&(speedControllerData.pidData), data->ki);
-	    setKd(&(speedControllerData.pidData), data->kd);
-	    setMinMaxCommandVal(&(speedControllerData.pidData), -data->minMaxPidOutput, data->minMaxPidOutput);
+	    struct speedControllerData *data = (struct speedControllerData *) idata;
+	    setKp(&(speedControllerData.pidData), data->pidData.kp);
+	    setKi(&(speedControllerData.pidData), data->pidData.ki);
+	    setKd(&(speedControllerData.pidData), data->pidData.kd);
+	    setMinMaxCommandVal(&(speedControllerData.pidData), -data->pidData.minMaxPidOutput, data->pidData.minMaxPidOutput);
+            speedControllerData.debugActive = data->debugActive;
 	    speedControllerData.isConfigured = 1;
 	    break;
 	}
@@ -100,42 +101,18 @@ int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t whe
     setTargetValue(&(speedControllerData.pidData), targetSpeed);
     pwmValue = pid(&(speedControllerData.pidData), curSpeed);
 
-//     if(speedControllerData.debugActive) {
-// 	uint8_t tickDivider = getTickDivider(activeCState->controllerInputEncoder);
-// 
-// 	CanTxMsg speedDbgMessage;
-//         CanTxMsg pidMessageSpeed;
-//         speedDbgMessage.StdId= PACKET_ID_SPEED_DEBUG + ownHostId;
-// 	speedDbgMessage.RTR=CAN_RTR_DATA;
-// 	speedDbgMessage.IDE=CAN_ID_STD;
-// 	speedDbgMessage.DLC= sizeof(struct speedDebugData);
-// 
-//         struct speedDebugData *sdbgdata = (struct speedDebugData *) speedDbgMessage.Data;
-//         
-//         sdbgdata->targetVal = targetSpeed;
-// 	sdbgdata->pwmVal = pwmValue;
-// 	sdbgdata->encoderVal = wheelPos / tickDivider;
-// 	sdbgdata->speedVal = curSpeed;
-// 
-// 	//send status message over CAN
-// 	pidMessageSpeed.StdId= PACKET_ID_PID_DEBUG_SPEED + ownHostId;
-// 	pidMessageSpeed.RTR=CAN_RTR_DATA;
-// 	pidMessageSpeed.IDE=CAN_ID_STD;
-// 	pidMessageSpeed.DLC= sizeof(struct pidDebugData);
-// 
-// 	struct pidDebugData *sdata = (struct pidDebugData *) pidMessageSpeed.Data;
-// 	getInternalPIDValues(&(sdata->pPart), &(sdata->iPart), &(sdata->dPart));
-// 	sdata->minMaxPidOutput = speedControllerData.pidData.max_command_val;
-// 	
-// 	while(CAN_SendMessage(&pidMessageSpeed)){
-// 	    ;
-// 	}
-// 	
-// 	//send speed status message
-// 	while(CAN_SendMessage(&speedDbgMessage)) {
-// 	    ;
-// 	}
-//     }    
+    if(speedControllerData.debugActive) {
+        struct speedDebugData sdbgdata;
+        
+        sdbgdata.targetVal = targetSpeed;
+	sdbgdata.pwmVal = pwmValue;
+	sdbgdata.encoderVal = wheelPos;
+	sdbgdata.speedVal = curSpeed;
+        getInternalPIDValues(&(sdbgdata.pidData.pPart), &(sdbgdata.pidData.iPart), &(sdbgdata.pidData.dPart));
+        sdbgdata.pidData.minMaxPidOutput = speedControllerData.pidData.max_command_val;
+	
+        protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SPEED_CONTROLLER_DEBUG, (unsigned char *) &sdbgdata, sizeof(struct speedDebugData));
+    }    
 
     speedControllerData.lastWheelPos = wheelPos;
     return pwmValue;

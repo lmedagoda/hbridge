@@ -128,22 +128,33 @@ public:
     class Config
     {
     public:
+        Config() : debugActive(false)
+        {
+        }
 	base::actuators::PIDValues pidValues;
+        bool debugActive;
     };
     
     struct Debug
     {
-        Debug() : targetValue(0), pwmValue(0), encoderValue(0), speedValue(0) {};
-        unsigned short targetValue;
-        signed short pwmValue;
-        unsigned int encoderValue;
-        unsigned int speedValue;
+        Debug() : boardId(0), targetValue(0), pwmValue(0), encoderValue(0), speedValue(0) {};
+        uint8_t boardId;
+        int16_t targetValue;
+        int16_t pwmValue;
+        int32_t encoderValue;
+        int16_t speedValue;
         PID_Debug pidDebug;
     };
     
     void setConfig(const Config &config);
     void setTargetValue(double radPerSecond);
-
+    
+    void registerDebugCallback(boost::function<void (const Debug &debugData)> callback);
+    const Debug &getDebug()
+    {
+        return speedControllerDebug;
+    }
+    
     virtual void processMsg(const hbridge::Packet& msg);
     virtual void printSendError(const hbridge::Packet& msg);
     virtual void sendControllerConfig();
@@ -151,6 +162,7 @@ private:
     SpeedPIDController(hbridge::Writer *writer);
     Config config;
     Debug speedControllerDebug;
+    boost::function<void (const Debug &debugData)> debugCallback;
 };
 
 class PosPIDController: public Controller
