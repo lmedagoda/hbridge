@@ -45,19 +45,19 @@ void Controller::sendCommandData()
 	{
 	    case 0:
 	    case 4:
-		data->board1Value = *((uint16_t *) commandData.data());
+		data->board1Value = *((int16_t *) commandData.data());
 		break;
 	    case 1:
 	    case 5:
-		data->board2Value = *((uint16_t *) commandData.data());
+		data->board2Value = *((int16_t *) commandData.data());
 		break;
 	    case 2:
 	    case 6:
-		data->board3Value = *((uint16_t *) commandData.data());
+		data->board3Value = *((int16_t *) commandData.data());
 		break;
 	    case 3:
 	    case 7:
-		data->board4Value = *((uint16_t *) commandData.data());
+		data->board4Value = *((int16_t *) commandData.data());
 		break;
 	};
 	
