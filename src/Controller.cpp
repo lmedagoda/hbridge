@@ -147,12 +147,18 @@ void SpeedPIDController::sendControllerConfig()
     Packet msg;
 
     msg.packetId = firmware::PACKET_ID_SET_SPEED_CONTROLLER_DATA;
-    
+
+    const int16_t max = std::numeric_limits<int16_t>::max();
+    const int16_t min = std::numeric_limits<int16_t>::min();
+
     //check if values exceed signed short
-    if(config.pidValues.kp * 100 > (1<<16) || config.pidValues.kp * 100 < -(1<<16) ||
-	config.pidValues.ki * 100 > (1<<16) || config.pidValues.ki * 100 < -(1<<16) ||
-	config.pidValues.kd * 100 > (1<<16) || config.pidValues.kd * 100 < -(1<<16))
+    if(config.pidValues.kp * 100 > max || config.pidValues.kp * 100 < min ||
+       config.pidValues.ki * 100 > max || config.pidValues.ki * 100 < min ||
+       config.pidValues.kd * 100 > max || config.pidValues.kd * 100 < min)
 	throw std::runtime_error("Given PID Parameters are out of bound");
+
+    if(config.pidValues.maxPWM < 0 || config.pidValues.maxPWM > 1.0)
+	throw std::runtime_error("Given PID MAXPwm Parameter is out of bound [0 1]");
 
     msg.data.resize(sizeof(firmware::setPidData));
     
@@ -161,8 +167,9 @@ void SpeedPIDController::sendControllerConfig()
     data->pidData.kp = config.pidValues.kp * 100;
     data->pidData.ki = config.pidValues.ki * 100;
     data->pidData.kd = config.pidValues.kd * 100;
-    data->pidData.minMaxPidOutput = config.pidValues.maxPWM;
+    data->pidData.minMaxPidOutput = config.pidValues.maxPWM * std::numeric_limits<int16_t>::max();
     data->debugActive = config.debugActive;
+
     sendPacket(msg, true);
 }
 
@@ -224,10 +231,13 @@ void PosPIDController::sendControllerConfig()
     data->overDistCount = config.overDistCount;
     data->unused = 0;
     
+    const int16_t max = std::numeric_limits<int16_t>::max();
+    const int16_t min = std::numeric_limits<int16_t>::min();
+
     //check if values exceed signed short
-    if(config.pidValues.kp * 100 > (1<<16) || config.pidValues.kp * 100 < -(1<<16) ||
-	config.pidValues.ki * 100 > (1<<16) || config.pidValues.ki * 100 < -(1<<16) ||
-	config.pidValues.kd * 100 > (1<<16) || config.pidValues.kd * 100 < -(1<<16))
+    if(config.pidValues.kp * 100 > max || config.pidValues.kp * 100 < min ||
+       config.pidValues.ki * 100 > max || config.pidValues.ki * 100 < min ||
+       config.pidValues.kd * 100 > max || config.pidValues.kd * 100 < min)
 	throw std::runtime_error("Given PID Parameters are out of bound");
     
     if(config.pidValues.maxPWM < 0 || config.pidValues.maxPWM > 1.0)
