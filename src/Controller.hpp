@@ -142,7 +142,7 @@ public:
     };
     
     void setConfig(const Config &config);
-    void setTargetValue(double);
+    void setTargetValue(double radPerSecond);
 
     virtual void processMsg(const hbridge::Packet& msg);
     virtual void printSendError(const hbridge::Packet& msg);

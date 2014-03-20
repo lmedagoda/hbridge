@@ -73,7 +73,9 @@ int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t whe
     
     int16_t *speed_p = (int16_t *) (targetData->data);
     int32_t targetSpeed = *speed_p;
-    //TODO normalize somehow to turnsPerSecond(?)
+    
+    //input is turns per second * 100
+    targetSpeed = targetSpeed * ticksPerTurn / (1000 * 100);
 
     int32_t pwmValue = 0;
 

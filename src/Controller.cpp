@@ -82,12 +82,17 @@ SpeedPIDController::SpeedPIDController(Writer *writer):Controller(writer, firmwa
     registerForPacketId(firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG);
 }
 
-void SpeedPIDController::setTargetValue(double value)
+void SpeedPIDController::setTargetValue(double radPerSecond)
 {
-    if((value < -1.0) || (value > 1.0))
-	throw std::runtime_error("SpeedPIDController:Error, got target value which is out of range -1 +1");
-    
-    uint16_t transmitValue = value * std::numeric_limits<uint16_t>::max();
+    double turnPerSecond = radPerSecond / M_PI;
+        
+    //output is in turns/second * 100
+    int32_t tpsTimes100 = turnPerSecond * 100;
+
+    if((radPerSecond < std::numeric_limits<int16_t>::min()) || (radPerSecond > std::numeric_limits<int16_t>::max()))
+        throw std::runtime_error("SpeedPIDController:Error, got target value which is out of range (-1000 +1000 radian/second)");
+
+    int16_t transmitValue = std::min<int32_t>(std::max<int32_t>(tpsTimes100, std::numeric_limits<int16_t>::min()), std::numeric_limits<int16_t>::max());
     sendCommand(transmitValue);
 }
 
