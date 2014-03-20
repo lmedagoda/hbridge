@@ -14,6 +14,11 @@ void platformInit();
 
 void run();
 
+/**
+ * Sends out an error message
+ * containing the source of the error
+ */
+void systick_sendErrorMessage();
 
 
 #endif

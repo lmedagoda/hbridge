@@ -342,7 +342,7 @@ void systick_step()
     }
 }
 
-void sendErrorMessage(int32_t temperature, int32_t motorTemperature, uint32_t index)
+void systick_sendErrorMessage()
 {
     struct errorData edata;
 

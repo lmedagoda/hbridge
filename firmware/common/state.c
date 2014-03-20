@@ -172,6 +172,8 @@ void state_checkErrors()
     {
 	if(state_inErrorState())
 	{
+	    //inform the driver about the error
+	    systick_sendErrorMessage();
 	    state_switchToState(STATE_ACTUATOR_ERROR);
 	}
     }
