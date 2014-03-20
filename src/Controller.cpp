@@ -89,10 +89,11 @@ void SpeedPIDController::setTargetValue(double radPerSecond)
     //output is in turns/second * 100
     int32_t tpsTimes100 = turnPerSecond * 100;
 
-    if((radPerSecond < std::numeric_limits<int16_t>::min()) || (radPerSecond > std::numeric_limits<int16_t>::max()))
+    if((tpsTimes100 < std::numeric_limits<int16_t>::min()) || (tpsTimes100 > std::numeric_limits<int16_t>::max()))
         throw std::runtime_error("SpeedPIDController:Error, got target value which is out of range (-1000 +1000 radian/second)");
 
-    int16_t transmitValue = std::min<int32_t>(std::max<int32_t>(tpsTimes100, std::numeric_limits<int16_t>::min()), std::numeric_limits<int16_t>::max());
+    int16_t transmitValue = tpsTimes100; // std::min<int32_t>(std::max<int32_t>(tpsTimes100, std::numeric_limits<int16_t>::min()), std::numeric_limits<int16_t>::max());
+
     sendCommand(transmitValue);
 }
 
