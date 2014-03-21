@@ -253,7 +253,7 @@ void init(){
 
     //ARC's
     USART2_Init(USART_USE_INTERRUPTS);
-    USART3_Init(USART_USE_INTERRUPTS);
+    USART3_Init(USART_USE_INTERRUPTS, 57600);
 
     //Modem
     //USART5_Init(USART_POLL);
