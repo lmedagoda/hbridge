@@ -1,4 +1,5 @@
 #include "pid.h"
+#include "packets.h"
 
 static int16_t pPart = 0;
 static int16_t iPart = 0;
@@ -113,3 +114,10 @@ void setMinMaxCommandVal(struct pid_data *data, int32_t min, int32_t max) {
   data->min_command_val = min;
 }
 
+void setPidConfiguration(struct pid_data *data, const struct setPidData *config)
+{
+    setKp(data, config->kp);
+    setKi(data, config->ki);
+    setKd(data, config->kd);
+    setMinMaxCommandVal(data , -config->minMaxPidOutput, config->minMaxPidOutput);    
+}

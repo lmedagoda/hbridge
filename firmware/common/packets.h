@@ -2,6 +2,7 @@
 #define PACKET_H
 
 #include <stdint.h>
+#include "pid.h"
 
 #define HB_MAJOR_VERSI0N 2
 #define HB_MINOR_VERSI0N 0
@@ -184,13 +185,6 @@ struct posDebugData {
   uint16_t posVal;
   struct pidDebugData pidData;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
-
-struct setPidData {
-  int16_t kp;
-  int16_t ki;
-  int16_t kd;
-  uint16_t minMaxPidOutput;
-} __attribute__ ((packed)) __attribute__((__may_alias__)) ;
 
 struct speedControllerData {
     unsigned debugActive:1;

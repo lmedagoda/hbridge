@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+struct setPidData {
+  int16_t kp;
+  int16_t ki;
+  int16_t kd;
+  int16_t minMaxPidOutput;
+} __attribute__ ((packed)) __attribute__((__may_alias__)) ;
+
 struct pid_data {
   int32_t kp;
   int32_t ki;
@@ -14,6 +21,10 @@ struct pid_data {
   int32_t error_sum;
 };
 
+/**
+ * Sets the pid values from the given data structure.
+ */
+void setPidConfiguration(struct pid_data *data, const struct setPidData *config);
 
 /**
  * This function sets the minimum and maximum return 
