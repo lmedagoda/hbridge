@@ -88,9 +88,9 @@ void Writer::sendActuatorConfig()
 	    break;
     }
     cfg->maxMotorTemp = actuatorConfig.maxMotorTemp;
-    cfg->maxMotorTempCount= actuatorConfig.maxMotorTempCount;
+    cfg->maxMotorTempCount= 200;
     cfg->maxBoardTemp = actuatorConfig.maxBoardTemp;
-    cfg->maxBoardTempCount = actuatorConfig.maxBoardTempCount;
+    cfg->maxBoardTempCount = 200;
     cfg->timeout = actuatorConfig.timeout;
     cfg->maxCurrent = actuatorConfig.maxCurrent;
     cfg->maxCurrentCount = actuatorConfig.maxCurrentCount;

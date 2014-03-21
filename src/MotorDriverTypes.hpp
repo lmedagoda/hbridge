@@ -25,9 +25,7 @@ namespace hbridge
 	unsigned short maxPWM;
         unsigned char openCircuit;
         unsigned char maxMotorTemp;
-        unsigned char maxMotorTempCount;
         unsigned char maxBoardTemp;
-        unsigned char maxBoardTempCount;
         unsigned short timeout;
         unsigned short maxCurrent;
         unsigned char maxCurrentCount;
@@ -37,9 +35,6 @@ namespace hbridge
          * Initialise all fields of the configuration structure with 0
          */
         ActuatorConfiguration() :
-            openCircuit(0), maxMotorTemp(0),
-            maxMotorTempCount(0), maxBoardTemp(0), maxBoardTempCount(0),
-            timeout(0), maxCurrent(0), maxCurrentCount(0), pwmStepPerMs(0), controllerInputEncoder(INTERNAL)
         {}
     };
     
