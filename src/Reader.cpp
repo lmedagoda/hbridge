@@ -153,9 +153,12 @@ void Reader::processMsg(const Packet &msg)
             encoderIntern.setRawEncoderValue(edata->position);
             encoderExtern.setRawEncoderValue(edata->externalPosition);
             
-            this->state.position = encoderIntern.getAbsoluteTurns();
-            this->state.positionExtern = encoderExtern.getAbsoluteTurns();
-            
+            state.position = encoderIntern.getAbsoluteTurns();
+            state.positionExtern = encoderExtern.getAbsoluteTurns();
+
+	    std::cout << "Board " << boardId << " changed to Error state, reason: " << std::endl;
+	    state.error.printError();
+
             if(callbacks)
                 callbacks->gotErrorStatus(boardId, state.error);
 
