@@ -41,6 +41,12 @@ protected:
 	
 	sendCommandData();
     }
+
+    /**
+     * This function returns true if the target value data
+     * needs to be inverted.
+     * */
+    bool isInverted();
     
     /**
      * This function checks if there is valid command data

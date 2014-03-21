@@ -30,11 +30,14 @@ namespace hbridge
         unsigned short maxCurrent;
         unsigned char maxCurrentCount;
         unsigned short pwmStepPerMs;
+        bool inverted;
 	CONTROLLER_INPUT_ENCODER controllerInputEncoder;
         /**
          * Initialise all fields of the configuration structure with 0
          */
         ActuatorConfiguration() :
+            openCircuit(0), maxMotorTemp(60), maxBoardTemp(60), timeout(0), maxCurrent(0), 
+            maxCurrentCount(0), pwmStepPerMs(0), inverted(false), controllerInputEncoder(INTERNAL)
         {}
     };
     
@@ -95,13 +98,25 @@ namespace hbridge
     
     struct SensorConfiguration
     {
-	SensorConfiguration() : externalTempSensor(0), statusFrequency(10)
+	SensorConfiguration() : externalTempSensor(false), inverted(false), statusFrequency(10)
 	{
 	}
 	
+	/**
+         * Name of the joint. This name is used
+         * as identifier in the status message
+         * */
         std::string name;
 	
-        unsigned char externalTempSensor;
+        /**
+         * Set to true, if the motor driver has external termperatur
+         * sensor connected
+         * */
+        bool externalTempSensor;
+        
+        ///if set to true, position, speed and raw are inverted in status message        
+        bool inverted;
+        
 	/**
 	 * The frequency in hz in which the firmware should
 	 * report the sensor status. Not, only 'round

@@ -156,6 +156,12 @@ void Reader::processMsg(const Packet &msg)
             state.position = encoderIntern.getAbsoluteTurns();
             state.positionExtern = encoderExtern.getAbsoluteTurns();
 
+            if(configuration.inverted)
+            {
+                state.position *= -1;
+                state.positionExtern *= -1;
+            }
+            
 	    std::cout << "Board " << boardId << " changed to Error state, reason: " << std::endl;
 	    state.error.printError();
 
@@ -171,13 +177,21 @@ void Reader::processMsg(const Packet &msg)
 
             state.can_time = msg.receiveTime;
             state.index   = data->index;
-            state.current = data->currentValue; // Current in [mA]
-            state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
             encoderIntern.setRawEncoderValue(data->position);
             encoderExtern.setRawEncoderValue(data->externalPosition);
 
+            state.current = data->currentValue; // Current in [mA]
+            state.pwm     = static_cast<float>(data->pwm) / std::numeric_limits<int16_t>::max() * 16;
             state.position = encoderIntern.getAbsoluteTurns();
             state.positionExtern = encoderExtern.getAbsoluteTurns();
+
+            if(configuration.inverted)
+            {
+                state.current *= -1;
+                state.pwm *= -1;
+                state.position *= -1;
+                state.positionExtern *= -1;
+            }
 
             //getting an status package is an implicit cleaner for all error states
             bzero(&(state.error), sizeof(struct ErrorState));
