@@ -23,7 +23,7 @@ struct PositionControllerConfig {
     unsigned gotControllerData:1;
 };
 
-volatile struct PositionControllerConfig posContData;
+struct PositionControllerConfig posContData;
 
 
 void initPositionControllerConfig(volatile struct PositionControllerConfig *conf)
@@ -55,10 +55,7 @@ void positionControllerProtocolHandler(int senderId, int receiverId, int id, uns
 	    posContData.allowWrapArround = data->allowWrapAround;
 	    posContData.debugActive = data->debugActive;
 	    posContData.gotControllerData = 1;
-	    setKp((struct pid_data *) &(posContData.pidData), data->pidData.kp);
-	    setKi((struct pid_data *) &(posContData.pidData), data->pidData.ki);
-	    setKd((struct pid_data *) &(posContData.pidData), data->pidData.kd);
-	    setMinMaxCommandVal((struct pid_data *) &(posContData.pidData), -data->pidData.minMaxPidOutput, data->pidData.minMaxPidOutput);
+	    setPidConfiguration(&(posContData.pidData), &(data->pidData));
 	    posContData.gotPIDValues = 1;
 
 	    break;
