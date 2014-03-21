@@ -231,8 +231,16 @@ void Reader::processMsg(const Packet &msg)
             }
             break;
         }
-        
-
+        case firmware::PACKET_ID_EMERGENCY_STOP:
+	{
+	    //ignore
+	    break;
+	}
+        case firmware::PACKET_ID_SPEED_CONTROLLER_DEBUG:
+	{
+	    //ignore
+	    break;
+	}
         default:
             std::cout << "Got unknow message with id " << msg.packetId <<  " " << firmware::getPacketName(msg.packetId) << std::endl;
             break;
