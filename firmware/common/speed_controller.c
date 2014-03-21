@@ -15,10 +15,7 @@ void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsign
     {
         case PACKET_ID_SET_SPEED_CONTROLLER_DATA: {
 	    struct speedControllerData *data = (struct speedControllerData *) idata;
-	    setKp(&(speedControllerData.pidData), data->pidData.kp);
-	    setKi(&(speedControllerData.pidData), data->pidData.ki);
-	    setKd(&(speedControllerData.pidData), data->pidData.kd);
-	    setMinMaxCommandVal(&(speedControllerData.pidData), -data->pidData.minMaxPidOutput, data->pidData.minMaxPidOutput);
+	    setPidConfiguration(&(speedControllerData.pidData), &(data->pidData));
             speedControllerData.debugActive = data->debugActive;
 	    speedControllerData.isConfigured = 1;
 	    break;
@@ -37,6 +34,7 @@ void speedControllerInit(void )
     speedControllerData.debugActive = 0;
     speedControllerData.isConfigured = 0;
     speedControllerReset(0);
+    initPIDStruct(&(speedControllerData.pidData));
     protocol_registerHandler(PACKET_ID_SET_SPEED_CONTROLLER_DATA, speedControllerProtocolHandler);
 }
 
@@ -49,14 +47,6 @@ void speedControllerReset(int32_t wheelPos)
 {
     speedControllerData.lastWheelPos = wheelPos;
     resetPIDStruct(&(speedControllerData.pidData));
-}
-
-void speedControllerSetConfiguration(int32_t p, int32_t i, int32_t d, int32_t minMax)
-{
-    setKp(&(speedControllerData.pidData), p);
-    setKi(&(speedControllerData.pidData), i);
-    setKd(&(speedControllerData.pidData), d);
-    setMinMaxCommandVal(&(speedControllerData.pidData), -minMax, minMax);
 }
 
 void speedControllerSetDebugActive(uint8_t debugActive)
