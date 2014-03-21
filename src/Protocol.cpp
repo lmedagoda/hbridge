@@ -293,7 +293,13 @@ const Packet* LowPriorityProtocol::processPackage(const hbridge::Packet& msg)
 	case firmware::TYPE_DATA:
 	{
 	    uint16_t dataPos = lp->sequenceNumber * dataPerPkg;
-	    assert(curSize == dataPos);
+	    if(curSize != dataPos)
+	    {
+		//brocken package, ignore
+		hasHeader = false;
+		break;
+	    }
+//	    assert(curSize == dataPos);
 	    const size_t pkgSize = curMessage.data.size();
 	    if(dataPos > pkgSize)
 	    {
