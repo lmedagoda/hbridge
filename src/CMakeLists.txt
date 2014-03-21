@@ -14,4 +14,5 @@ INSTALL(FILES
     MotorDriverTypes.hpp
     DESTINATION include/hbridge)
 INSTALL(FILES ../firmware/common/packets.h DESTINATION include/hbridge/firmware/common)
+INSTALL(FILES ../firmware/common/pid.h DESTINATION include/hbridge/firmware/common)
 
