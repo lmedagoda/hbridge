@@ -10,15 +10,25 @@ struct setPidData {
   int16_t minMaxPidOutput;
 } __attribute__ ((packed)) __attribute__((__may_alias__)) ;
 
+struct pidDebugData {
+  int16_t pPart;
+  int16_t iPart;
+  int16_t dPart;
+  uint16_t minMaxPidOutput;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
 struct pid_data {
-  int32_t kp;
-  int32_t ki;
-  int32_t kd;
-  int32_t target_val;
-  int32_t last_error;
-  int32_t max_command_val;
-  int32_t min_command_val;
-  int32_t error_sum;
+    int32_t kp;
+    int32_t ki;
+    int32_t kd;
+    int32_t target_val;
+    int32_t last_error;
+    int32_t max_command_val;
+    int32_t min_command_val;
+    int32_t error_sum;
+    int32_t pPart;
+    int32_t iPart;
+    int32_t dPart;
 };
 
 /**
@@ -65,7 +75,7 @@ void setTargetValue(struct pid_data *data, int32_t target_val);
 
 int32_t pid(struct pid_data *data, int32_t cur_val);
 
-void getInternalPIDValues(int16_t *pPart, int16_t *iPart, int16_t *dPart);
+void getPidDebugData(const struct pid_data *data, struct pidDebugData *debug);
 
 void initPIDStruct(struct pid_data *data);
 

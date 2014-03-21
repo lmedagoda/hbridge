@@ -163,13 +163,6 @@ struct actuatorConfig
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 
-struct pidDebugData {
-  int16_t pPart;
-  int16_t iPart;
-  int16_t dPart;
-  uint16_t minMaxPidOutput;
-} __attribute__ ((packed)) __attribute__((__may_alias__));
-
 struct speedDebugData {
   int16_t targetVal;
   int16_t pwmVal;

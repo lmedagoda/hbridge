@@ -154,8 +154,7 @@ int32_t positionControllerStep(struct ControllerTargetData *targetData, int32_t 
     if(posContData.debugActive) {
 	struct posDebugData debugData;
 	
-	getInternalPIDValues(&(debugData.pidData.pPart), &(debugData.pidData.iPart), &(debugData.pidData.dPart));
-	debugData.pidData.minMaxPidOutput = posContData.pidData.max_command_val;
+	getPidDebugData(&(posContData.pidData), &(debugData.pidData));
 	debugData.targetVal = targetPos;
 	debugData.pwmVal = pwmValue;
 	debugData.encoderVal = wheelPos;
