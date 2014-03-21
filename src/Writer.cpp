@@ -244,6 +244,8 @@ void Writer::processMsg(const Packet& msg)
 	    processStateAnnounce(msg);
 	    break;
 	}
+        default:
+	    break;
     }
 }
 
