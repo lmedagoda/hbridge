@@ -6,6 +6,7 @@
 #include "encoder.h"
 #include "printf.h"
 #include "temperature_sensor.h"
+#include "systick.h"
 
 volatile struct GlobalState state1;
 volatile struct GlobalState state2;
