@@ -161,7 +161,7 @@ void SpeedPIDController::sendControllerConfig()
     if(config.pidValues.maxPWM < 0 || config.pidValues.maxPWM > 1.0)
 	throw std::runtime_error("Given PID MAXPwm Parameter is out of bound [0 1]");
 
-    msg.data.resize(sizeof(firmware::setPidData));
+    msg.data.resize(sizeof(firmware::speedControllerData));
     
     firmware::speedControllerData *data = reinterpret_cast<firmware::speedControllerData *>(msg.data.data());
     //convert given parameters to fixed point values for transmission
