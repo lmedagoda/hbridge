@@ -21,6 +21,7 @@
  
 
 uint32_t lastStateTime;
+uint8_t substate = 0;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
@@ -46,6 +47,7 @@ void sendStatusPacket(){
     msg.IDE=CAN_ID_STD;
     msg.DLC = 8;
     msg.Data[2] =(ARC_SYSTEM_STATE)mbstate_getCurrentState();
+    msg.Data[7] = substate;
     CAN_SendMessage(&msg);
 
     avalon_status_t status_information;
@@ -66,6 +68,10 @@ void sendStatusPacket(){
     }
     //printf("send status packet\n");
     arc_sendPacket(&packet);
+}
+void avalon_packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
+    substate = data[1];
+    packet_setStateHandler(senderId, receiverId, id, data, size);
 }
 
 void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
