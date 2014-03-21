@@ -18,6 +18,7 @@ void speedControllerProtocolHandler(int senderId, int receiverId, int id, unsign
 	    setPidConfiguration(&(speedControllerData.pidData), &(data->pidData));
             speedControllerData.debugActive = data->debugActive;
 	    speedControllerData.isConfigured = 1;
+	    //todo add speedControllerData.debugEveryXMs
 	    break;
 	}
     }
@@ -33,6 +34,8 @@ void speedControllerInit(void )
 {
     speedControllerData.debugActive = 0;
     speedControllerData.isConfigured = 0;
+    speedControllerData.debugCounter = 0;
+    speedControllerData.debugEveryXMs = 20;
     speedControllerReset(0);
     initPIDStruct(&(speedControllerData.pidData));
     protocol_registerHandler(PACKET_ID_SET_SPEED_CONTROLLER_DATA, speedControllerProtocolHandler);
@@ -92,16 +95,20 @@ int32_t speedControllerStep(struct ControllerTargetData *targetData, int32_t whe
     pwmValue = pid(&(speedControllerData.pidData), curSpeed);
 
     if(speedControllerData.debugActive) {
-        struct speedDebugData sdbgdata;
+	if(speedControllerData.debugCounter >= speedControllerData.debugEveryXMs)
+	{
+	    struct speedDebugData sdbgdata;
         
-        sdbgdata.targetVal = targetSpeed;
-	sdbgdata.pwmVal = pwmValue;
-	sdbgdata.encoderVal = wheelPos;
-	sdbgdata.speedVal = curSpeed;
-        getInternalPIDValues(&(sdbgdata.pidData.pPart), &(sdbgdata.pidData.iPart), &(sdbgdata.pidData.dPart));
-        sdbgdata.pidData.minMaxPidOutput = speedControllerData.pidData.max_command_val;
-	
-        protocol_sendData(RECEIVER_ID_ALL, PACKET_ID_SPEED_CONTROLLER_DEBUG, (unsigned char *) &sdbgdata, sizeof(struct speedDebugData));
+	    sdbgdata.targetVal = targetSpeed;
+	    sdbgdata.pwmVal = pwmValue;
+	    sdbgdata.encoderVal = wheelPos;
+	    sdbgdata.speedVal = curSpeed;
+	    getPidDebugData(&(speedControllerData.pidData), &(sdbgdata.pidData));
+	    
+	    protocol_sendData(RECEIVER_ID_PC, PACKET_ID_SPEED_CONTROLLER_DEBUG, (unsigned char *) &sdbgdata, sizeof(struct speedDebugData));
+	    speedControllerData.debugCounter = 0;
+	}
+	speedControllerData.debugCounter++;
     }    
 
     speedControllerData.lastWheelPos = wheelPos;

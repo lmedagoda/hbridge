@@ -16,6 +16,8 @@ struct ControllerData {
     struct pid_data pidData;
     int32_t lastWheelPos;
     uint8_t debugActive;
+    uint16_t debugEveryXMs;
+    uint16_t debugCounter;
     uint8_t isConfigured;
 };
 
