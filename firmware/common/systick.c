@@ -10,9 +10,6 @@
 #include "printf.h"
 #include <stdlib.h>
 
-#define MIN_S16 (-(1<<15))
-#define MAX_S16 ((1<<15) -1)
-
 extern volatile enum hostIDs ownHostId;
 
 unsigned int statusMsgCounter;
@@ -207,10 +204,10 @@ void systick_runningState(uint32_t index)
     //printf("PWM %i", pwmValue);
 
     //trunkcate to int16_t
-    if(pwmValue > MAX_S16) 
-	pwmValue = MAX_S16;
-    if(pwmValue < MIN_S16)
-	pwmValue = MIN_S16;
+    if(pwmValue > INT16_MAX) 
+	pwmValue = INT16_MAX;
+    if(pwmValue < INT16_MIN)
+	pwmValue = INT16_MIN;
 
     //do the ramping
     if(abs(currentPwmValue - pwmValue) < activeCState->actuatorConfig.pwmStepPerMillisecond) {
