@@ -234,6 +234,8 @@ void hbridge_init(uint16_t numHbridges)
     protocol_registerHandler(PACKET_ID_EXTENDED_STATUS, hbridge_statusHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE14, hbridge_setValueHandler);
     protocol_registerHandler(PACKET_ID_SET_VALUE58, hbridge_setValueHandler);
+    //hack, disable low prio packets
+    protocol_registerHandler(PACKET_LOW_PRIORITY_DATA, hbridge_setValueHandler);
 }
 
 void hbridge_setControllerWithData(const uint16_t hbridgeId, enum controllerModes controller, const int packetId, const char* data, const uint8_t dataSize)
