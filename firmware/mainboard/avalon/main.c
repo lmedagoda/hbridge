@@ -334,6 +334,7 @@ void init(){
     //State handler wenn das MB Controlled 
     packet_registerHandler(MB_CONTROL, avalon_controlHandler);
     packet_registerHandler(MB_ID_CAN, avalon_packet_canHandler);
+    packet_registerHandler(MB_SET_STATE, avalon_packet_setStateHandler);
 
 
     struct MainboardState *state_off=mbstate_getState(MAINBOARD_RUNNING);
