@@ -62,6 +62,7 @@ include_directories(
 
 add_executable(main
     main.c
+    encoder.c
     ${STM32_COMMON_DIR}/system_clock.c
     ${STM32_COMMON_DIR}/lib/CMSIS/CM3/CoreSupport/core_cm3.c
     ${STM32_COMMON_DIR}/lib/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_hd.s
@@ -95,9 +96,6 @@ add_executable(main
     ${STM32_COMMON_DIR}/drivers/spi.c
     ${STM32_COMMON_DIR}/drivers/lm73cimk.c
     ${STM32_COMMON_DIR}/drivers/tmp100.c
-    ${STM32_COMMON_DIR}/encoder_adc.c
-    ${STM32_COMMON_DIR}/encoder_quadrature.c    
-    ${STM32_COMMON_DIR}/encoder_ichaus.c    
     ${STM32_COMMON_DIR}/thread.c
     ${STM32_COMMON_DIR}/protocol_can.c
     ${MD_COMMON_DIR}/packets.c

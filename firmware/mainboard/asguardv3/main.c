@@ -3,6 +3,7 @@
 #include "../common/arc_driver.h"
 #include "../common/time.h"
 #include "../common/timeout.h"
+#include "encoder.h"
 #include "../../common/hbridge_cmd2.h"
 #include "../../common/hbridge_cmd.h"
 #include "../../common/protocol.h"
@@ -20,6 +21,10 @@ int16_t encoder_reading = 0;
 uint16_t controlPacketCnt;
 uint16_t controlPacketsInLastSecond;
 uint32_t controlPacketCntStartTime = 0;
+
+#define CAN_ID_STATUS 0x101
+#define CAN_ID_MODE_CHANGED 0x102
+#define CAN_ID_EXP_MARKER 0x1C0
 
 void GPIO_Configuration(void)
 {
@@ -40,6 +45,32 @@ void GPIO_Configuration(void)
   GPIO_SetBits(GPIOC, GPIO_Pin_7);
 }
 
+void sendStatusPacketToPC() {
+    static uint32_t lastStatusTime = 0;
+    uint32_t curTime = time_getTimeInMs();
+    
+    //send status update every 10 ms
+    if(curTime - lastStatusTime < 10)
+        return;
+    
+    lastStatusTime = curTime;
+    
+    CanTxMsg msg;
+    msg.StdId = CAN_ID_STATUS;
+    msg.RTR= CAN_RTR_DATA;
+    msg.IDE= CAN_ID_STD;
+    msg.DLC = 7;
+    
+    msg.Data[0] = voltage_reading >> 8;
+    msg.Data[1] = voltage_reading & 0xff;
+    msg.Data[2] = mbstate_getCurrentState();
+    msg.Data[3] = packet_getPacketsInLastSecond();
+    msg.Data[4] = controlPacketsInLastSecond;
+    msg.Data[5] = encoder_reading >> 8;
+    msg.Data[6] = encoder_reading & 0xff;
+
+    CAN_SendMessage(&msg);
+}
 
 void sendStatusPacket() {
     arc_packet_t packet;
@@ -54,6 +85,7 @@ void sendStatusPacket() {
     packet.data[4] = controlPacketsInLastSecond;
     packet.data[5] = encoder_reading >> 8;
     packet.data[6] = encoder_reading & 0xff;
+    
     arc_sendPacketDirect(&packet);
 }
 
@@ -214,6 +246,7 @@ int main()
     //pull down to not signal emergency
     GPIO_ResetBits(GPIOC, GPIO_Pin_7);
 
+    JointEncoder_Configuration();
     
     timeout_init(3000);
     
@@ -297,6 +330,12 @@ int main()
         
         //get voltage from battery guard
         voltage_reading = asguard_getVoltageReading();
+        
+        //get encoder reading
+        encoder_reading = getEncoderReading();
+
+        //send encoder reading via can
+        sendStatusPacketToPC();
     }
     
     return 0;
