@@ -103,6 +103,10 @@ int asguard_getVoltageReading() {
             USART4_GetData(buffer,3);
         }
     }
+    
+    if(voltage < 0)
+        return 0;
+    
     return voltage;
 }
 
