@@ -9,7 +9,7 @@ class Encoder
 {
 private:
     EncoderConfiguration encoderConfig;
-    Ticks zeroPosition;
+    double zeroPosition;
     unsigned int lastPositionInTurn;
     int turns;
     bool gotValidReading;
@@ -17,7 +17,7 @@ private:
 public:
     Encoder();
     void setConfiguration(EncoderConfiguration &cfg);
-    void setZeroPosition(Ticks zeroPos);
+    void setZeroPosition(double zeroPos);
     void setRawEncoderValue(unsigned int value);
     //returns all motor turns acumulated since configuration
     double getAbsoluteTurns() const;

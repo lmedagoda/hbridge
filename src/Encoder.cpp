@@ -23,7 +23,7 @@ void Encoder::setConfiguration(EncoderConfiguration& cfg)
     gotValidReading = false;    
 }
 
-void Encoder::setZeroPosition(Ticks zeroPos) 
+void Encoder::setZeroPosition(double zeroPos) 
 {
     zeroPosition = zeroPos;
 };
