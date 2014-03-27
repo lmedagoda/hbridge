@@ -89,7 +89,7 @@ SpeedPIDController::SpeedPIDController(Writer *writer):Controller(writer, firmwa
 
 void SpeedPIDController::setTargetValue(double radPerSecond)
 {
-    double turnPerSecond = radPerSecond / M_PI;
+    double turnPerSecond = radPerSecond / (2*M_PI);
 
     if(isInverted())
         turnPerSecond *= -1;
