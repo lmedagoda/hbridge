@@ -16,52 +16,70 @@ uint8_t gotZeroPos = 0;
 *******************************************************************************/
 void JointEncoder_Configuration(void)
 {
-  /*--------------- TIMER 3-----------------*/
+    GPIO_InitTypeDef GPIO_InitStructure;
 
-  // init structs
-  TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-  TIM_ICInitTypeDef  TIM_ICInitStructure;
-  TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-  TIM_ICStructInit(&TIM_ICInitStructure);
- 
-  //turn on timer hardware
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    //get default GPIO config
+    GPIO_StructInit(&GPIO_InitStructure);
 
-  // Time base configuration 
-  TIM_TimeBaseStructure.TIM_Period = AUTORELOAD_VALUE; // TIM->ARR
-  TIM_TimeBaseStructure.TIM_Prescaler = 0;
-  TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC, ENABLE);
 
-  //configure TIM3 as encoder interface
-  TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12,
-			     TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+    //configure enc3 Zero
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-  TIM_ARRPreloadConfig(TIM3, ENABLE);
+    //enc3 A/B
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    
+    /*--------------- TIMER 3-----------------*/
 
-  TIM_ICInitStructure.TIM_ICFilter = FILTER_VALUE; //ICx_FILTER;
-  TIM_ICInit(TIM3, &TIM_ICInitStructure);
+    // init structs
+    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+    TIM_ICInitTypeDef  TIM_ICInitStructure;
+    TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+    TIM_ICStructInit(&TIM_ICInitStructure);
+    
+    //turn on timer hardware
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
-  // TIM 3 enable counter
-  TIM_Cmd(TIM3, ENABLE);
+    // Time base configuration 
+    TIM_TimeBaseStructure.TIM_Period = AUTORELOAD_VALUE; // TIM->ARR
+    TIM_TimeBaseStructure.TIM_Prescaler = 0;
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
 
-  /*--------------- EXTERNAL IRQ-----------------*/
-	
-  EXTI_InitTypeDef EXTI_InitStructure;
-	
-  // Connect Key Button EXTI Line to ENC3_0 GPIO Pin (PC2) 
-  GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource2);
+    //configure TIM3 as encoder interface
+    TIM_EncoderInterfaceConfig(TIM3, TIM_EncoderMode_TI12,
+                                TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
 
-  // Configure ENC3_0 EXTI Line to generate an interrupt on rising edge  
-  EXTI_InitStructure.EXTI_Line = EXTI_Line2;
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
+    TIM_ARRPreloadConfig(TIM3, ENABLE);
 
-  // Generate software interrupt: simulate a rising edge applied on EXTI2 line 
-  EXTI_GenerateSWInterrupt(EXTI_Line2);
+    TIM_ICInitStructure.TIM_ICFilter = FILTER_VALUE; //ICx_FILTER;
+    TIM_ICInit(TIM3, &TIM_ICInitStructure);
+
+    // TIM 3 enable counter
+    TIM_Cmd(TIM3, ENABLE);
+
+    /*--------------- EXTERNAL IRQ-----------------*/
+            
+    EXTI_InitTypeDef EXTI_InitStructure;
+            
+    // Connect Key Button EXTI Line to ENC3_0 GPIO Pin (PC2) 
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource2);
+
+    // Configure ENC3_0 EXTI Line to generate an interrupt on rising edge  
+    EXTI_InitStructure.EXTI_Line = EXTI_Line2;
+    EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
+
+    // Generate software interrupt: simulate a rising edge applied on EXTI2 line 
+    EXTI_GenerateSWInterrupt(EXTI_Line2);
 }
 
 
