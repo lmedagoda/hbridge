@@ -39,6 +39,11 @@ void hbridgeStatusHandler(int senderId, int receiverId, int id, unsigned char *d
 }
 void hbridgeExtendedStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
 }
+int surface(){
+    mbstate_changeState(MAINBOARD_OFF);
+    current_status.change_reason = CR_EMERGENCY;
+    return 0;
+}
 
 void sendStatusPacket(){
     CanTxMsg msg;
@@ -100,7 +105,6 @@ void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned cha
 
 }
 int status_loops = 0;
-uint8_t surface_sign_counter= 0;
 struct arc_avalon_control_packet curCmd;
 uint8_t cmdValid;
 void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
@@ -164,7 +168,7 @@ void avalon_runningState(void){
             0,
             0,
             PACKET_ID_SET_VALUE58);*/
-    int scaling=300;
+    int scaling=270;
     printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
             (curCmd.right-127)      * scaling *-1, 
@@ -184,66 +188,6 @@ void avalon_runningState(void){
 };
 
 
-//TODO Add this function to be executed and adapt it to compile ;)
-//Don't forget to initialize the CANid and the USART
-uint8_t handle_underwater_modem() {
-    return;
-    int seek, i;
-    u8 packet_buffer[ARC_MAX_FRAME_LENGTH];
-
-    // look for a valid packet as long as enough bytes are left
-    while( (seek = USART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH)) >= 1 ) {
-
-        //seek =  UART5_SeekData(packet_buffer, ARC_MAX_FRAME_LENGTH);
-        int size = seek;
-        while( size > 0 ) {
-            int fragment_size = 8;
-
-            if(size < 8)
-                fragment_size = size;
-
-            printf("Readed %hi bytes\r\n",seek);
-            CanTxMsg inputMessage;
-            inputMessage.StdId=0x1E0; //TODO Hardcoded Modem value
-            inputMessage.RTR=CAN_RTR_DATA;
-            inputMessage.IDE=CAN_ID_STD;
-            inputMessage.DLC= fragment_size;
-
-            size -= fragment_size;
-
-            for(i=0;i<fragment_size;i++) {
-                inputMessage.Data[i] = packet_buffer[i];
-                if(packet_buffer[i] == SURFACE_SIGN){ //TODO Extend packed
-                    if(++surface_sign_counter == SURFACE_SIGN_COUNT){
-                        //print("diving up\n");
-                        //TODO IMPORTAND CHANGE STATE TO SURFACE
-                        //wanted_system_state = SURFACE;
-                        surface_sign_counter=0;
-                    }
-                }else{
-                    surface_sign_counter=0;
-                }
-            }
-            int counter=0;
-
-
-            //TODO What's this:?
-            /*
-               while(CAN_Transmit(&inputMessage) == CAN_NO_MB) {
-               counter++;
-               if (counter > CAN_SEND_RETRIES) {
-               UART5_GetData(packet_buffer, size);
-               printf("Giving up %hi\r\n",counter);
-               return 1; //flase
-               }
-               }
-               */
-        }
-        USART5_GetData(packet_buffer, seek);
-    }
-    return 0; //true
-}
-
 void init(){
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
@@ -258,10 +202,10 @@ void init(){
     //Modem
     //USART5_Init(USART_POLL);
     //printf_setSendFunction(USART1_SendData); //Debug irgendwas
-    printf_setSendFunction(USART2_SendData); //Debug amber 
+    printf_setSendFunction(USART1_SendData); //Debug amber 
     //printf_setSendFunction(USART5_SendData); //Debug ethernet
 
-    //uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData);
+    uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData, &surface);
     /*while (1){
         printf(".");
     }*/
@@ -377,7 +321,7 @@ int main()
         arctoken_processPackets();
         hbridge_process();
 
-        //uwmodem_process();
+        uwmodem_process();
         //Sending a Status packet
     }
     return 0;
