@@ -83,6 +83,10 @@ uint8_t mbstate_toAutonomous()
     
     return 0;
 }
+uint8_t mbstate_toFullAutonomous()
+{
+    return mbstate_toAutonomous();
+}
 
 void mbstate_autonomousHandler()
 {
@@ -92,7 +96,10 @@ void mbstate_autonomousHandler()
 	mbstate_changeState(MAINBOARD_OFF);
     }
 }
-
+void mbstate_fullAutonomousHandler()
+{
+   timeout_reset(); 
+}
 void mbstate_init()
 {
     int i;
@@ -107,6 +114,8 @@ void mbstate_init()
     mbstate_states[MAINBOARD_RUNNING].enterStateHandler = mbstate_toRunningHandler;
     mbstate_states[MAINBOARD_AUTONOMOUS].enterStateHandler = mbstate_toAutonomous;
     mbstate_states[MAINBOARD_AUTONOMOUS].stateHandler = mbstate_autonomousHandler;
+    mbstate_states[MAINBOARD_FULL_AUTONOMOUS].enterStateHandler = mbstate_toFullAutonomous;
+    mbstate_states[MAINBOARD_FULL_AUTONOMOUS].stateHandler = mbstate_fullAutonomousHandler;
 }
 
 
