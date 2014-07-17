@@ -80,7 +80,7 @@ int main(void)
     //setup assert correctly
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART3);
 
-    USART3_Init(USART_POLL);
+    USART3_Init(USART_POLL, 115200);
 
     printf_setSendFunction(USART3_SendData);
     
