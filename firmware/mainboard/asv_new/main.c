@@ -44,7 +44,7 @@ void sendStatusPacket(){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
     //printf("send status packet\n");
-    arctoken_sendPacket(&packet);
+    arc_multichannel_sendPacket(&packet);
 }
 
 
@@ -152,8 +152,9 @@ int main()
         hbridge_configureSensors();
 
     }
-    arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
-    arctoken_setOwnSystemID(ASV);
+    arc_multichannel_init();
+    arc_multichannel_addTokenSerialDriver(&USART1_SendData, &USART1_GetData, &USART1_SeekData);
+    arc_multichannel_setOwnSystemID(ASV);
     mbstate_init();
     packet_init();
 
@@ -178,14 +179,14 @@ int main()
             // 	    printf(".");
         }
         arc_packet_t packet;	
-        while(arctoken_readPacket(&packet))
+        while(arc_multichannel_readPacket(&packet))
         {
             //process incomming packet
             //printf("incoming packet");
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);	
         }
         hbridge_process();
-        arctoken_processPackets();
+        arc_multichannel_processPackets();
         //Sending a Status packet
         if (status_loops >= STATUS_PACKET_PERIOD){
             sendStatusPacket();

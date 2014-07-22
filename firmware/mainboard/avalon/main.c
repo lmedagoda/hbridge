@@ -266,9 +266,11 @@ void init(){
     //ARC Init
     //First ARC-Channel Amber 
     //arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData); //Nix
-    arctoken_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData); //Ethernet
-    //arctoken_init(&USART2_SendData, &USART2_GetData, &USART2_SeekData); //Amber
-    arctoken_setOwnSystemID(AVALON);
+    //arctoken_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData); //Ethernet
+    arc_multichannel_init(); //Ethernet
+    arc_multichannel_addTokenSerialDriver(&USART2_SendData, &USART2_GetData, &USART2_SeekData); //Amber
+    arc_multichannel_addSerialDriver(&USART5_SendData, &USART5_GetData, &USART5_SeekData);//Ethernet
+    arc_multichannel_setOwnSystemID(AVALON);
     //Second ARC-Channel Ethernet
     //arctoken_add_serial_handler(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
 
@@ -314,11 +316,11 @@ int main()
         }
         arc_packet_t packet;	
 
-        while(arctoken_readPacket(&packet)){
+        while(arc_multichannel_readPacket(&packet)){
             //Process packets
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
         }
-        arctoken_processPackets();
+        arc_multichannel_processPackets();
         hbridge_process();
 
         uwmodem_process();
