@@ -1,9 +1,12 @@
+#ifndef STUBMODE
 #include "drivers/can.h"
+#include "lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h"
+#include "stm32f10x_conf.h"
+#endif
+
 #include "../common/protocol.h"
 #include "../interfaces/host_id.h"
-#include "lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h"
 #include "drivers/assert.h"
-#include "stm32f10x_conf.h"
 #include "drivers/printf.h"
 
 struct packetLayout

@@ -5,7 +5,9 @@
 #include "../../common/hbridge_cmd2.h"
 #include "../../common/hbridge_cmd.h"
 #include "../../common/protocol.h"
+#ifndef STUBMODE
 #include "stm32f10x_gpio.h"
+#endif
 
 enum MAINBOARDSTATE currentState;
 

@@ -35,6 +35,7 @@ int arcnotoken_readPacket(arc_packet_t* packet){
             }
         }
     }
+    return 0;
 }
 
 int arcnotoken_sendPacket(arc_packet_t* packet){

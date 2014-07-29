@@ -8,6 +8,10 @@
 #define CAN_SEND_RETRIES 5000
 #define CAN_SEND_ARBITRATION_RETRIES 20 
 
+#ifdef __cplusplus
+extern "C"{
+#endif
+
 enum CAN_REMAP {
     //PA11, PA12
     CAN_NO_REMAP,
@@ -46,5 +50,9 @@ int can_send_message_hard(CanTxMsg * message);
  * Return 0 on success 1 on failure.
  * */
 unsigned char CAN_SendMessage(CanTxMsg* TxMessage);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

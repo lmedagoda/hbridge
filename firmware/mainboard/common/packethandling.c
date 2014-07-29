@@ -1,9 +1,13 @@
 #include "packethandling.h"
 #include "mainboardstate.h"
 #include "printf.h"
+
+#ifndef STUBMODE
 #include "../../hbridgeCommon/drivers/can.h"
-#include "timeout.h"
 #include <hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
+#endif
+
+#include "timeout.h"
 #include "mb_types.h"
 #include "../common/time.h"
 

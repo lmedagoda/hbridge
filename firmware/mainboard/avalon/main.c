@@ -25,7 +25,9 @@ uint8_t substate = 0;
 
 //------- Importtand Defines ----------//
 #define SYSTEM_ID AVALON
-#define NUM_MOTORS 6
+#ifndef NUM_MOTORS
+    #define NUM_MOTORS 6
+#endif
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 

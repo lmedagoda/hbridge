@@ -2,7 +2,9 @@
 #define MAINBOARD_STATE_H
 #include "stdint.h"
 #include "mb_types.h"
+#ifndef STUBDMODE
 #include "inc/stm32f10x_gpio.h"
+#endif
 
 enum COMSTATES {
     COM_RUNNING,
@@ -55,9 +57,11 @@ void mbstate_processState();
  * */
 struct MainboardState *mbstate_getState(enum MAINBOARDSTATE state);
 
+#ifndef STUBDMODE
 /**
  * This function can be used to activate debug state output per LED
  * */
 void mbstate_setBlinkLed(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+#endif
 
 #endif

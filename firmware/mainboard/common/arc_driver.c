@@ -35,8 +35,8 @@ int arc_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t
 }
 
 uint32_t arc_readPacketChannel(arc_packet_t * packet, int channel){
-    if (!channel >= 0 || ! channel < arc_num_serial_handler){
-        printf("Warning: This Channel number does not exist");
+    if (channel <  0 || channel >= arc_num_serial_handler){
+        printf("Warning: This Channel %i number does not exist there are %i \n",channel, arc_num_serial_handler);
         return 0;
     }
     int seek, i;
@@ -93,7 +93,7 @@ int arc_send(uint8_t *tmp_send_buffer, int size){
     return arc_sendChannel(tmp_send_buffer, size, arc_current_serial_handler);
 } 
 int arc_sendChannel(uint8_t *tmp_send_buffer, int size, int channel){
-    if (!channel >= 0 || ! channel < arc_num_serial_handler){
+    if (channel < 0 || channel >= arc_num_serial_handler){
         printf("Warning: This Channel number does not exist");
         return -1;
     }
