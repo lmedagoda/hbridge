@@ -3,6 +3,7 @@ set(MB_DIR ${MD_DIR}/mainboard/)
     
 include(FindPkgConfig)
 pkg_check_modules(CAN REQUIRED "canbus")
+pkg_check_modules(MAXON REQUIRED "motor_maxon")
 
 
 include_directories(
@@ -16,11 +17,12 @@ include_directories(
     ${MD_DIR}/hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/
     ${MD_DIR}/hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/
     ${CAN_INCLUDE_DIRS}
+    ${MAXON_INCLUDE_DIRS}
   )
 
 add_definitions(-D USE_STDPERIPH_DRIVER -DSTM32F10X_HD -DSTUBDMODE -std=gnu99 -DNUM_MOTORS=0)
 
-LINK_DIRECTORIES(${CAN_LIBRARY_DIRS})
+LINK_DIRECTORIES(${CAN_LIBRARY_DIRS} ${MAXON_LIBRARY_DIRS})
 # SET(CMAKE_C_FLAGS "-ggdb -Wall")
 # SET(CMAKE_CXX_FLAGS "-ggdb -Wall")
 # 
@@ -50,6 +52,7 @@ add_library(mainboard_sandbox_lib
     ${MB_DIR}/dagon/usart_noop_stub.c
     ${MB_DIR}/dagon/can_noop_stub.cpp
     ${MB_DIR}/dagon/gpio_stub.c
+    ${MB_DIR}/dagon/motor.cpp
     ${MD_DIR}/stubs/various_stubs.cpp
     ${MD_DIR}/stubs/thread_stub.cpp
 
@@ -61,4 +64,4 @@ add_library(mainboard_sandbox_lib
 # target_link_libraries(sandbox_lib pthread rt)
 # 
 add_executable(test_mb ${MB_DIR}/avalon/main.c ${MB_DIR}/avalon/avalon_can.c ${MB_DIR}/avalon/uwmodem.c)
-target_link_libraries(test_mb mainboard_sandbox_lib pthread ${CAN_LIBRARIES})
+target_link_libraries(test_mb mainboard_sandbox_lib pthread ${CAN_LIBRARIES} ${MAXON_LIBRARIES})
