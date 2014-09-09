@@ -32,6 +32,12 @@ uint8_t substate = 0;
 #define SURFACE_SIGN 0xFF
 #define SURFACE_SIGN_COUNT 6 
 
+#ifdef DAGON
+extern void avalon_offState(void);
+extern void avalon_runningState(void);
+extern void avalon_autonomousState(void);
+#endif
+
 //USART? = AMBER
 //USART3 = Underwater Modem
 //USART? = Ethernet/Serial
@@ -115,6 +121,8 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
     curCmd = *cmd;
     cmdValid = 1;
 }
+
+#ifndef DAGON
 void avalon_autonomousState(void){
     if(timeout_hasTimeout())
     {
@@ -170,7 +178,7 @@ void avalon_runningState(void){
             0,
             PACKET_ID_SET_VALUE58);*/
     int scaling=270;
-    printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
+    //printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
             (curCmd.right-127)      * scaling *-1, 
             (curCmd.left-127)       * scaling *-1,
@@ -187,7 +195,7 @@ void avalon_runningState(void){
     current_status.change_reason = CR_LEGAL;
     
 };
-
+#endif
 
 void init(){
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
@@ -283,8 +291,7 @@ void init(){
     packet_registerHandler(MB_ID_CAN, avalon_packet_canHandler);
     packet_registerHandler(MB_SET_STATE, avalon_packet_setStateHandler);
 
-
-    struct MainboardState *state_off=mbstate_getState(MAINBOARD_RUNNING);
+    struct MainboardState *state_off=mbstate_getState(MAINBOARD_OFF);
     state_off->stateHandler=avalon_offState;
 
     struct MainboardState *state_running=mbstate_getState(MAINBOARD_RUNNING);
@@ -292,6 +299,9 @@ void init(){
 
     struct MainboardState *state_autonomous=mbstate_getState(MAINBOARD_AUTONOMOUS);
     state_autonomous->stateHandler=avalon_autonomousState;
+    
+    struct MainboardState *state_fullautonomous=mbstate_getState(MAINBOARD_FULL_AUTONOMOUS);
+    state_fullautonomous->stateHandler=avalon_autonomousState;
 }
 
 
