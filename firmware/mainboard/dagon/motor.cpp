@@ -159,16 +159,18 @@ void avalon_runningState(void){
 //sway_tail      
 //left
 
+    double factor = 2.5;
     value[0] = -(curCmd.dive-127)/255.0;
     value[1] = -(curCmd.dive-127)/255.0;
     value[2] = (0.7 * -(curCmd.right-127)/255.0) + (0.3 * (curCmd.strave-127)/255.0);
-    value[3] = (0.5 * (curCmd.yaw-127)/255.0) - (0.5 * (curCmd.strave-127)/255.0);
+    value[3] = -((0.5 * (curCmd.yaw-127)/255.0) - (0.5 * (curCmd.strave-127)/255.0));
     value[4] = (0.7 * (curCmd.left-127)/255.0) - (0.3 * (curCmd.strave-127)/255.0);
+    for(int i=0;i<5;i++){
+        value[i]*=factor;
+    }
     setMotor(value);
     sendCommand(2,value[4]);
-
     current_status.change_reason = CR_LEGAL;
-    
 };
 
 };
