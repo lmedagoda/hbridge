@@ -17,7 +17,7 @@ extern "C" {
 
 void CAN_Configuration(enum CAN_REMAP remap)
 {
-    m_driver = canbus::openCanDevice("can0");
+    m_driver = canbus::openCanDevice("vcan0");
 }
 
 void CAN_CancelAllTransmits()
@@ -38,7 +38,13 @@ unsigned char CAN_SendMessage(CanTxMsg* TxMessage)
         msg.data[i] = TxMessage->Data[i];
     }
     if(m_driver){
-    m_driver->write(msg); 
+
+    try{
+        m_driver->write(msg); 
+    }catch(...){
+        printf("Got timeout on canbus\n");
+        return -1;
+    }
     }else{
         printf("Theoretically write canMessage with ID 0x%02x\n",msg.can_id);
     }

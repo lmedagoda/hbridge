@@ -43,8 +43,8 @@ void sendStatusPacket(){
     for (i=0; i<sizeof(arc_status_packet_t); i++){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
-    //printf("send status packet\n");
-    arc_multichannel_sendPacket(&packet);
+    printf("send status packet\n");
+    arc_sendPacket(&packet);
 }
 
 
@@ -164,6 +164,7 @@ int main()
     ///Overload the state handler for running
     struct MainboardState *state=mbstate_getState(MAINBOARD_RUNNING);
     state->stateHandler=asv_runningState;
+    printf("enter mainloop");
     while(1)
     {
         //uwmodem_process();

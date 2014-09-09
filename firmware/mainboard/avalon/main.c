@@ -17,6 +17,7 @@
 #include "../../hbridgeCommon/drivers/printf.h"
 #include <stddef.h>
 #include "avalon_types.h"
+#include <unistd.h>
 #define STATUS_PACKET_PERIOD_MS 500 
  
 
@@ -91,15 +92,13 @@ void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned cha
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
 
-    printf("Got A Can Passhrough and send it out with id %i\n", msg.StdId);
-    printf("ARC letzten Byte %i", data[9]);
+    printf("Packet mit Sequenznummer: %i\n", data[2]>>5);
     msg.DLC = payloadSize;
     int i;
     //copy down data as first two are CAN id and index
     for(i=0; i < payloadSize; i++) {
 	msg.Data[i] = inMsg->data[i];
     }
-    printf("CAN letztes Byte %i, %i, %i", msg.Data[7], inMsg->data[7], msg.DLC);
     //Simulates receiving self send can messages
     //asvcan_handlePacket(&msg);
     //Real sending of the Can Package
@@ -327,6 +326,8 @@ int main()
 
         uwmodem_process();
         //Sending a Status packet
+        usleep(100);
+
     }
     return 0;
 }

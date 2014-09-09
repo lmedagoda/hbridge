@@ -96,12 +96,12 @@ void USART5_Init(enum USART_MODE mode)
     char buf[1024];
 
     if ((socked=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1){
-        fprintf(stderr,"Couldnot open socked\n");
+        fprintf(stderr,"Could not open socked\n");
         exit(-1);
     }
     memset((char *) &si_me, 0, sizeof(si_me));
     si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(12345);
+    si_me.sin_port = htons(4001);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(socked, &si_me, sizeof(si_me))==-1){
         fprintf(stderr,"Bind Failed\n");
