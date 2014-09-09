@@ -84,7 +84,6 @@ void arctoken_receivePackets(){
     int channel;
     for (channel=0; channel<current_channel_num; channel++){
         while ((result = arc_readPacketChannel(&packet, channel_ids[channel])) != 0){
-            //printf("Read a ARC PACKET\n");
             if (result<0){
                 printf("Got an error by reading Packets\n");
                 break;

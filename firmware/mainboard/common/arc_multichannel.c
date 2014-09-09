@@ -1,6 +1,6 @@
 #include "arc_tokendriver.h"
 #include "arc_notokendriver.h"
-int arc_multichannel_num_notoken;
+uint8_t arc_multichannel_num_notoken;
 int arc_multichannel_num_token;
 uint8_t arc_multichannel_last_from_token;
 void arc_multichannel_init(ARC_SYSTEM_ID sys_id){
@@ -11,7 +11,7 @@ void arc_multichannel_init(ARC_SYSTEM_ID sys_id){
 }
 
 int arc_multichannel_addSerialDriver(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
-    int ret;
+    int ret = 0;
     if (arc_multichannel_num_notoken == 0){
         ret = arcnotoken_init(sendFunc, recvFunc, seekFunc);
     } else {

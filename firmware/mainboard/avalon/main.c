@@ -74,7 +74,7 @@ void sendStatusPacket(){
         packet.data[i] = ((char*)&status_information)[i]; 
     }
     //printf("send status packet\n");
-    arc_sendPacket(&packet);
+    arc_multichannel_sendPacket(&packet);
 }
 void avalon_packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     substate = data[1];
@@ -91,15 +91,12 @@ void avalon_packet_canHandler(int senderId, int receiverId, int id, unsigned cha
     msg.RTR=CAN_RTR_DATA;
     msg.IDE=CAN_ID_STD;
 
-    printf("Got A Can Passhrough and send it out with id %i\n", msg.StdId);
-    printf("ARC letzten Byte %i", data[9]);
     msg.DLC = payloadSize;
     int i;
     //copy down data as first two are CAN id and index
     for(i=0; i < payloadSize; i++) {
 	msg.Data[i] = inMsg->data[i];
     }
-    printf("CAN letztes Byte %i, %i, %i", msg.Data[7], inMsg->data[7], msg.DLC);
     //Simulates receiving self send can messages
     //asvcan_handlePacket(&msg);
     //Real sending of the Can Package
@@ -171,7 +168,7 @@ void avalon_runningState(void){
             0,
             PACKET_ID_SET_VALUE58);*/
     int scaling=270;
-    printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
+    //printf("%i, %i, %i, %i, %i, %i\n", (curCmd.strave-127)*scaling, (curCmd.dive-127)*scaling, (curCmd.left-127)*scaling, (curCmd.right-127)*scaling, (curCmd.pitch-127)*scaling, (curCmd.yaw-127)*scaling);
     hbridge_setValues(
             (curCmd.right-127)      * scaling *-1, 
             (curCmd.left-127)       * scaling *-1,
@@ -194,28 +191,20 @@ void init(){
     Assert_Init(GPIOA, GPIO_Pin_12, USE_USART1);
 
     USART1_Init(USART_POLL);
-    //USART3_Init(USART_POLL);
-    //USART1_Init(USART_USE_INTERRUPTS);
 
     //ARC's
     USART2_Init(USART_USE_INTERRUPTS);
     USART3_Init(USART_USE_INTERRUPTS, 57600);
+    USART5_Init(USART_USE_INTERRUPTS);
 
     //Modem
     //USART5_Init(USART_POLL);
-    //printf_setSendFunction(USART1_SendData); //Debug irgendwas
-    printf_setSendFunction(USART1_SendData); //Debug amber 
+    printf_setSendFunction(USART1_SendData); //Debug irgendwas
+    //printf_setSendFunction(USART2_SendData); //Debug amber 
     //printf_setSendFunction(USART5_SendData); //Debug ethernet
 
     uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData, &surface);
-    /*while (1){
-        printf(".");
-    }*/
-
-    printf("The Maiboard is up with the version: 1.2 ");
-    USART5_Init(USART_USE_INTERRUPTS);
-    printf("OK ");
-
+    printf("The Maiboard is up with the version: 1.3 \n");
     timeout_init(3000);
     //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
@@ -270,8 +259,8 @@ void init(){
     //arctoken_init(&USART1_SendData, &USART1_GetData, &USART1_SeekData); //Nix
     //arctoken_init(&USART5_SendData, &USART5_GetData, &USART5_SeekData); //Ethernet
     arc_multichannel_init(); //Ethernet
-    arc_multichannel_addTokenSerialDriver(&USART2_SendData, &USART2_GetData, &USART2_SeekData); //Amber
     arc_multichannel_addSerialDriver(&USART5_SendData, &USART5_GetData, &USART5_SeekData);//Ethernet
+    arc_multichannel_addTokenSerialDriver(&USART2_SendData, &USART2_GetData, &USART2_SeekData); //Amber
     arc_multichannel_setOwnSystemID(AVALON);
     //Second ARC-Channel Ethernet
     //arctoken_add_serial_handler(&USART2_SendData, &USART2_GetData, &USART2_SeekData);
@@ -285,8 +274,8 @@ void init(){
     packet_registerHandler(MB_SET_STATE, avalon_packet_setStateHandler);
 
 
-    struct MainboardState *state_off=mbstate_getState(MAINBOARD_RUNNING);
-    state_off->stateHandler=avalon_offState;
+    //struct MainboardState *state_off=mbstate_getState(MAINBOARD_RUNNING);
+    //state_off->stateHandler=avalon_offState;
 
     struct MainboardState *state_running=mbstate_getState(MAINBOARD_RUNNING);
     state_running->stateHandler=avalon_runningState;
@@ -299,7 +288,6 @@ void init(){
 int main()
 {
     init();
-    mbstate_changeState(MAINBOARD_RUNNING);
     while(1)
     {
         unsigned int curTime = time_getTimeInMs();
@@ -317,7 +305,6 @@ int main()
             }
         }
         arc_packet_t packet;	
-
         while(arc_multichannel_readPacket(&packet)){
             //Process packets
             packet_handlePacket(packet.originator, packet.system_id, packet.packet_id, packet.data, packet.length);
@@ -326,6 +313,7 @@ int main()
         hbridge_process();
 
         uwmodem_process();
+        //printf(".");
         //Sending a Status packet
     }
     return 0;

@@ -2,11 +2,10 @@
 ARC_SYSTEM_ID arcnotoken_system_id = 0;
 
 int arcnotoken_channel_ids[5];
-int arcnotoken_current_channel_num = 0;
+uint8_t arcnotoken_current_channel_num = 0;
 int arcnotoken_current_channel;
 
 int arcnotoken_init(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, arc_seek_func_t seekFunc){
-    //Init arc from here, because the user should not mix arc and arctoken
     arcnotoken_channel_ids[arcnotoken_current_channel_num] = arc_init(sendFunc, recvFunc, seekFunc);
     return arcnotoken_current_channel_num++;
 }

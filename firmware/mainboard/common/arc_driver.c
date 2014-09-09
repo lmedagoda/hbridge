@@ -24,7 +24,6 @@ int arc_add_serial_handler(arc_send_func_t sendFunc, arc_recv_func_t recvFunc, a
     arc_recvFunc[arc_num_serial_handler] = recvFunc;
     arc_seekFunc[arc_num_serial_handler] = seekFunc;
     return arc_num_serial_handler++;
-    
 }
 
 

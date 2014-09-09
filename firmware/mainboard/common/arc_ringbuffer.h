@@ -1,7 +1,7 @@
 #ifndef ARC_RINGBUFFER_H
 #define ARC_RINGBUFFER_H
 #include "arc_packet.h"
-#define BUFFERSIZE 200
+#define BUFFERSIZE 20
 typedef struct {
     uint8_t first;
     uint8_t  last;
