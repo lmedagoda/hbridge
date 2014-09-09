@@ -65,3 +65,6 @@ add_library(mainboard_sandbox_lib
 # 
 add_executable(test_mb ${MB_DIR}/avalon/main.c ${MB_DIR}/avalon/avalon_can.c ${MB_DIR}/avalon/uwmodem.c)
 target_link_libraries(test_mb mainboard_sandbox_lib pthread ${CAN_LIBRARIES} ${MAXON_LIBRARIES})
+
+add_executable(remote ${MB_DIR}/dagon/Remote.cpp)
+target_link_libraries(remote pthread ${CAN_LIBRARIES} ${MAXON_LIBRARIES})

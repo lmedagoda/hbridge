@@ -18,6 +18,7 @@
 int socked;
 struct sockaddr_in si_me, si_other;
 
+
 void printRawData(const char *source, const unsigned char *data, const unsigned int len){
     printf("%s :",source);
     for(unsigned int i = 0; i < len; i++){

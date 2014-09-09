@@ -1,5 +1,6 @@
 
 extern void assert(int i);
+extern int socked_left;
 
 #include "../mainboard/common/arc_packet.h"
 #include <motor_maxon/Driver.hpp>
@@ -8,6 +9,8 @@ extern void assert(int i);
 #include "../common/mb_types.h"
 #include "../common/mainboardstate.h"
 #include "../avalon/avalon_types.h"
+#include "remote_msg.h"
+#include <string.h>
 
 motor_maxon::Driver motor_driver[5];
 
@@ -48,6 +51,20 @@ void setMotor(double value[5]){
 
 
 extern "C" {
+
+void sendCommand(uint8_t state, double target){
+    remote_msg msg;
+    msg.state = state;
+    msg.target = target;
+    uint8_t buffer[sizeof(msg)+2];
+    buffer[0] = '@';
+    buffer[sizeof(msg)+1] = '\n';
+    memcpy(buffer+1,&target,sizeof(msg));
+    write(socked_left,buffer,sizeof(msg)+2);
+}
+
+void dagon_autonomousState(void){
+}
 
 void dagon_offState(void){
     //TODO kill here
