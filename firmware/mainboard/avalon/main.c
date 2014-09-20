@@ -17,7 +17,6 @@
 #include "../../hbridgeCommon/drivers/printf.h"
 #include <stddef.h>
 #include "avalon_types.h"
-#include <unistd.h>
 #define STATUS_PACKET_PERIOD_MS 500 
  
 
@@ -44,6 +43,8 @@ extern void avalon_autonomousState(void);
 //TODO Add CAN IDs to keep a easy overview
 //TODO Where co configure motor commands and set them to the motors
 avalon_status_t current_status;
+uint8_t full_autonomous_minuetes;
+uint8_t full_autonomous_timeout;
 void hbridgeStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
 }
 void hbridgeExtendedStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
@@ -85,6 +86,14 @@ void sendStatusPacket(){
 }
 void avalon_packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     substate = data[1];
+    if ((enum MAINBOARDSTATE) *data == MAINBOARD_FULL_AUTONOMOUS){
+        full_autonomous_timeout = data[2]; 
+        full_autonomous_minuetes = 0;
+        timeout_init(30000);
+    } else {
+        timeout_init(5000);
+    }
+    timeout_reset();
     packet_setStateHandler(senderId, receiverId, id, data, size);
 }
 
@@ -121,6 +130,18 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
     cmdValid = 1;
 }
 
+void avalon_full_autonomousState(void){
+    if (timeout_hasTimeout()){
+        full_autonomous_minuetes++;
+        timeout_reset();
+    }
+    if (full_autonomous_minuetes >= full_autonomous_timeout){
+        printf("Timout, switching to off\n");
+        mbstate_changeState(MAINBOARD_OFF);
+        current_status.change_reason = CR_MB_TIMEOUT;
+    } 
+}
+
 #ifndef DAGON
 void avalon_autonomousState(void){
     if(timeout_hasTimeout())
@@ -132,7 +153,6 @@ void avalon_autonomousState(void){
         return;
     }
     current_status.change_reason = CR_LEGAL;
-
 }
 void avalon_offState(void){
     timeout_reset();
@@ -291,9 +311,9 @@ void init(){
 
     struct MainboardState *state_autonomous=mbstate_getState(MAINBOARD_AUTONOMOUS);
     state_autonomous->stateHandler=avalon_autonomousState;
-    
-    struct MainboardState *state_fullautonomous=mbstate_getState(MAINBOARD_FULL_AUTONOMOUS);
-    state_fullautonomous->stateHandler=avalon_autonomousState;
+
+    struct MainboardState *state_full_autonomous=mbstate_getState(MAINBOARD_FULL_AUTONOMOUS);
+    state_full_autonomous->stateHandler=avalon_full_autonomousState;
 }
 
 
@@ -327,7 +347,7 @@ int main()
         uwmodem_process();
         //printf(".");
         //Sending a Status packet
-        usleep(100);
+        //usleep(100);
 
     }
     return 0;
