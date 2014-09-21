@@ -91,7 +91,7 @@ void avalon_packet_setStateHandler(int senderId, int receiverId, int id, unsigne
         full_autonomous_minuetes = 0;
         timeout_init(30000);
     } else {
-        timeout_init(5000);
+        timeout_init(10000);
     }
     timeout_reset();
     packet_setStateHandler(senderId, receiverId, id, data, size);
@@ -135,7 +135,7 @@ void avalon_full_autonomousState(void){
         full_autonomous_minuetes++;
         timeout_reset();
     }
-    if (full_autonomous_minuetes >= full_autonomous_timeout){
+    if (full_autonomous_minuetes/2 >= full_autonomous_timeout){
         printf("Timout, switching to off\n");
         mbstate_changeState(MAINBOARD_OFF);
         current_status.change_reason = CR_MB_TIMEOUT;
@@ -234,7 +234,7 @@ void init(){
 
     uwmodem_init(&USART3_SendData, &USART3_GetData, &USART3_SeekData, &surface);
     printf("The Maiboard is up with the version: 1.3 \n");
-    timeout_init(3000);
+    timeout_init(13000);
     //Set ARC System ID to filter the ARC Packets
     protocol_setOwnHostId(SENDER_ID_MAINBOARD);
 
