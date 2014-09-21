@@ -87,9 +87,13 @@ void sendStatusPacket(){
 void avalon_packet_setStateHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
     substate = data[1];
     if ((enum MAINBOARDSTATE) *data == MAINBOARD_FULL_AUTONOMOUS){
-        full_autonomous_timeout = data[2]; 
-        full_autonomous_minuetes = 0;
-        timeout_init(30000);
+        if (size > 2){
+            full_autonomous_timeout = data[2]; 
+            full_autonomous_minuetes = 0;
+            timeout_init(30000);
+        } else {
+            timeout_init(10000);
+        }
     } else {
         timeout_init(10000);
     }
