@@ -141,9 +141,32 @@ void avalon_full_autonomousState(void){
     }
     if (full_autonomous_minuetes/2 >= full_autonomous_timeout){
         printf("Timout, switching to off\n");
-        mbstate_changeState(MAINBOARD_OFF);
+        timeout_init(20000);
+        timeout_reset();
+        mbstate_changeState(MAINBOARD_EMERGENCY);
         current_status.change_reason = CR_MB_TIMEOUT;
     } 
+}
+void avalon_emergency(void){
+    if (timeout_hasTimeout()){
+        mbstate_changeState(MAINBOARD_OFF);
+    } else {
+        hbridge_setValues(
+                0, 
+                0,
+                1  * scaling *-1,
+                ((1*3)/10) * scaling *-1,
+                PACKET_ID_SET_VALUE14);
+
+        hbridge_setValues(
+                0,
+                0,
+                0,
+                0,
+                PACKET_ID_SET_VALUE58);
+        current_status.change_reason = CR_LEGAL;
+    }
+
 }
 
 #ifndef DAGON
@@ -318,6 +341,10 @@ void init(){
 
     struct MainboardState *state_full_autonomous=mbstate_getState(MAINBOARD_FULL_AUTONOMOUS);
     state_full_autonomous->stateHandler=avalon_full_autonomousState;
+
+
+    struct MainboardState *state_emergency=mbstate_getState(MAINBOARD_EMERGENCY);
+    state_emergency->stateHandler=avalon_emergency;
 }
 
 
