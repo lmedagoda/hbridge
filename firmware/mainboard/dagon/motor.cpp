@@ -142,6 +142,7 @@ void avalon_emergency(void){
         mbstate_changeState(MAINBOARD_OFF);
     }
     else {
+        initMotors();
         double value[5];
         double factor = 2.5;
         value[0] = -100/255.0;
