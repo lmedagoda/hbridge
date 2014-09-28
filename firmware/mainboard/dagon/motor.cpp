@@ -2,14 +2,17 @@
 extern void assert(int i);
 extern int socked_left;
 
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "../mainboard/common/arc_packet.h"
 #include <motor_maxon/Driver.hpp>
 #include <iostream>
-#include "../common/timeout.h"
+extern "C" {
+    #include "../common/timeout.h"
+    #include "../common/mainboardstate.h"
+}
 #include "../common/mb_types.h"
-#include "../common/mainboardstate.h"
 #include "../avalon/avalon_types.h"
 #include "remote_msg.h"
 #include <string.h>
@@ -17,6 +20,7 @@ extern int socked_left;
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+
 
 motor_maxon::Driver motor_driver[5];
 
@@ -30,6 +34,8 @@ void initMotor(unsigned int id, std::string port){
 extern avalon_status_t current_status;
 extern struct arc_avalon_control_packet curCmd;
 extern uint8_t cmdValid;
+extern uint8_t full_autonomous_minuetes;
+extern uint8_t full_autonomous_timeout;
 extern struct sockaddr_in si_me_left, si_other_left;
 
 void initMotors(){
@@ -76,6 +82,13 @@ void setMotor(double value[5]){
 
 extern "C" {
 
+//extern void timeout_init(int timeoutInMs);
+//extern void timeout_reset();
+//extern uint8_t timeout_hasTimeout();
+
+
+//extern uint8_t mbstate_changeState(enum MAINBOARDSTATE newState);
+
 void sendCommand(uint8_t state, double target){
     if(socked_left <= 0){
         printf("Warning conenction to left invalid\n");
@@ -107,7 +120,52 @@ void sendCommand(uint8_t state, double target){
     }
 }
 
+void avalon_full_autonomousState(void){
+    if (timeout_hasTimeout()){
+        full_autonomous_minuetes++;
+        timeout_reset();
+    } 
+    if (full_autonomous_minuetes/2 >= full_autonomous_timeout){
+        printf("Timout, switching to off\n");
+        timeout_init(20000);
+        timeout_reset();
+        mbstate_changeState(MAINBOARD_EMERGENCY);
+        current_status.change_reason = CR_MB_TIMEOUT;
+    } 
+}
+
+
+void avalon_emergency(void){
+    printf("Emergency\n");
+    if (timeout_hasTimeout()){
+        current_status.change_reason = CR_MB_TIMEOUT;
+        mbstate_changeState(MAINBOARD_OFF);
+    }
+    else {
+        double value[5];
+        double factor = 2.5;
+        value[0] = -100/255.0;
+        value[1] = -100/255.0;
+        value[2] = 0;
+        value[3] = 0;
+        value[4] = 0;
+        for(int i=0;i<5;i++){
+            value[i]*=factor;
+        }
+        setMotor(value);
+        sendCommand(3,value[4]);
+        setMotor(value);
+    }
+}
+
 void avalon_autonomousState(void){
+    if (timeout_hasTimeout()){
+        timeout_reset();
+        timeout_init(20000);
+        timeout_reset();
+        mbstate_changeState(MAINBOARD_EMERGENCY);
+        current_status.change_reason = CR_MB_TIMEOUT;
+    } 
     sendCommand(3,0);
     closeMotors();
 }

@@ -136,7 +136,6 @@ int main(int argc, char **argv){
                 p.release_control();
 		break;
                 //Do Nothing here
-
         }
 	}catch(...){
 		printf("Something went wrong here\n");
