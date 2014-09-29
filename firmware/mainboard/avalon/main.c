@@ -32,6 +32,8 @@ uint8_t substate = 0;
 #define SURFACE_SIGN_COUNT 6 
 
 #ifdef DAGON
+extern void start_dagon();
+extern void run_dagon();
 extern void avalon_offState(void);
 extern void avalon_runningState(void);
 extern void avalon_autonomousState(void);
@@ -350,6 +352,9 @@ void init(){
 
     struct MainboardState *state_emergency=mbstate_getState(MAINBOARD_EMERGENCY);
     state_emergency->stateHandler=avalon_emergency;
+#ifdef DAGON
+    start_dagon();
+#endif
 }
 
 
@@ -384,6 +389,9 @@ int main()
         //printf(".");
         //Sending a Status packet
         //usleep(100);
+#ifdef DAGON
+        run_dagon();
+#endif
 
     }
     return 0;

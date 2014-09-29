@@ -10,25 +10,26 @@
 
 class Processor : public iodrivers_base::Driver{
     public:
-
     Processor():
         iodrivers_base::Driver(1024,true),
         timeout(base::Time::fromSeconds(1.0))
     {
-        openUDP("192.168.128.20",4022);
+        std::cout << "Try to open TCP.." << std::endl;
+        //openTCP("192.168.128.20",5001);
+        openTCP("127.0.0.1",5001);
         if(!isValid()){
             std::cerr << "Cannot open remote port" << std::endl;
             assert(false);
         }
-	writePacket((uint8_t*)"Hallo",5);
+	//writePacket((uint8_t*)"Hallo",5);
     }
 
     void reOpen(){
         close();
-	openUDP("192.168.128.20",4022);
-	writePacket((uint8_t*)"Hallo",5);
+	openTCP("192.168.128.20",5001);
+	//writePacket((uint8_t*)"Hallo",5);
     }
-    
+
     remote_msg last_msg;
     motor_maxon::Driver motor_driver[5];
     base::Timeout timeout;
@@ -39,7 +40,7 @@ class Processor : public iodrivers_base::Driver{
         	if(!isValid()){
         		openUDP("192.168.128.20",4022);
 		}
-		writePacket((uint8_t*)"Hallo",5);
+		//writePacket((uint8_t*)"Hallo",5);
 		reconnect_timeout.restart();
 	}
         uint8_t data[1024];
@@ -47,7 +48,9 @@ class Processor : public iodrivers_base::Driver{
             remote_msg *msg = (remote_msg*)(data+1);
             last_msg = *msg;
             timeout.restart();
+            return true;
         }
+        return false;
     }
     
     void setMotor(int id, double value){
@@ -111,36 +114,76 @@ class Processor : public iodrivers_base::Driver{
     }
 };
 
+
+class Modem : public iodrivers_base::Driver{
+    public:    
+    Modem():
+        iodrivers_base::Driver(1024,true)
+    {
+        openSerialIO("/dev/ttyS4", 57600);
+        if(!isValid()){
+            std::cerr << "Cannot open remote port" << std::endl;
+            assert(false);
+        }
+    }
+
+    virtual int extractPacket(uint8_t const* buffer, size_t buffer_size) const{
+        return buffer_size;
+    }
+};
+
+
+
 int main(int argc, char **argv){
+    std::cout << "Starting ..." << std::endl;
     Processor p;
+    std::cout << "TCP Connection established.. " << std::endl;
+    Modem modem;
     base::Timeout timeout(base::Time::fromSeconds(1.0));
     while(1){
-	try{
-        p.process();
-        switch(p.last_msg.state){
-            case 0:
-            case 1:
-            {
-		if(timeout.elapsed()){
-                	system("killall -9 dagon_motors_left");
-			timeout.restart();
-		}
-                break;
+        try{
+            //right to modem
+            if ( p.process()){
+                modem.writePacket(p.last_msg.modemdata, p.last_msg.modemdata_size);
             }
-            case 2:
-                {
-                p.control_system();
-                break;
+            //modem to right
+            try{
+                uint8_t data[1024];
+                if(uint8_t size = modem.readPacket(data,1024,0)){
+                    std::cout << "Send to right " << size << "Bytes Modemdata" << std::endl;
+                    //write without a struct until yet
+                    p.writePacket(data, size);
                 }
-            case 3:
-                p.release_control();
-		break;
-                //Do Nothing here
+            } catch (iodrivers_base::TimeoutError e){
+                //There is no modem it's not so important
+                std::cerr << "There is no Modem" << std::endl;
+            } 
+
+            switch(p.last_msg.state){
+                case 0:
+                case 1:
+                    {
+                        if(timeout.elapsed()){
+                            system("killall -9 dagon_motors_left");
+                            timeout.restart();
+                        }
+                        break;
+                    }
+                case 2:
+                    {
+                        p.control_system();
+                        break;
+                    }
+                case 3:
+                    p.release_control();
+                    break;
+                    //Do Nothing here
+            }
+        }catch(...){
+            printf("Something went wrong here\n");
+            p.reOpen();
         }
-	}catch(...){
-		printf("Something went wrong here\n");
-		p.reOpen();
-	}
+        std::cout << "." <<std::flush;
         sleep(0.5);
     }
     return 0;

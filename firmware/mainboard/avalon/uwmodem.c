@@ -1,5 +1,4 @@
 #include "uwmodem.h"
-
 #include <hbridgeCommon/lib/STM32F10x_StdPeriph_Driver/inc/stm32f10x_can.h>
 #include <hbridgeCommon/drivers/can.h>
 #include <printf.h>

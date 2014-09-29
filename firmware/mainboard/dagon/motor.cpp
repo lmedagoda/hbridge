@@ -1,6 +1,5 @@
 
 extern void assert(int i);
-extern int socked_left;
 
 
 #include <sys/types.h>
@@ -81,6 +80,9 @@ void setMotor(double value[5]){
 
 
 extern "C" {
+uint8_t modemdata_size;
+uint8_t* modemdata[10];
+extern int fd_left;
 
 //extern void timeout_init(int timeoutInMs);
 //extern void timeout_reset();
@@ -90,19 +92,27 @@ extern "C" {
 //extern uint8_t mbstate_changeState(enum MAINBOARDSTATE newState);
 
 void sendCommand(uint8_t state, double target){
-    if(socked_left <= 0){
+    if(fd_left <= 0){
         printf("Warning conenction to left invalid\n");
         return;
     }
     remote_msg msg;
     msg.state = state;
     msg.target = target;
+    msg.modemdata_size = modemdata_size;
+    memcpy(&msg.modemdata, &modemdata, 10); 
     uint8_t buffer[sizeof(msg)+2];
     buffer[0] = '@';
     buffer[sizeof(msg)+1] = '\n';
     memcpy(buffer+1,&msg,sizeof(msg));
-    size_t written = sendto(socked_left, buffer, sizeof(msg)+2, 0, (struct sockaddr *)&si_other_left, sizeof(si_other_left));
+    //size_t written = sendto(socked_left, buffer, sizeof(msg)+2, 0, (struct sockaddr *)&si_other_left, sizeof(si_other_left));
+    size_t written = write(fd_left,  buffer, sizeof(msg)+2);
     
+    //this data was send
+    modemdata_size = 0;
+    
+//Why I should read something here, Matthias?
+/*
     unsigned char b2[2048];
     unsigned int bytes_available;
     unsigned int slen=sizeof(si_other_left);
@@ -118,6 +128,7 @@ void sendCommand(uint8_t state, double target){
             exit(-1);
         }
     }
+    */
 }
 
 void avalon_full_autonomousState(void){
@@ -132,6 +143,7 @@ void avalon_full_autonomousState(void){
         mbstate_changeState(MAINBOARD_EMERGENCY);
         current_status.change_reason = CR_MB_TIMEOUT;
     } 
+    sendCommand(3,0);
 }
 
 
