@@ -19,9 +19,12 @@
 
 int socked;
 struct sockaddr_in si_me, si_other;
+extern int fd_left;
+extern uint8_t modemdata_size;
+extern uint8_t* modemdata;
 
 
-int socked_left;
+//int socked_left;
 struct sockaddr_in si_me_left, si_other_left;
 
 
@@ -82,16 +85,27 @@ void USART3_Init(enum USART_MODE mode, unsigned int speed)
 signed int USART3_SendData(const unsigned char *data, const unsigned int size)
 {
     printRawData("USART3",data,size);
+    unsigned int size_ = size;
+    if (size > 10){
+        size_ = 10;
+    }
+    memcpy(modemdata, data, size_);
+    modemdata_size = size;
     return size;
 }
 signed int USART3_SeekData (unsigned char *buffer, const unsigned int buffer_length)
 {
-    return 0;
+    return USART3_GetData(buffer, buffer_length);
 }
 
 signed int USART3_GetData (unsigned char *buffer, const unsigned int buffer_length)
 {
-    return 0;
+   signed int size = read(fd_left, buffer, buffer_length);
+   if (size < 0){
+       //fprintf(stderr, "Error by reading from left/modem");
+       return 0;
+   } 
+   return size;
 }
 
 
@@ -126,7 +140,7 @@ void USART5_Init(enum USART_MODE mode)
 //    struct MainboardState *state_autonomous=mbstate_getState(MAINBOARD_AUTONOMOUS);
 //    state_autonomous->stateHandler=dagon_autonomousState;
    
-    {
+/*    {
     int i;
     int intslen=sizeof(si_other_left);
 
@@ -144,7 +158,7 @@ void USART5_Init(enum USART_MODE mode)
     }
     printf("Bind Successfull\n");
     }
-
+*/
 }
 
 signed int USART5_SendData(const unsigned char *data, const unsigned int size)
@@ -176,4 +190,5 @@ signed int USART5_GetData (unsigned char *buffer, const unsigned int buffer_leng
     }
     return read;
 }
+
 

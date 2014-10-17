@@ -32,9 +32,13 @@ uint8_t substate = 0;
 #define SURFACE_SIGN_COUNT 6 
 
 #ifdef DAGON
+extern void start_dagon();
+extern void run_dagon();
 extern void avalon_offState(void);
 extern void avalon_runningState(void);
 extern void avalon_autonomousState(void);
+extern void avalon_full_autonomousState(void);
+extern void avalon_emergency(void);
 #endif
 
 //USART? = AMBER
@@ -50,8 +54,11 @@ void hbridgeStatusHandler(int senderId, int receiverId, int id, unsigned char *d
 void hbridgeExtendedStatusHandler(int senderId, int receiverId, int id, unsigned char *data, unsigned short size){
 }
 int surface(){
-    mbstate_changeState(MAINBOARD_OFF);
-    current_status.change_reason = CR_EMERGENCY;
+    printf("Surface, switching to Emergency\n");
+    timeout_init(20000);
+    timeout_reset();
+    mbstate_changeState(MAINBOARD_EMERGENCY);
+    current_status.change_reason = CR_MB_TIMEOUT;
     return 0;
 }
 
@@ -134,6 +141,7 @@ void avalon_controlHandler(int senderId, int receiverId, int id, unsigned char *
     cmdValid = 1;
 }
 
+#ifndef DAGON
 void avalon_full_autonomousState(void){
     if (timeout_hasTimeout()){
         full_autonomous_minuetes++;
@@ -164,12 +172,10 @@ void avalon_emergency(void){
                 0,
                 0,
                 PACKET_ID_SET_VALUE58);
-        current_status.change_reason = CR_LEGAL;
     }
 
 }
 
-#ifndef DAGON
 void avalon_autonomousState(void){
     if(timeout_hasTimeout())
     {
@@ -190,9 +196,10 @@ void avalon_runningState(void){
     if(timeout_hasTimeout())
     {
         printf("Timout, switching to off\n");
-        mbstate_changeState(MAINBOARD_OFF);
-        current_status.change_reason = CR_MB_TIMEOUT;
+        timeout_init(20000);
         timeout_reset();
+        current_status.change_reason = CR_MB_TIMEOUT;
+        mbstate_changeState(MAINBOARD_EMERGENCY);
         return;
     }
 
@@ -345,6 +352,9 @@ void init(){
 
     struct MainboardState *state_emergency=mbstate_getState(MAINBOARD_EMERGENCY);
     state_emergency->stateHandler=avalon_emergency;
+#ifdef DAGON
+    start_dagon();
+#endif
 }
 
 
@@ -379,6 +389,9 @@ int main()
         //printf(".");
         //Sending a Status packet
         //usleep(100);
+#ifdef DAGON
+        run_dagon();
+#endif
 
     }
     return 0;
