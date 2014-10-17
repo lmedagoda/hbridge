@@ -154,8 +154,8 @@ void avalon_emergency(void){
         hbridge_setValues(
                 0, 
                 0,
-                1  * scaling *-1,
-                ((1*3)/10) * scaling *-1,
+                    270  *-1,
+                    ((1*3)/10) * 270 *-1,
                 PACKET_ID_SET_VALUE14);
 
         hbridge_setValues(
