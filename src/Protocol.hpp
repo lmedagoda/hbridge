@@ -68,6 +68,7 @@ public:
 class PacketReceiver
 {
 public:
+    virtual ~PacketReceiver() {};
     /**
      * Callback function get's called whenever there
      * is a new can message received.
