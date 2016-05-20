@@ -63,7 +63,7 @@ void encoder_sampleTicks(enum encoderTypes type)
     
     //compute diff between values
     int32_t diff = oldValue - curValue;
-    if(abs(diff) > ticksPerTurn / 2.0)
+    if(abs(diff) > ticksPerTurn / 2)
     {
 	if(oldValue < curValue)
 	{
