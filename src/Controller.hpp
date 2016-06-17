@@ -3,12 +3,21 @@
 
 #include <canmessage.hh>
 #include <vector>
-#include <base/actuators/commands.h>
 #include "MotorDriverTypes.hpp"
 #include "Protocol.hpp"
 
 namespace hbridge 
 {
+
+struct PIDValues
+{
+    float kp;
+    float ki;
+    float kd;
+    float maxPWM;
+
+    PIDValues() : kp(0), ki(0), kd(0), maxPWM(0) {};
+};
 
 class Writer;
     
@@ -137,7 +146,7 @@ public:
         Config() : debugActive(false)
         {
         }
-	base::actuators::PIDValues pidValues;
+	PIDValues pidValues;
         bool debugActive;
     };
     
@@ -181,7 +190,7 @@ public:
         Config() :minHystDist(0), maxHystDist(0), 
         hysteresisActive(false), allowWrapAround(false), overDistCount(0) {};
 
-        base::actuators::PIDValues pidValues;
+        PIDValues pidValues;
         double minHystDist;
         double maxHystDist;
         bool hysteresisActive;

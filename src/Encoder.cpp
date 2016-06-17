@@ -1,5 +1,5 @@
 #include "Encoder.hpp"
-#include <base/float.h>
+#include <base/Float.hpp>
 
 namespace hbridge {
     

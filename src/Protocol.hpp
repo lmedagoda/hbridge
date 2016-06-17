@@ -6,7 +6,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <map>
-#include <base/time.h>
+#include <base/Time.hpp>
 
 namespace firmware
 {

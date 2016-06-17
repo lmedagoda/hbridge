@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <stdexcept>
 #include <iostream>
+#include <base/JointState.hpp>
 
-#include <base/time.h>
-#include <base/actuators/commands.h>
+#include <base/Time.hpp>
 
 namespace hbridge
 {
@@ -201,7 +201,7 @@ namespace hbridge
     /**
      * Drive mode constants for the hbridges
      */
-    typedef base::actuators::DRIVE_MODE DRIVE_MODE;
+    typedef base::JointState::MODE DRIVE_MODE;
 
     struct BoardState
     {
