@@ -4,6 +4,7 @@
 #include "position_controller.h"
 #include "speed_controller.h"
 #include "pwm_controller.h"
+#include "cascade_controller.h"
 #include "../interfaces/controllers.h"
 
 struct ControllerInterface controllers[NUM_CONTROLLERS];
@@ -64,6 +65,12 @@ void controllers_init()
     controllers[CONTROLLER_MODE_SPEED].isConfigured = speedControllerIsConfigured;
     controllers[CONTROLLER_MODE_SPEED].step = speedControllerStep;
     controllers[CONTROLLER_MODE_SPEED].deInit = speedControllerDeInit;            
+    
+    controllers[CONTROLLER_MODE_CASCADE].init = cascadeControllerInit;
+    controllers[CONTROLLER_MODE_CASCADE].reset = cascadeControllerReset;
+    controllers[CONTROLLER_MODE_CASCADE].isConfigured = cascadeControllerIsConfigured;
+    controllers[CONTROLLER_MODE_CASCADE].step = cascadeControllerStep;
+    controllers[CONTROLLER_MODE_CASCADE].deInit = cascadeControllerDeInit;  
     
     //init pid structs with sane values
     for(i = 0; i < NUM_CONTROLLERS; i++)

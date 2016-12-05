@@ -64,6 +64,9 @@ enum LOW_PRIORITY_IDs
     PACKET_ID_POS_CONTROLLER_DEBUG,
     PACKET_ID_SET_POS_CONTROLLER_DATA,
     
+    PACKET_ID_CAS_CONTROLLER_DEBUG,
+    PACKET_ID_SET_CAS_CONTROLLER_DATA,
+    
     PACKET_ID_SET_UNCONFIGURED,
     PACKET_ID_SET_ACTUATOR_UNCONFIGURED,
     
@@ -92,6 +95,7 @@ enum controllerModes {
   CONTROLLER_MODE_PWM = 1,
   CONTROLLER_MODE_SPEED = 2,
   CONTROLLER_MODE_POSITION = 3,
+  CONTROLLER_MODE_CASCADE = 4,
   NUM_CONTROLLERS
 };
 
@@ -171,6 +175,15 @@ struct speedDebugData {
   struct pidDebugData pidData;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
+struct cascadeDebugData {
+	int16_t targetVal;
+	int16_t pwmVal;
+	int32_t encoderVal;
+	int16_t speedVal;
+	struct pidDebugData outerPidData;
+	struct pidDebugData innerPidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
 struct posDebugData {
   uint16_t targetVal;
   int16_t pwmVal;
@@ -183,6 +196,13 @@ struct speedControllerData {
     unsigned debugActive:1;
     unsigned unused:7;
     struct setPidData pidData;
+} __attribute__ ((packed)) __attribute__((__may_alias__));
+
+struct cascadeControllerData {
+	unsigned debugActive:1;
+	unsigned unused:7;
+	struct pidDebugData outerPidData;
+	struct pidDebugData innerPidData;
 } __attribute__ ((packed)) __attribute__((__may_alias__));
 
 struct posControllerData {

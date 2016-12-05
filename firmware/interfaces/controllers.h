@@ -21,6 +21,16 @@ struct ControllerData {
     uint8_t isConfigured;
 };
 
+struct CascadeControllerData {
+	struct pid_data outerPidData;
+	struct pid_data innerPidData;
+	int32_t lastWheelPos;
+	uint8_t debugActive;
+	uint16_t debugEveryXMs;
+	uint16_t debugCounter;
+	uint8_t isConfigured;
+};
+
 struct ControllerInterface {
     /**
      * Initializes the controller
