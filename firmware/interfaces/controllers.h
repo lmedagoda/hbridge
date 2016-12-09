@@ -22,8 +22,8 @@ struct ControllerData {
 };
 
 struct CascadeControllerData {
-	struct pid_data outerPidData;
-	struct pid_data innerPidData;
+	struct pid_data outerPidData; // this is the speed controller, a PI controller
+	struct pid_data innerPidData; // this is the current controller, a PI controller
 	int32_t lastWheelPos;
 	uint8_t debugActive;
 	uint16_t debugEveryXMs;
